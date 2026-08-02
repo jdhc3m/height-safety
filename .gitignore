@@ -1,0 +1,9 @@
+private-sources/*
+!private-sources/README.md
+
+.env
+.env.*
+.DS_Store
+.idea/
+.vscode/
+
