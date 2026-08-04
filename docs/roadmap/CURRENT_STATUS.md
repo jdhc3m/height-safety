@@ -15,6 +15,8 @@ Stage 2A.5 — focused anchor evidence, entering Stage 2B specification.
   created.
 - Initial roles, workflow, non-goals, security minimums and technical risks
   recorded.
+- AS 5532:2025 screenshot review integrated as provisional product,
+  manufacturing-test, instruction and marking evidence requirements.
 
 ## In progress
 
@@ -33,6 +35,8 @@ then update assumptions and produce Stage 2B workflow specification.
 - No implementation stack, schema migration, API, mobile app or web app exists.
 - Required fields, outcome meanings, signatures, measurements, retention and
   report wording await partner/legal/professional review.
+- AS 5532 product evidence must be validated against the licensed Standard and
+  the actual manufacturer instructions before implementation or certification.
 
 ## Tests and commands
 
@@ -44,3 +48,5 @@ Markdown review. Future agents must update this section after meaningful work.
 
 `AGENTS.md`; `docs/product/`; `docs/discovery/`; `docs/requirements/`;
 `docs/architecture/`; `docs/roadmap/`; `docs/archive/`.
+
+AS 5532 review: `docs/standards/AS-5532-2025-INTEGRATION.md`.

@@ -38,7 +38,8 @@ provisional target. They do not represent implemented behaviour.
 ## Broader-than-needed features to disable/postpone
 
 Any generic asset catalogue, certification/recertification workflow,
-standards/rules engine, automatic interval logic, multi-jurisdiction support,
+standards/rules engine, unvalidated automatic interval exceptions,
+multi-jurisdiction support,
 other asset types, customer portal, billing, scheduling and AI conclusions
 should be removed from active implementation plans or feature-flagged out.
 
@@ -56,3 +57,44 @@ Tenant isolation for every resource and file path; mutation replay idempotency;
 version conflict visibility; local save/restart recovery; failed photo upload
 retry; correct association of new/missing anchors; report reproducibility;
 immutable revision behaviour; role permissions; and no sensitive data in logs.
+
+## AS/NZS 1891.4:2025 implementation additions
+
+The supplied 2025 material adds implementation gaps beyond the original anchor
+MVP:
+
+- Component-level equipment register and lifetime inspection history.
+- Traceability to manufacturer or user-installed identifier.
+- Service-state transitions for failed, expired and fall-arrest-used equipment.
+- Pre-use, post-use and periodic checklists by textile, metallic, connector,
+  harness, device, anchor, HLL/HRS and fastener category.
+- Rescue-plan and training evidence linked to each job.
+- Task/environment hazards, dropped-object controls and product-instruction
+  references.
+- Structured clearance and free-fall calculations with visible inputs, units,
+  formulas, assumptions and review.
+- Anchorage-capacity/professional-engineer evidence and fastener proof tests.
+- Connector compatibility, lock, orientation, roll-out and short-circuit checks.
+
+Do not implement automatic compliance conclusions until competent-person and
+professional-engineer review boundaries are approved.
+
+## AS 5532:2025 implementation additions
+
+The supplied 62-page screenshot sequence adds a product/manufacturing evidence
+layer for single-point anchors:
+
+- Product register fields for fixed/portable class, model, batch/serial,
+  attachment point, load directions, rating/person count and instruction
+  version.
+- Test-record fields for specimen, apparatus, static/dynamic/function
+  procedure, force, hold time, mass/drop/peak load, suspension, roof
+  structure, deviations, unusual observations and dated standard reference.
+- Instruction and marking checklists for installation/use, limitations,
+  compatibility, traceability, inspection/removal from service, personnel-only
+  use and permanent manufacturer/batch/rating/standard markings.
+- Report separation between manufacturing evidence under AS 5532 and onsite
+  selection, installation, structural capacity, proof testing and inspection
+  under the applicable field requirements.
+
+Do not use AS 5532 product evidence alone to issue a site compliance result.
