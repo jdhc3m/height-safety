@@ -1,5 +1,7 @@
 # Founder Executive Briefing — Stage 2A
 
+> Historical reference. This document does not define the current MVP scope.
+
 ## 20 biggest findings
 
 1. **Readiness is the largest finding.** The repository does not contain a completed Stage 2A evidence package; it contains a research prompt, intake material and mostly empty registers. This is directly checkable in the repository, but does not prove research is absent elsewhere. [Directly checkable; high confidence]

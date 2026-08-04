@@ -1,5 +1,7 @@
 # Sceptical Technical-Lead Evaluation — Source Record
 
+> Historical reference. This document does not define the current MVP scope.
+
 ## Provenance
 
 | Field | Value |

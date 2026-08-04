@@ -1,3 +1,5 @@
+# Compatibility copy — canonical: [docs/requirements/USER_WORKFLOWS.md](docs/requirements/USER_WORKFLOWS.md)
+
 # User Workflows
 
 ## Office preparation

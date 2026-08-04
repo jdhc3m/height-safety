@@ -1,5 +1,7 @@
 # Evidence Gaps
 
+> Historical reference. This document does not define the current MVP scope.
+
 Track missing evidence here during Stage 2A.
 
 The gaps below were prompted by an unverified technical-lead evaluation received on 2026-08-03. They remain open until supported by repository sources. “Missing” means missing from this repository, not necessarily nonexistent.

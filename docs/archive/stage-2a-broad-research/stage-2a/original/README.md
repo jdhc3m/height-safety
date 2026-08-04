@@ -1,5 +1,7 @@
 # Original Research
 
+> Historical reference. This document does not define the current MVP scope.
+
 Store unedited source captures, notes, and imported material here during Stage 2A.
 
 ## Current intake

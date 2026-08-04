@@ -1,11 +1,19 @@
 # Implementation Gap Analysis
 
+Canonical roadmap handover: [roadmap current status](roadmap/CURRENT_STATUS.md).
+Canonical implementation plan: [roadmap implementation plan](roadmap/IMPLEMENTATION_PLAN.md).
+
 ## Repository finding
 
 The repository has no application source, database schema, migrations, API,
 mobile project, web project, report renderer, CI test suite or deployment
 configuration. Code implementation is therefore entirely outstanding; no
 existing feature can be classified as aligned beyond the documentation baseline.
+
+## Documentation-to-implementation gap
+
+The structured product, requirements and architecture documents now define the
+provisional target. They do not represent implemented behaviour.
 
 ## Required implementation changes
 

@@ -1,3 +1,5 @@
+# Compatibility copy — canonical: [docs/product/PRODUCT_VISION.md](docs/product/PRODUCT_VISION.md)
+
 # Product Vision
 
 ## Product definition

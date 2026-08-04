@@ -1,4 +1,5 @@
 # Raw Interview Notes
 
-Store unprocessed interview notes here.
+> Historical reference. This document does not define the current MVP scope.
 
+Store unprocessed interview notes here.

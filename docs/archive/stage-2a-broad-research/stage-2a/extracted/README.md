@@ -1,5 +1,7 @@
 # Extracted Research
 
+> Historical reference. This document does not define the current MVP scope.
+
 Store distilled findings, quotes, and structured extraction notes here.
 
 ## Current extractions

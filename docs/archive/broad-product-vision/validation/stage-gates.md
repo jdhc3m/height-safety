@@ -1,5 +1,7 @@
 # Stage Gates
 
+> Historical reference. This document does not define the current MVP scope.
+
 Track stage-entry and stage-exit validation criteria here.
 
 No gate below is approved. These are candidate governance criteria extracted from unverified secondary analysis and must be reviewed by the project owner after Stage 2A evidence is available.

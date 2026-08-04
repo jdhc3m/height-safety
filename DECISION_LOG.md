@@ -1,3 +1,5 @@
+# Compatibility copy — canonical: [docs/product/DECISION_LOG.md](docs/product/DECISION_LOG.md)
+
 # Decision Log
 
 | ID | Date | Decision | Reason | Status |

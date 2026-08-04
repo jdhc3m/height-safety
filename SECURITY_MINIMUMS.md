@@ -1,3 +1,5 @@
+# Compatibility copy — canonical: [docs/architecture/SECURITY_MINIMUMS.md](docs/architecture/SECURITY_MINIMUMS.md)
+
 # Security Minimums
 
 - Scope every server query and mutation to the authorised company; never trust

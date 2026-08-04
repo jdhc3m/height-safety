@@ -10,21 +10,23 @@ periodic inspection and reporting for installed single-point roof anchors.
 - Pilot: one design partner, potentially one or two companies during discovery
 - Product maturity: prototype; not a finished compliance or certification platform
 
-The active product baseline is in the root documents. Historical Stage 2A
-research and broad planning are preserved under `docs/archive/`.
+The active product baseline is organised under `docs/product/`,
+`docs/discovery/`, `docs/requirements/`, `docs/architecture/` and
+`docs/roadmap/`. Root documents remain compatibility pointers. Historical Stage
+2A research and broad planning are preserved under `docs/archive/`.
 
 ## Active documents
 
-- [Product vision](PRODUCT_VISION.md)
-- [Current scope](CURRENT_SCOPE.md)
-- [MVP requirements](ANCHOR_MVP_REQUIREMENTS.md)
-- [User workflows](USER_WORKFLOWS.md)
-- [Data model](DATA_MODEL.md)
-- [Offline scope](OFFLINE_SYNC_SCOPE.md)
-- [Report requirements](REPORT_REQUIREMENTS.md)
-- [Security minimums](SECURITY_MINIMUMS.md)
-- [Assumptions](ASSUMPTIONS_TO_VALIDATE.md)
-- [Design-partner plan](DESIGN_PARTNER_PLAN.md)
-- [Decision log](DECISION_LOG.md)
-- [Implementation gap analysis](docs/IMPLEMENTATION_GAP_ANALYSIS.md)
-- [Implementation plan](docs/blueprint/IMPLEMENTATION_PLAN.md)
+- [Product vision](docs/product/PRODUCT_VISION.md)
+- [Current scope](docs/product/CURRENT_SCOPE.md)
+- [MVP requirements](docs/requirements/ANCHOR_MVP_REQUIREMENTS.md)
+- [User workflows](docs/requirements/USER_WORKFLOWS.md)
+- [Data model](docs/architecture/DATA_MODEL.md)
+- [Offline scope](docs/architecture/OFFLINE_SYNC_SCOPE.md)
+- [Report requirements](docs/requirements/REPORT_REQUIREMENTS.md)
+- [Security minimums](docs/architecture/SECURITY_MINIMUMS.md)
+- [Assumptions](docs/discovery/ASSUMPTIONS_TO_VALIDATE.md)
+- [Design-partner plan](docs/discovery/DESIGN_PARTNER_PLAN.md)
+- [Decision log](docs/product/DECISION_LOG.md)
+- [Gap analysis](docs/roadmap/CURRENT_STATUS.md)
+- [Implementation plan](docs/roadmap/IMPLEMENTATION_PLAN.md)

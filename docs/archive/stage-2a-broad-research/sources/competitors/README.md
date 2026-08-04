@@ -1,4 +1,5 @@
 # Competitors
 
-Store competitor observations here. These are not authoritative requirements.
+> Historical reference. This document does not define the current MVP scope.
 
+Store competitor observations here. These are not authoritative requirements.

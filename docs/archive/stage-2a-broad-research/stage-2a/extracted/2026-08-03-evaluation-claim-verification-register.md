@@ -1,5 +1,7 @@
 # Claim Verification Register — Technical-Lead Evaluation
 
+> Historical reference. This document does not define the current MVP scope.
+
 This register converts externally checkable claims from the supplied evaluation into research tasks.
 
 | Field | Value |

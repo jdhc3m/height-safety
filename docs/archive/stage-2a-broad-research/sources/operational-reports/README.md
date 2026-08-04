@@ -1,4 +1,5 @@
 # Operational Reports
 
-Store operational reports and field notes here.
+> Historical reference. This document does not define the current MVP scope.
 
+Store operational reports and field notes here.

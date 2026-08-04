@@ -1,5 +1,7 @@
 # Extracted Risk Themes — Technical-Lead Evaluation
 
+> Historical reference. This document does not define the current MVP scope.
+
 ## Status
 
 These are unverified risk hypotheses extracted from the submitted evaluation. They are intended to guide Stage 2A research prioritisation, not to prescribe architecture or product scope.

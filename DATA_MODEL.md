@@ -1,3 +1,5 @@
+# Compatibility copy — canonical: [docs/architecture/DATA_MODEL.md](docs/architecture/DATA_MODEL.md)
+
 # Anchor MVP Data Model
 
 All tenant-owned records include `company_id` and are authorised server-side.

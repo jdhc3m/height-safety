@@ -1,3 +1,5 @@
+# Compatibility copy — canonical: [docs/discovery/ASSUMPTIONS_TO_VALIDATE.md](docs/discovery/ASSUMPTIONS_TO_VALIDATE.md)
+
 # Assumptions to Validate
 
 These are prototype hypotheses, not compliance requirements. Status is

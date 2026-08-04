@@ -1,5 +1,7 @@
 # Anchor MVP Implementation Plan
 
+Compatibility copy. Canonical plan: [docs/roadmap/IMPLEMENTATION_PLAN.md](../roadmap/IMPLEMENTATION_PLAN.md).
+
 1. Select the existing stack once a codebase is introduced; retain a modular
    monolith and relational storage.
 2. Establish authentication, company tenancy, roles and server-side

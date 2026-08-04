@@ -1,5 +1,7 @@
 # Reviewed Research
 
+> Historical reference. This document does not define the current MVP scope.
+
 Store reviewed and annotated Stage 2A material here.
 
 ## Current reviews

@@ -1,3 +1,5 @@
+# Compatibility copy — canonical: [docs/requirements/REPORT_REQUIREMENTS.md](docs/requirements/REPORT_REQUIREMENTS.md)
+
 # Draft Report Requirements
 
 The first template is neutral and visibly labelled **Prototype Draft Inspection

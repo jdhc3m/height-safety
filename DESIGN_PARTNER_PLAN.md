@@ -1,3 +1,5 @@
+# Compatibility copy — canonical: [docs/discovery/DESIGN_PARTNER_PLAN.md](docs/discovery/DESIGN_PARTNER_PLAN.md)
+
 # Design-Partner Pilot Plan
 
 ## Offer

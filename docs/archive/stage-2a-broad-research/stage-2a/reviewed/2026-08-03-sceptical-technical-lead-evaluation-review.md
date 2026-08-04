@@ -1,5 +1,7 @@
 # Review: Sceptical Technical-Lead Evaluation
 
+> Historical reference. This document does not define the current MVP scope.
+
 ## Review status
 
 | Field | Assessment |

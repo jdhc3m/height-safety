@@ -1,22 +1,39 @@
 # Agent Instructions
 
-AI agents working in this repository must:
+Read `docs/roadmap/CURRENT_STATUS.md` before implementation. Read the relevant
+authoritative product, requirements and architecture documents before changing
+scope or design.
 
-1. Read `PROJECT_CONTEXT.md`
-2. Read the decision and assumption registers
-3. Preserve evidence classifications and confidence levels in historical research
-4. Cite sources for domain claims
-5. Record uncertainty instead of guessing
-6. Treat the active root documents as the current product baseline
-7. Use neutral workflow language: recorded outcome, draft report, reviewed by,
-   and further assessment required
+Current product: Queensland-first workflow for installed single-point roof
+anchors, with Android field capture, web office review, limited offline use and
+draft report generation. Major non-goals include other asset families,
+automatic compliance or certification, standards interpretation, accounting,
+CRM, customer portals and broad integrations.
 
-The active MVP is deliberately bounded to installed single-point roof anchors
-in Queensland. Do not add asset types, certification claims, automatic
-compliance decisions, standards interpretation, or final approval authority
-without an explicit decision-log entry and design-partner evidence.
+Authoritative documents:
 
-The repository currently contains documentation only. When implementation is
-introduced, preserve tenant isolation, offline durability, idempotent sync,
-photograph association, inspection revision history, report versioning and
-auditability as first-class concerns.
+- Product: `docs/product/`
+- Discovery: `docs/discovery/`
+- Requirements: `docs/requirements/`
+- Architecture: `docs/architecture/`
+- Roadmap and handover: `docs/roadmap/`
+- Historical research: `docs/archive/` (reference only)
+
+Rules:
+
+- Keep assumptions separate from validated facts; preserve evidence class and
+  confidence.
+- Update `docs/product/DECISION_LOG.md` for scope or architectural decisions.
+- Use neutral language: recorded outcome, submitted by inspector, reviewed by,
+  draft report and further assessment required.
+- Never claim certification, automatic compliance, standards compliance,
+  engineer approval or replacement of professional judgement.
+- Inspect existing patterns before introducing frameworks.
+- Make small, reviewable changes and add appropriate tests for every code
+  change.
+- Preserve historical research; do not delete it.
+- Preserve tenant isolation, durable offline evidence, idempotent sync,
+  photograph association, conflict visibility, report revisions and auditability.
+
+Repository currently contains documentation only. No verified build, test or
+lint command exists; see `docs/roadmap/CURRENT_STATUS.md`.

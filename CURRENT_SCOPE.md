@@ -1,3 +1,5 @@
+# Compatibility copy — canonical: [docs/product/CURRENT_SCOPE.md](docs/product/CURRENT_SCOPE.md)
+
 # Current MVP Scope
 
 ## In scope

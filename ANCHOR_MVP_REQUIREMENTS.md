@@ -1,3 +1,5 @@
+# Compatibility copy — canonical: [docs/requirements/ANCHOR_MVP_REQUIREMENTS.md](docs/requirements/ANCHOR_MVP_REQUIREMENTS.md)
+
 # Anchor MVP Requirements
 
 ## Roles

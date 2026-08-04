@@ -1,3 +1,5 @@
+# Compatibility copy — canonical: [docs/architecture/OFFLINE_SYNC_SCOPE.md](docs/architecture/OFFLINE_SYNC_SCOPE.md)
+
 # Limited Offline Sync Scope
 
 Only assigned jobs are downloadable. The mobile app stores a bounded job pack

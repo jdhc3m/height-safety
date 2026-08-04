@@ -11,6 +11,7 @@ anchor history for one design-partner pilot.
 The application supports inspector workflow and professional judgement. It is
 not a compliance, certification, engineering, or legal-decision system.
 
-Start with [PRODUCT_VISION.md](PRODUCT_VISION.md), [CURRENT_SCOPE.md](CURRENT_SCOPE.md),
-and [ANCHOR_MVP_REQUIREMENTS.md](ANCHOR_MVP_REQUIREMENTS.md). Historical broad
-research is preserved under `docs/archive/` and is not current scope.
+Start with [current status](docs/roadmap/CURRENT_STATUS.md), then [product
+vision](docs/product/PRODUCT_VISION.md), [current scope](docs/product/CURRENT_SCOPE.md)
+and [MVP requirements](docs/requirements/ANCHOR_MVP_REQUIREMENTS.md). Historical
+broad research is preserved under `docs/archive/` and is not current scope.

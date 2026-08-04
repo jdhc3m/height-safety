@@ -1,3 +1,5 @@
+# Compatibility copy — canonical: [docs/product/NON_GOALS.md](docs/product/NON_GOALS.md)
+
 # MVP Non-goals and Future Scope
 
 The following are not immediate implementation scope and must not appear as

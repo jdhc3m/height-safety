@@ -1,4 +1,5 @@
 # Standards Notes
 
-Store standards-related notes and references here.
+> Historical reference. This document does not define the current MVP scope.
 
+Store standards-related notes and references here.
