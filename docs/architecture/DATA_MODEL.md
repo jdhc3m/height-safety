@@ -15,6 +15,11 @@ owns anchors/jobs; job has assignment and inspection revisions; inspection owns
 anchor inspections; anchor inspection owns evidence; report revision points to
 immutable inspection snapshot and template version.
 
+Site stores one supported jurisdiction value, `NSW` or `QLD`. Job packs,
+inspection snapshots, exports and report revisions preserve that value so a
+later site edit cannot silently change historical evidence. Jurisdiction is
+context data, not a trigger for legal or technical rule evaluation.
+
 AnchorInspection stores recorded outcome separately from exception reason,
 register-reconciliation proposal and disposition. Newly discovered anchors use
 stable provisional IDs; replacement/duplicate proposals never erase or merge
@@ -29,7 +34,8 @@ Invariants: no cross-job evidence links; retry ID has one effect; important
 conflicts are explicit; report revision never reads mutable current data only;
 required uploads synchronised before review/report generation; expected anchors
 are accounted for; outcome/exception relationships are valid; submitted and
-report revisions remain immutable. Missing evidence and unresolved review stay
+report revisions remain immutable; supported jurisdiction is present and
+consistent across each snapshot. Missing evidence and unresolved review stay
 visible.
 
 EquipmentComponent, EquipmentInspection, ClearanceAssessment, RescuePlan and

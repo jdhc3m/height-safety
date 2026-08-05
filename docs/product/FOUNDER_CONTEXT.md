@@ -21,6 +21,7 @@ compliance platform.
 
 ## Initial operating assumptions
 
-Queensland, small inspection companies, Android field use, web office use,
-limited offline operation, draft reports, one primary inspector per job and
-one design-partner pilot. All remain subject to the discovery register.
+New South Wales and Queensland, small inspection companies, Android field use,
+web office use, limited offline operation, draft reports, one primary inspector
+per job and a design-partner pilot able to validate both states. All remain
+subject to the discovery register.

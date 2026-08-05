@@ -4,11 +4,12 @@ Read `docs/roadmap/CURRENT_STATUS.md` before implementation. Read the relevant
 authoritative product, requirements and architecture documents before changing
 scope or design.
 
-Current product: Queensland-first workflow for installed single-point roof
-anchors, with Android field capture, web office review, limited offline use and
-draft report generation. Major non-goals include other asset families,
-automatic compliance or certification, standards interpretation, accounting,
-CRM, customer portals and broad integrations.
+Current product: New South Wales and Queensland workflow for installed
+single-point roof anchors, with Android field capture, web office review,
+limited offline use and draft report generation. Major non-goals include other
+asset families, automatic compliance or certification, jurisdiction-specific
+legal rules, standards interpretation, accounting, CRM, customer portals and
+broad integrations.
 
 Authoritative documents:
 
@@ -28,6 +29,8 @@ Rules:
   draft report and further assessment required.
 - Never claim certification, automatic compliance, standards compliance,
   engineer approval or replacement of professional judgement.
+- Record the supported site jurisdiction explicitly as NSW or Queensland; do
+  not infer legal rules, intervals, authority or compliance from that value.
 - Inspect existing patterns before introducing frameworks.
 - Make small, reviewable changes and add appropriate tests for every code
   change.

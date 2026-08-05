@@ -10,6 +10,10 @@ slice. 3C offline/synchronisation. 3D office review/reporting. 3E fictional
 demonstration package. 4A company outreach. 4B design partner. 4C partner
 corrections. 4D controlled pilot.
 
+Initial supported jurisdictions are New South Wales and Queensland using one
+neutral evidence workflow. Broader jurisdictions or automatic state-specific
+legal rules require later evidence and a recorded decision.
+
 ## Ordering principle
 
 Prove workflow assumptions and evidence integrity before broad feature work.

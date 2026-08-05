@@ -11,16 +11,19 @@ device and connectivity examples; weekly feedback during setup and use.
 
 ## Project contribution
 
-Bounded Queensland single-point-anchor workflow; mobile capture; office review;
-draft reports; onboarding and agreed support; transparent limitations. No
-certificate, automatic compliance conclusion or replacement of existing process.
+Bounded New South Wales and Queensland single-point-anchor workflow; mobile
+capture; office review; draft reports; onboarding and agreed support;
+transparent limitations. No certificate, automatic compliance conclusion or
+replacement of existing process.
 
 ## Pilot controls
 
 Limit access and purpose; private files by default; agree retention, export,
 deletion and incident contacts before partner data. One primary inspector per
-job, limited offline use, draft reports. Partner existing process remains
-authoritative. Legal review required for data, branding and report terms.
+job, limited offline use, draft reports. Include an experienced practitioner
+from each state, or one organisation demonstrably operating in both. Partner
+existing process remains authoritative. Legal review required for data,
+branding and report terms.
 
 ## Success / exit
 

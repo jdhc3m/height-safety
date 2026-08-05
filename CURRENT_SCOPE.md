@@ -4,7 +4,8 @@
 
 ## In scope
 
-- Queensland-first workflow for installed single-point roof anchors.
+- New South Wales and Queensland workflow for installed single-point roof
+  anchors, with jurisdiction explicitly recorded and no automatic state rules.
 - Web administration for company users, clients, sites, anchor registers, jobs,
   assignments, review, draft reports, revisions, exports and private evidence.
 - Mobile field workflow for assigned jobs, local capture, photographs, defects,

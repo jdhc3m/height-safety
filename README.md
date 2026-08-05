@@ -4,9 +4,10 @@ This repository defines an early-stage mobile and web application for periodic
 inspection and reporting of installed single-point roof anchors.
 
 The initial target is small Australian height-safety inspection companies in
-Queensland. The MVP supports office preparation and review, mobile field
-capture with limited offline operation, draft report generation, and basic
-anchor history for one design-partner pilot.
+New South Wales and Queensland. The MVP records the site jurisdiction
+explicitly while using one neutral evidence workflow. It supports office
+preparation and review, mobile field capture with limited offline operation,
+draft report generation, and basic anchor history for a design-partner pilot.
 
 The application supports inspector workflow and professional judgement. It is
 not a compliance, certification, engineering, or legal-decision system.

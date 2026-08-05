@@ -5,7 +5,8 @@ Canonical Stage 2B details:
 
 ## Office preparation
 
-1. Office creates the client, site, anchor register and versioned job pack.
+1. Office creates the client and site, selects `NSW` or `QLD`, and creates the
+   anchor register and versioned job pack.
 2. Office creates a draft job and assigns one primary inspector.
 3. Inspector downloads the assigned pack; download state remains separate from
    job workflow state.
@@ -30,4 +31,9 @@ Canonical Stage 2B details:
 3. Approval requires all hard blockers to be clear and records the exact source
    snapshot, reviewer and time.
 4. Connected generation creates a neutral, immutable prototype draft report
-   revision; later corrections create new revisions.
+   revision containing the site jurisdiction; later corrections create new
+   revisions.
+
+Jurisdiction remains visible through preparation, field capture, review,
+export and reporting. It does not automatically change required fields,
+intervals, technical outcomes or approval authority.

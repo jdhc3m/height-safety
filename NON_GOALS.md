@@ -8,7 +8,8 @@ implicit commitments in active requirements:
 - Lifelines, static lines, guardrails, walkways, ladders, rope-access systems,
   roof-access systems, or other asset families.
 - Automatic compliance, certification, standards interpretation, inspection
-  interval decisions, universal manufacturer logic, or jurisdiction rule engines.
+  interval decisions, universal manufacturer logic, automatic jurisdiction
+  rule engines, or jurisdictions beyond New South Wales and Queensland.
 - Customer-configurable compliance rules, complex CRM, accounting, payroll,
   invoicing, advanced scheduling, customer portal, public verification,
   AI-generated technical conclusions, or enterprise integrations.

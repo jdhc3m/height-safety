@@ -2,6 +2,8 @@
 
 ## In scope
 
+- New South Wales and Queensland sites, with jurisdiction explicitly recorded
+  and one neutral evidence workflow.
 - Company users with Administrator, Office reviewer and Inspector roles.
 - Clients, sites, installed single-point roof-anchor register and basic history.
 - Job preparation, assignment, Android field capture and office review.
@@ -21,4 +23,6 @@ report revision.
 
 The system records human-entered evidence and organisational review. Final
 approval remains connected and organisational. No automatic compliance,
-certification, legal, engineering or standards conclusion is produced.
+certification, state-specific legal, engineering or standards conclusion is
+produced. Jurisdiction does not automatically select intervals, licence rules,
+proof-test rules or report authority.

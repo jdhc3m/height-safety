@@ -39,8 +39,9 @@ provisional target. They do not represent implemented behaviour.
 
 Any generic asset catalogue, certification/recertification workflow,
 standards/rules engine, unvalidated automatic interval exceptions,
-multi-jurisdiction support,
-other asset types, customer portal, billing, scheduling and AI conclusions
+jurisdictions beyond New South Wales and Queensland, automatic
+jurisdiction-specific logic, other asset types, customer portal, billing,
+scheduling and AI conclusions
 should be removed from active implementation plans or feature-flagged out.
 
 ## Risks from starting architecture

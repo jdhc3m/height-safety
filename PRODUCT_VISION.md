@@ -12,10 +12,10 @@ professional, legal, engineering, standards or compliance decisions.
 
 ## Initial target
 
-Small Australian height-safety inspection companies, beginning in Queensland,
-using one design-partner pilot. The first asset is an installed single-point
-roof anchor. The first release is a workflow prototype, not a finished
-compliance or certification platform.
+Small Australian height-safety inspection companies, beginning in New South
+Wales and Queensland, using a design-partner pilot. The first asset is an
+installed single-point roof anchor. The first release is a workflow prototype,
+not a finished compliance or certification platform.
 
 ## Product promise
 

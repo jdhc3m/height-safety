@@ -12,6 +12,7 @@
 | D-006 | 2026-08-04 | Preserve broad Stage 2A research under `docs/archive/`. | Retains useful evidence and history without allowing it to define current scope. | Accepted |
 | D-008 | 2026-08-04 | Stage 2A.5 MVP field cut: keep narrow single-point evidence; defer broader standards candidates. | See canonical decision log. | Accepted working direction |
 | D-009 | 2026-08-05 | Separate workflow, outcome, exception, reconciliation, disposition and sync concepts. | See canonical decision log. | Accepted working direction |
+| D-010 | 2026-08-05 | Expand the initial prototype scope to New South Wales and Queensland while keeping legal rules human-entered or deferred. | See canonical decision log. | Owner-approved working direction |
 
 All outcome values, required fields, report wording and partner terms remain
 open to design-partner validation. Historical decisions and research are not

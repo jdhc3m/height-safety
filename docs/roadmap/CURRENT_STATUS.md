@@ -10,7 +10,8 @@ Stage 2C — technical blueprint.
 
 - Repository inspected; documentation-only baseline confirmed.
 - Broad research preserved under `docs/archive/` and marked historical.
-- Product narrowed to Queensland installed single-point roof anchors.
+- Product narrowed to New South Wales and Queensland installed single-point
+  roof anchors using one neutral evidence workflow.
 - Canonical product, discovery, requirements, architecture and roadmap docs
   created.
 - Initial roles, workflow, non-goals, security minimums and technical risks
@@ -28,19 +29,25 @@ Stage 2C — technical blueprint.
   dispositions, sync states and review issues separated (D-009).
 - Review blockers/warnings, immutable draft-report behavior and implementation
   acceptance scenarios specified.
+- NSW/Queensland public-source scope extension completed:
+  `docs/discovery/NSW_QLD_SCOPE_EXTENSION.md`.
+- Owner approved both initial states while deferring state-specific legal-rule
+  automation (D-010).
 
 ## In progress
 
-- Produce the Stage 2C technical blueprint from the Stage 2B acceptance rules.
+- Produce the Stage 2C technical blueprint from the Stage 2B acceptance rules,
+  including explicit `NSW`/`QLD` propagation without a legal rules engine.
 - Keep design-partner outreach ready; practitioner validation still open.
 
 ## Next recommended task
 
 Define component boundaries, tenant-authorised API, relational schema,
 encrypted Android job pack/outbox, private media lifecycle, conflict protocol,
-snapshot/report pipeline and automated test strategy. Record stack decisions
-without beginning feature implementation or promoting deferred standards
-candidates into the MVP.
+snapshot/report pipeline, supported-jurisdiction field and automated test
+strategy. Record stack decisions without beginning feature implementation,
+adding state legal-rule logic or promoting deferred standards candidates into
+the MVP.
 
 ## Blockers and decisions awaiting confirmation
 
@@ -50,9 +57,9 @@ candidates into the MVP.
   report wording await partner/legal/professional review.
 - AS 5532 product evidence must be validated against the licensed Standard and
   the actual manufacturer instructions before implementation or certification.
-- Queensland inspection-interval interpretation for anchorage points versus
-  other fall-arrest components remains contested in secondary sources; product
-  must not auto-calculate statutory due compliance.
+- NSW and Queensland workflow, terminology, licensing, interval, proof-test and
+  report-authority differences require practitioner validation in each state;
+  the product must not auto-calculate or claim statutory compliance.
 
 ## Tests and commands
 
@@ -67,6 +74,7 @@ Markdown review. Future agents must update this section after meaningful work.
 `docs/architecture/`; `docs/roadmap/`; `docs/archive/`.
 
 Stage 2A.5: `docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md`.
+NSW/Queensland extension: `docs/discovery/NSW_QLD_SCOPE_EXTENSION.md`.
 Stage 2B: `docs/requirements/STAGE_2B_WORKFLOW_SPEC.md`.
 AS 5532 review: `docs/standards/AS-5532-2025-INTEGRATION.md`.
 AS/NZS 1891.4 review: `docs/standards/AS-NZS-1891.4-2025-INTEGRATION.md`.

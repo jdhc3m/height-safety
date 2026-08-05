@@ -1,8 +1,8 @@
 # Stage 2A.5 Source Register
 
-Access date for all rows: 2026-08-04. Sources are public secondary material
-unless marked otherwise. None replace a design-partner corpus, licensed
-Standard text, or legal advice.
+Access date: S-001–S-014 on 2026-08-04; S-015–S-019 on 2026-08-05. Sources are
+public secondary material unless marked otherwise. None replace a
+design-partner corpus, licensed Standard text, or legal advice.
 
 | ID | Source | Type | Applicability | Evidence class | Confidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -20,6 +20,11 @@ Standard text, or legal advice.
 | S-012 | WAHA / LinkedIn summary of WorkSafe QLD clarifications (Alistair Merricks post) | Industry summary of regulator answers | QLD static-line vs end-anchor frequency | Secondary rumour | Low | Claims PPE/static-line components 6-monthly; end anchors yearly; differs from AS 1891.4. Needs direct WorkSafe QLD confirmation. |
 | S-013 | Repository standards integrations | Internal screenshot reviews | AS/NZS 1891.4:2025 and AS 5532:2025 | Internal provisional | Medium | `docs/standards/AS-NZS-1891.4-2025-INTEGRATION.md`, `docs/standards/AS-5532-2025-INTEGRATION.md`. Not licensed text. |
 | S-014 | Existing product/requirements docs | Internal | MVP scope and non-goals | Product decisions | High for scope | `CURRENT_SCOPE`, `NON_GOALS`, `FIELD_CATALOGUE`, `ANCHOR_MVP_REQUIREMENTS`. |
+| S-015 | [Safe Work Australia, *Model WHS laws*](https://www.safeworkaustralia.gov.au/law-and-regulation/model-whs-laws) | National policy authority | NSW/Queensland jurisdiction framing | Primary public authority | High | Confirms both states use the model-WHS framework and that jurisdictions may make local variations. Does not resolve anchor-specific differences. |
+| S-016 | [Queensland, *Work Health and Safety Regulation 2011*, s306I](https://www.legislation.qld.gov.au/view/whole/html/inforce/2025-02-25/sl-2011-0240) | In-force regulation | Queensland construction work using fall-arrest harness systems | Primary legislation | High | Direct Queensland legislation accessed. Contains anchorage design/first-use approval/capacity and impaired-anchor controls; six-month written-record rule excludes each anchorage point. Applicability requires professional interpretation. |
+| S-017 | [NSW, *Work Health and Safety Regulation 2025*, ss78–80](https://legislation.nsw.gov.au/view/whole/html/inforce/current/sl-2025-0440/lh) | In-force regulation | NSW workplace fall risks and fall-arrest systems | Primary legislation | High | Current regulation sets hierarchy, adequate protection and rescue duties. It does not itself define the complete periodic single-point-anchor inspection workflow. |
+| S-018 | [SafeWork NSW, *Managing the risk of falls at workplaces* Code of Practice](https://www.safework.nsw.gov.au/__data/assets/pdf_file/0018/50076/Managing-the-risk-of-falls-at-workplaces-COP.pdf) | Regulator code | NSW fall controls and inspection programs | Primary public guidance | High | Calls for unique identification, inspection frequency/type, defect action, records and manufacturer requirements; anchorages tested/approved by a competent person before use and components inspected regularly. Public text still cites AS/NZS 1891.4:2009. |
+| S-019 | [SafeWork NSW, *Fall arrest anchors* fact sheet (updated 2019)](https://www.safework.nsw.gov.au/resource-library/construction/fall-arrest-anchors) | Regulator fact sheet | NSW installed single-point anchors | Primary public guidance, dated | Medium | Supports AS/NZS 1891.4-based inspection programs and distinguishes AS/NZS 5532 manufacturing scope, but cites the repealed 2017 Regulation and older Standards. Use as a lead, not a current automatic rule. |
 
 ## Search coverage notes
 
@@ -29,3 +34,9 @@ public report templates, QBCC licensing, and 2025 standards updates. Primary
 legislation HTML fetches were unreliable; WHSQ PDF and manufacturer handbook
 fetched successfully. No anonymised partner registers, photographs, or reports
 were obtained.
+
+The 2026-08-05 scope-extension pass compared current NSW/Queensland legislation,
+falls codes and regulator anchor guidance. It supports a shared neutral evidence
+workflow, not state-specific compliance automation. NSW inspection authority/
+licensing and current 2025 Standards application remain professionally
+unvalidated.

@@ -4,6 +4,10 @@ Status: **public-evidence pass complete** (2026-08-04). This closes Stage
 2A.5 for repository research. It does **not** replace design-partner
 observation, licensed Standard review, or legal/professional advice.
 
+This document records the original Queensland-only pass. The later approved
+NSW/Queensland extension is documented in `NSW_QLD_SCOPE_EXTENSION.md`; the
+historical findings below have not been rewritten as multi-state evidence.
+
 Scope boundary: Queensland installed **single-point roof anchors** only. Cable
 systems, HLL/HRS, ladders, guardrails and PPE recertification remain out of
 MVP scope (`docs/product/NON_GOALS.md`).

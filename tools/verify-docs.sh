@@ -27,9 +27,10 @@ require_text() {
   fi
 }
 
-echo "Verifying Stage 2A.5/2B and canonical docs under $ROOT"
+echo "Verifying Stage 2A.5/2B, dual-state scope and canonical docs under $ROOT"
 
 require_file "docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md"
+require_file "docs/discovery/NSW_QLD_SCOPE_EXTENSION.md"
 require_file "docs/discovery/sources/STAGE_2A5_SOURCE_REGISTER.md"
 require_file "docs/discovery/ASSUMPTIONS_TO_VALIDATE.md"
 require_file "docs/decisions/assumptions-register.md"
@@ -47,13 +48,19 @@ require_text "docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md" "Do not"
 require_text "docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md" "Never for MVP"
 require_text "docs/product/DECISION_LOG.md" "D-008"
 require_text "docs/product/DECISION_LOG.md" "D-009"
+require_text "docs/product/DECISION_LOG.md" "D-010"
+require_text "docs/discovery/NSW_QLD_SCOPE_EXTENSION.md" "New South Wales and Queensland"
+require_text "docs/discovery/INSPECTOR_QUESTIONS.md" "what changes between NSW and Queensland"
+require_text "docs/product/CURRENT_SCOPE.md" "New South Wales and Queensland"
 require_text "docs/requirements/STAGE_2B_WORKFLOW_SPEC.md" "Recorded outcome model"
 require_text "docs/requirements/STAGE_2B_WORKFLOW_SPEC.md" "Hard blockers"
 require_text "docs/requirements/STAGE_2B_WORKFLOW_SPEC.md" "Design-partner questions"
+require_text "docs/requirements/STAGE_2B_WORKFLOW_SPEC.md" "New South Wales and Queensland"
 require_text "docs/roadmap/CURRENT_STATUS.md" "Stage 2C"
 require_text "docs/roadmap/CURRENT_STATUS.md" "STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE"
 require_text "docs/roadmap/CURRENT_STATUS.md" "STAGE_2B_WORKFLOW_SPEC"
 require_text "docs/requirements/FIELD_CATALOGUE.md" "deferred candidates"
+require_text "docs/requirements/FIELD_CATALOGUE.md" 'NSW` or `QLD'
 require_text "docs/discovery/ASSUMPTIONS_TO_VALIDATE.md" "Partially supported"
 require_text "docs/decisions/assumptions-register.md" "../discovery/ASSUMPTIONS_TO_VALIDATE.md"
 require_text "docs/product/NON_GOALS.md" "certification, compliance or standards interpretation"

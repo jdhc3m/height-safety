@@ -12,7 +12,12 @@
 8. Where and how long is connectivity lost? What must continue offline?
 9. Which omissions and workarounds occur most often?
 10. What would stop adoption after one job? What measurable improvement matters?
+11. Which state do you operate in, and what changes between NSW and Queensland
+    for checks, intervals, proof tests, licences, review or report issue?
+12. Which of those differences comes from law, a regulator, a Standard,
+    manufacturer instructions, client policy or your organisation's practice?
 
-Capture exact words, examples, role/authority, frequency and evidence source.
-Do not convert one participant's preference into a requirement without repeat
-evidence.
+Capture the participant's operating state, exact words, examples,
+role/authority, frequency and evidence source. Do not convert one participant's
+preference into a requirement without repeat evidence, and do not apply one
+state's answer to the other without validation.

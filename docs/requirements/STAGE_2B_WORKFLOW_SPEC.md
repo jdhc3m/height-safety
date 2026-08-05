@@ -1,13 +1,14 @@
 # Stage 2B Anchor Workflow Specification
 
-Status: **complete for prototype specification** (2026-08-05). Terminology,
-requiredness and authority remain subject to design-partner, professional and
-legal validation.
+Status: **complete for prototype specification** (2026-08-05), amended the
+same day for the owner-approved New South Wales and Queensland scope.
+Terminology, requiredness and authority remain subject to design-partner,
+professional and legal validation.
 
 This specification turns the Stage 2A.5 keep-bucket into a testable workflow
-for Queensland installed single-point roof anchors. It does not define a
-certification process, decide compliance, interpret a Standard, determine
-competence or authorise report issue.
+for installed single-point roof anchors in New South Wales and Queensland. It
+does not define a certification process, decide compliance, interpret a
+Standard, determine competence or authorise report issue.
 
 ## Product concepts
 
@@ -23,10 +24,13 @@ for several decisions:
 | Disposition | A recorded physical/organisational action such as removal from service |
 | Synchronisation state | Whether local mutations and photographs reached the server |
 | Review issue | A visible blocker, warning, conflict or requested change |
+| Jurisdiction | Explicit supported site context (`NSW` or `QLD`), not an automatic legal conclusion |
 
 No concept automatically sets another. In particular, a sync success is not a
 review approval, a recorded outcome is not a compliance conclusion, and a
-software disposition does not perform physical isolation.
+software disposition does not perform physical isolation. Jurisdiction does
+not select inspection intervals, licence requirements, proof-test rules,
+report authority or a compliance result.
 
 ## Roles and authority
 
@@ -73,7 +77,7 @@ Transition rules:
 
 Before assignment, the office records or selects:
 
-- company, client, site and job identity;
+- company, client, site, supported jurisdiction (`NSW` or `QLD`) and job identity;
 - one primary inspector and planned visit context;
 - the expected anchor register snapshot with stable IDs and available history;
 - known location, label/register ID, type, manufacturer/model and install notes;
@@ -159,6 +163,7 @@ but cannot approve it for report generation until all hard blockers are clear.
 
 ### Hard blockers
 
+- the site jurisdiction is missing, unsupported or inconsistent with the job pack;
 - an expected anchor has no coverage record;
 - an anchor inspection has no recorded outcome;
 - `Not inspected` has no exception reason;
@@ -193,7 +198,7 @@ The first template is titled **Prototype Draft Inspection Report** and displays
 
 The snapshot includes, where recorded:
 
-1. company, client, site, job, inspection dates and revision identifiers;
+1. company, client, site, jurisdiction, job, inspection dates and revision identifiers;
 2. inspector, reviewer and generation details;
 3. expected anchor register and reconciliation notes;
 4. per-anchor identity/location, observations, recorded outcome, exception,
@@ -219,22 +224,24 @@ workflow and requires a later authority decision.
 
 ## Acceptance scenarios for later implementation
 
-1. An assigned inspector can save one anchor inspection and photo offline,
+1. A site selected as `NSW` or `QLD` retains that jurisdiction in its job pack,
+   inspection snapshot, review, export and report without deriving legal rules.
+2. An assigned inspector can save one anchor inspection and photo offline,
    restart the app and recover the same association.
-2. An expected anchor recorded as unable to locate is preserved in history and
+3. An expected anchor recorded as unable to locate is preserved in history and
    cannot be mistaken for an inspected/serviceable anchor.
-3. A newly discovered anchor receives a stable provisional ID and cannot merge
+4. A newly discovered anchor receives a stable provisional ID and cannot merge
    into an existing anchor without review.
-4. A replacement proposal preserves the old anchor history and both identities.
-5. Replaying the same mutation/upload has one server effect.
-6. A concurrent identity or outcome edit creates a visible conflict rather than
+5. A replacement proposal preserves the old anchor history and both identities.
+6. Replaying the same mutation/upload has one server effect.
+7. A concurrent identity or outcome edit creates a visible conflict rather than
    last-write-wins replacement.
-7. A failed or pending photo upload blocks approval for report generation.
-8. A reviewer request creates a new working inspection revision and preserves
+8. A failed or pending photo upload blocks approval for report generation.
+9. A reviewer request creates a new working inspection revision and preserves
    the submitted revision.
-9. Generating the same approved snapshot/template is reproducible, and a later
+10. Generating the same approved snapshot/template is reproducible, and a later
    correction creates a distinct immutable report revision.
-10. Cross-company users cannot access the job pack, evidence, review, export or
+11. Cross-company users cannot access the job pack, evidence, review, export or
     report file.
 
 ## Design-partner questions
@@ -247,7 +254,9 @@ Stage 2B deliberately leaves these open:
 - reviewer/approver/issuer authority and change ownership (A-012);
 - report layout, disclaimer, signature and issue language (A-013, A-014);
 - offline duration, device limits and photo volume (A-018, A-019);
-- register import/export formats and handover package (A-020, A-021); and
+- register import/export formats and handover package (A-020, A-021);
+- state-specific workflow, authority and terminology differences, validated by
+  a practitioner in each supported state (A-022); and
 - retention, deletion, credential and professional-review policy.
 
 Answers must be captured as evidence and promoted through the assumptions and
@@ -264,5 +273,6 @@ criterion; operational validation remains open.
 Stage 2C should now define the technical blueprint that can implement these
 rules: component boundaries, tenant-authorised API, relational schema,
 encrypted Android job pack/outbox, private media lifecycle, conflict protocol,
-snapshot/report pipeline and automated test strategy. It must not begin feature
-implementation or broaden the MVP.
+snapshot/report pipeline, explicit jurisdiction propagation and automated test
+strategy. It must not begin feature implementation, add a jurisdiction rules
+engine or broaden the MVP.

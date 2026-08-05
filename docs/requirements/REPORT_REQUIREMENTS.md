@@ -4,8 +4,9 @@ Stage 2B generation and content rules:
 `docs/requirements/STAGE_2B_WORKFLOW_SPEC.md`.
 
 First template title: **Prototype Draft Inspection Report**. Display `Draft`
-prominently. Include available company, client, site, job, inspection date,
-inspector, reviewer, expected anchor register, reconciliation notes,
+prominently. Include available company, client, site, supported jurisdiction
+(`NSW` or `QLD`), job, inspection date, inspector, reviewer, expected anchor
+register, reconciliation notes,
 anchor/location, observations, photographs, recorded outcomes, exceptions,
 dispositions, defects, recommendations, entered proof-test evidence,
 limitations, generation date, template version and revision number.
@@ -14,6 +15,10 @@ Do not display `certified`, `compliant`, `passed for 12 months`,
 engineer-approved or standards-approved as a product conclusion. Human-entered
 interval/last/next-due values are labelled as recorded context with their source
 where available; the report does not infer them.
+
+Jurisdiction is displayed as site context only. It does not cause the report to
+claim a state-specific inspection interval, licence, proof-test requirement,
+approval authority or compliance result.
 
 Use:
 

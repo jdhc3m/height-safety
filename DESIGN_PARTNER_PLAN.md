@@ -34,10 +34,12 @@ agreement; proposed terms require legal review. No legal claims are made by
 this plan.
 
 Feedback should be weekly during setup and field use, with a short review after
-each pilot batch. Pilot scope is Queensland, installed single-point roof
-anchors, one primary inspector per job, limited offline operation and draft
-reports. No final compliance certificate, customer portal or broad asset
-catalogue is promised.
+each pilot batch. Pilot scope is New South Wales and Queensland, installed
+single-point roof anchors, one primary inspector per job, limited offline
+operation and draft reports. Validation must include an experienced
+practitioner from each state, or one organisation demonstrably operating in
+both. No final compliance certificate, customer portal or broad asset catalogue
+is promised.
 
 ## Success criteria
 

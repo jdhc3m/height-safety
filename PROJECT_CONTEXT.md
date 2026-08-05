@@ -3,11 +3,11 @@
 The project is now an early-stage inspection workflow prototype focused only on
 periodic inspection and reporting for installed single-point roof anchors.
 
-- Initial jurisdiction: Queensland, Australia
+- Initial jurisdictions: New South Wales and Queensland, Australia
 - Initial customer: small height-safety inspection companies
 - Users: Administrator, Office reviewer, Inspector
 - Delivery shape: web administration/review plus mobile field capture
-- Pilot: one design partner, potentially one or two companies during discovery
+- Pilot: one or two design partners able to validate both states during discovery
 - Product maturity: prototype; not a finished compliance or certification platform
 
 The active product baseline is organised under `docs/product/`,

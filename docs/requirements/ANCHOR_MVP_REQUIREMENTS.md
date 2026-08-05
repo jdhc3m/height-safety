@@ -15,12 +15,13 @@ Inspector authority to certify or issue compliance certificates is not assumed.
 
 ## Functional requirements
 
-Office must create clients/sites, add or import anchors, create jobs, assign
-inspectors, inspect sync failures/conflicts, request changes, review submissions
-and generate immutable draft report revisions. Mobile must download assigned job
-packs, show anchor register, durably save observations/notes/photos/defects/
-recommendations/outcomes, support inaccessible/unable-to-locate/new anchors,
-show sync states and submit for review.
+Office must create clients/sites with an explicit supported jurisdiction
+(`NSW` or `QLD`), add or import anchors, create jobs, assign inspectors, inspect
+sync failures/conflicts, request changes, review submissions and generate
+immutable draft report revisions. Mobile must download assigned job packs, show
+site jurisdiction and anchor register, durably save observations/notes/photos/
+defects/recommendations/outcomes, support inaccessible/unable-to-locate/new
+anchors, show sync states and submit for review.
 
 ## Provisional values
 
@@ -40,7 +41,9 @@ a report-revision condition rather than a job workflow state.
 Every tenant record is company-scoped and server-authorised. Retries are
 idempotent. Photos and notes remain tied to correct anchor inspection. Missing
 or failed uploads are visible and block review completion. Report revisions
-reference exact snapshots and do not silently change.
+reference exact snapshots and do not silently change. Site jurisdiction is
+preserved through the job pack, inspection, review, export and report; it does
+not derive legal rules or outcomes.
 
 Approval also requires every expected anchor to be accounted for, valid
 outcome/exception relationships, complete conditional proof-test evidence,

@@ -13,7 +13,7 @@ required where Status is not Accepted.
 | A-005 | Serviceable, defective, inaccessible, unable to locate and further assessment required are usable outcomes. | Industry uses pass/fail/certified; MVP neutral vocabulary still provisional. | Low | UX/report | Terminology walkthrough | Open | Avoid compliant/certified labels in product. |
 | A-006 | Defect severity can start as recorded text or small list. | Templates use risk rating language; no partner corpus. | Low | Review | Inspect defect language | Open | — |
 | A-007 | Recommendations are recorded actions, not generated remediation decisions. | Product safety posture. | Medium | Safety wording | Review examples | Open | Reconfirmed Stage 2A.5. |
-| A-008 | Inspection frequency is recorded context, not calculated by product. | Public 12-month single-point framing vs QLD 6-month component rules conflict (S-001, S-011, S-012, S-013). | High | Schema | Ask due-date process | Partially supported | Stage 2A.5: do not encode interval automation. |
+| A-008 | Inspection frequency is recorded context, not calculated by product. | Public 12-month single-point framing, dated NSW guidance and QLD component/anchorage distinctions require interpretation (S-011–S-013, S-016–S-019). | High | Schema | Ask due-date process in both states | Partially supported | Do not encode interval automation for NSW or QLD. |
 | A-009 | Manufacturer variation can remain notes/references initially. | SafetyLink vs insert-anchor proof-test differences (S-003, S-002, S-005). | Medium | Scope | Compare products | Partially supported | Product-specific checklists later. |
 | A-010 | Measurements, test equipment and proof-load details may be useful but not MVP-required gates. | Proof test common for inserts; multi-fastener/metal-roof paths often visual/docs (S-002, S-005, S-006). | Medium | Fields | Inspect records/tools | Partially supported | Optional recorded proof-test fields only. |
 | A-011 | Submission/declaration wording must avoid certification claims. | Commercial templates use certification language (S-007, S-009). | High | UX/report | Partner/legal review | Partially supported | Reconfirmed; draft disclaimer retained. |
@@ -27,6 +27,7 @@ required where Status is not Accepted.
 | A-019 | Typical photo volume suits background upload. | Unmeasured. | Low | Storage/UX | Sample jobs | Open | — |
 | A-020 | CSV/structured import/export is sufficient first register migration. | Provisional. | Low | Onboarding | Test partner files | Open | — |
 | A-021 | Exports need register, evidence and draft-report references. | Aligns with public documentation themes; unvalidated with partner. | Low–Medium | Export | Ask partner | Open | — |
+| A-022 | One neutral evidence workflow can support NSW and Queensland when jurisdiction is explicit and legal rules are not automated. | Both use model-WHS concepts and regulator guidance shares identity, inspection, defect and record themes; local differences remain (S-015–S-019). | Medium | Scope/data/report | Validate with practitioners operating in each state | Partially supported | Owner approved dual-state prototype direction; jurisdiction-specific rules remain deferred. |
 
 Partner interviews remain required using `INSPECTOR_QUESTIONS.md`. Public
 evidence does not close Status to Accepted without operational confirmation.

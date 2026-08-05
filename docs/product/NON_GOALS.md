@@ -3,8 +3,9 @@
 No static, horizontal or vertical lifelines; ladders; guardrails; walkways;
 rope-access or roof-access systems; universal manufacturer support; automatic
 certification, compliance or standards interpretation; generic rules engine;
-multi-jurisdiction logic; customer-configurable compliance; accounting,
-payroll, invoicing, advanced CRM or scheduling; customer portals; AI technical
+automatic jurisdiction-specific logic; jurisdictions beyond New South Wales
+and Queensland; customer-configurable compliance; accounting, payroll,
+invoicing, advanced CRM or scheduling; customer portals; AI technical
 conclusions; offline final approval; concurrent offline editing; enterprise
 integrations; or microservices without demonstrated need.
 
