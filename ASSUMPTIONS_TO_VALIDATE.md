@@ -1,9 +1,7 @@
 # Compatibility copy — canonical: [docs/discovery/ASSUMPTIONS_TO_VALIDATE.md](docs/discovery/ASSUMPTIONS_TO_VALIDATE.md)
 
-# Assumptions to Validate
-
-These are prototype hypotheses, not compliance requirements. Status is
-**Open** unless partner evidence changes it.
+Stage 2A.5 public-evidence updates live only in the canonical file. Do not
+treat this abbreviated root copy as current confidence or status.
 
 | ID | Current hypothesis | Confidence | Product impact | Validation | Status |
 | --- | --- | --- | --- | --- | --- |

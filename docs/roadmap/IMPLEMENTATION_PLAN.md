@@ -1,6 +1,7 @@
 # Implementation Plan
 
-1. Complete focused anchor evidence and validate terminology/fields.
+1. Complete focused anchor evidence and validate terminology/fields
+   (Stage 2A.5 public pass done; partner validation remains open).
 2. Specify workflow, outcomes, exceptions and draft report.
 3. Select stack only after repository-pattern review; record decision.
 4. Build company tenancy, authentication, roles, clients, sites, anchors,

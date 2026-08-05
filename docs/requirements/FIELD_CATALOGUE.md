@@ -1,6 +1,8 @@
 # Field Catalogue
 
 Provisional catalogue. Requiredness and terminology need partner validation.
+Stage 2A.5 public cut: see
+`docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md`.
 
 | Record | Fields |
 | --- | --- |
@@ -18,15 +20,17 @@ Provisional catalogue. Requiredness and terminology need partner validation.
 | Review action | reviewer, action, comment, requested change, timestamp |
 | Report revision | job, source inspection revision, template version, file, creator/reviewer, created time |
 
-Measurements, equipment, signatures, inspection frequency, replacement links,
-history references and import provenance remain conditional fields until
-validated. Never infer a compliance result from any field.
+Conditional until partner validation: measurements, equipment references,
+signatures, recorded inspection frequency / last / next-due, optional
+proof-test evidence (load, hold, result, reference, photos), replacement
+links, history references and import provenance. Never infer a compliance
+result from any field.
 
 ## AS/NZS 1891.4:2025 integration candidates
 
 These fields are derived from the supplied screenshot sequence and remain
-implementation candidates until the complete source is reviewed by a qualified
-person:
+**deferred candidates**, not MVP requirements, until Stage 2B+ partner and
+qualified review decide otherwise:
 
 | Record | Additional candidate fields |
 | --- | --- |
@@ -42,7 +46,8 @@ person:
 ## AS 5532:2025 integration candidates
 
 These fields represent product/manufacturing evidence from the supplied
-screenshots. They do not replace site assessment or AS/NZS 1891.4 inspection.
+screenshots. They are deferred from MVP site-inspection scope. They do not
+replace site assessment or AS/NZS 1891.4 inspection.
 
 | Record | Additional candidate fields |
 | --- | --- |

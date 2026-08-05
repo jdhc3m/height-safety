@@ -9,6 +9,7 @@
 | D-005 | 2026-08-04 | Treat modular monolith, relational database, private object storage, encrypted local storage and outbox as implementation candidates. | Lowest-complexity candidate; no code exists yet. | Proposed posture |
 | D-006 | 2026-08-04 | Preserve broad Stage 2A research under `docs/archive/`. | Retains evidence without expanding MVP. | Accepted |
 | D-007 | 2026-08-04 | Canonical active documents live under `docs/product`, `docs/discovery`, `docs/requirements`, `docs/architecture` and `docs/roadmap`. | Removes ambiguity while retaining root compatibility pointers. | Accepted |
+| D-008 | 2026-08-04 | Stage 2A.5 MVP field cut: keep register, observations, photos, defects, recommendations, neutral outcomes/exceptions, review and draft reports; defer HLL/cable assets, rescue/training gates, clearance engines, AS 5532 manufacturing workflows and automatic interval/compliance logic. | Public evidence supports narrow single-point evidence capture; broader standards candidates would expand MVP without partner validation. | Accepted working direction |
 
 Outcome values, required fields, report wording and partner terms remain open
 until validated. Update this log when scope or architecture changes.
