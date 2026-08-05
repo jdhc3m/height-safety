@@ -20,6 +20,7 @@ The active product baseline is organised under `docs/product/`,
 - [Product vision](docs/product/PRODUCT_VISION.md)
 - [Current scope](docs/product/CURRENT_SCOPE.md)
 - [MVP requirements](docs/requirements/ANCHOR_MVP_REQUIREMENTS.md)
+- [Stage 2B workflow specification](docs/requirements/STAGE_2B_WORKFLOW_SPEC.md)
 - [User workflows](docs/requirements/USER_WORKFLOWS.md)
 - [Data model](docs/architecture/DATA_MODEL.md)
 - [Offline scope](docs/architecture/OFFLINE_SYNC_SCOPE.md)

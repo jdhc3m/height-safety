@@ -1,5 +1,9 @@
 # Anchor MVP Requirements
 
+Stage 2B workflow authority:
+`docs/requirements/STAGE_2B_WORKFLOW_SPEC.md`. Values below remain provisional
+until design-partner validation.
+
 ## Roles
 
 - Administrator: company settings and users.
@@ -20,11 +24,16 @@ show sync states and submit for review.
 
 ## Provisional values
 
-Anchor outcomes: Serviceable, Defective, Not inspected, Inaccessible, Unable to
-locate, Removed from service, Replaced, Newly discovered, Further assessment
-required. Workflow: Draft, Assigned, Downloaded, In progress, Submitted, Under
-review, Changes requested, Approved for report generation, Report generated,
-Superseded. Validate before treating values as domain truth.
+Recorded outcomes: Serviceable, Defective, Not inspected and Further assessment
+required. Exceptions include Inaccessible and Unable to locate. Newly
+discovered, duplicate and replacement cases are register-reconciliation
+proposals. Removed from service is a recorded disposition. These concepts do
+not automatically set one another.
+
+Job workflow: Draft, Assigned, In progress, Submitted, Under review, Changes
+requested, Approved for report generation and Report generated. Download,
+mutation, photo and conflict states are synchronisation concerns; Superseded is
+a report-revision condition rather than a job workflow state.
 
 ## Acceptance constraints
 
@@ -32,3 +41,8 @@ Every tenant record is company-scoped and server-authorised. Retries are
 idempotent. Photos and notes remain tied to correct anchor inspection. Missing
 or failed uploads are visible and block review completion. Report revisions
 reference exact snapshots and do not silently change.
+
+Approval also requires every expected anchor to be accounted for, valid
+outcome/exception relationships, complete conditional proof-test evidence,
+resolved changes and no unresolved sync conflicts. Unvalidated completeness
+warnings require an explicit reviewer disposition.

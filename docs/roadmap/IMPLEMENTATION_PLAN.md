@@ -2,8 +2,10 @@
 
 1. Complete focused anchor evidence and validate terminology/fields
    (Stage 2A.5 public pass done; partner validation remains open).
-2. Specify workflow, outcomes, exceptions and draft report.
-3. Select stack only after repository-pattern review; record decision.
+2. Specify workflow, outcomes, exceptions and draft report
+   (Stage 2B complete; see `docs/requirements/STAGE_2B_WORKFLOW_SPEC.md`).
+3. Produce the technical blueprint and select stack only after
+   repository-pattern review; record decisions (next).
 4. Build company tenancy, authentication, roles, clients, sites, anchors,
    jobs and assignments with cross-tenant tests.
 5. Build mobile assigned-job vertical slice with local saves, forms, photos,

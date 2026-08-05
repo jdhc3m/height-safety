@@ -11,6 +11,7 @@
 | D-005 | 2026-08-04 | Prefer a modular monolith, relational database, private object storage, encrypted local database and outbox when implementation starts. | Simplest architecture matching the repository direction and difficult parts. | Proposed implementation posture |
 | D-006 | 2026-08-04 | Preserve broad Stage 2A research under `docs/archive/`. | Retains useful evidence and history without allowing it to define current scope. | Accepted |
 | D-008 | 2026-08-04 | Stage 2A.5 MVP field cut: keep narrow single-point evidence; defer broader standards candidates. | See canonical decision log. | Accepted working direction |
+| D-009 | 2026-08-05 | Separate workflow, outcome, exception, reconciliation, disposition and sync concepts. | See canonical decision log. | Accepted working direction |
 
 All outcome values, required fields, report wording and partner terms remain
 open to design-partner validation. Historical decisions and research are not

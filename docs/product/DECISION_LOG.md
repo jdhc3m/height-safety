@@ -10,6 +10,7 @@
 | D-006 | 2026-08-04 | Preserve broad Stage 2A research under `docs/archive/`. | Retains evidence without expanding MVP. | Accepted |
 | D-007 | 2026-08-04 | Canonical active documents live under `docs/product`, `docs/discovery`, `docs/requirements`, `docs/architecture` and `docs/roadmap`. | Removes ambiguity while retaining root compatibility pointers. | Accepted |
 | D-008 | 2026-08-04 | Stage 2A.5 MVP field cut: keep register, observations, photos, defects, recommendations, neutral outcomes/exceptions, review and draft reports; defer HLL/cable assets, rescue/training gates, clearance engines, AS 5532 manufacturing workflows and automatic interval/compliance logic. | Public evidence supports narrow single-point evidence capture; broader standards candidates would expand MVP without partner validation. | Accepted working direction |
+| D-009 | 2026-08-05 | Keep job workflow, recorded outcome, inspection exception, register reconciliation, disposition, synchronisation and review issue as separate concepts. | Prevents values such as inaccessible, replaced, removed from service or downloaded from silently standing in for an inspection result or approval. | Accepted working direction; terminology awaits partner validation |
 
 Outcome values, required fields, report wording and partner terms remain open
 until validated. Update this log when scope or architecture changes.

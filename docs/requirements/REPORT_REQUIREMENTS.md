@@ -1,46 +1,19 @@
 # Draft Report Requirements
 
-First template title: **Prototype Draft Inspection Report**. Include available
-company, client, site, job, inspection date, inspector, reviewer, anchor
-register, anchor/location, observations, photographs, recorded outcomes,
-defects, recommendations, generation date and revision number.
+Stage 2B generation and content rules:
+`docs/requirements/STAGE_2B_WORKFLOW_SPEC.md`.
 
-AS/NZS 1891.4:2025 workflows also need recorded—not auto-inferred—evidence for
-system hierarchy, task/environment hazards, product instructions, component
-identifiers, pre/post-use and periodic inspections, service state, rescue plan,
-training, anchorage assessment, clearance/free-fall calculations, swing-fall
-controls, connector compatibility, proof tests, next inspection date and open
-review requirements.
+First template title: **Prototype Draft Inspection Report**. Display `Draft`
+prominently. Include available company, client, site, job, inspection date,
+inspector, reviewer, expected anchor register, reconciliation notes,
+anchor/location, observations, photographs, recorded outcomes, exceptions,
+dispositions, defects, recommendations, entered proof-test evidence,
+limitations, generation date, template version and revision number.
 
-Calculation appendix:
-
-- `FC > A + L + E + 2.8 m`, showing every input, unit, source and reviewer.
-- `FF = L − S + H`, showing every input, unit, source and reviewer.
-- Formula/template version and assumptions.
-
-AS 5532:2025 product-evidence section:
-
-- State that AS 5532 covers manufacture, testing, marking and instructions for
-  single-point anchor devices; do not present it as an onsite inspection or
-  structural design certificate.
-- Show manufacturer/model, batch or serial number, fixed/portable class,
-  anchor type, attachment point, permitted directions, marked rating,
-  person count, product-instruction version and dated standard reference.
-- For supplied test evidence show specimen, procedure/clause, apparatus,
-  configuration, static force/hold time, dynamic mass/drop/peak load,
-  suspension/function result, roof structure, deviations, unusual features
-  and test date.
-- Show instruction and permanent-marking checks separately, including
-  personnel-only marking, manufacturer identification, batch/serial, rating,
-  AS 5532:2025 marking, installation/use limits, compatibility, inspection and
-  removal-from-service directions.
-- Flag that site selection, installation, anchorage capacity, compatibility in
-  the actual system, proof testing and periodic inspection require their own
-  evidence, including AS/NZS 1891.4 evidence where applicable.
-
-Do not display “compliant” unless authorised organisation review explicitly
-approves that conclusion. Otherwise show draft status, observations,
-missing evidence and unresolved decisions separately.
+Do not display `certified`, `compliant`, `passed for 12 months`,
+engineer-approved or standards-approved as a product conclusion. Human-entered
+interval/last/next-due values are labelled as recorded context with their source
+where available; the report does not infer them.
 
 Use:
 
@@ -51,3 +24,11 @@ inspection revision, template version, creation timestamp, creating user,
 reviewing user when applicable, revision number and audit events. Later edits
 create a new revision; prior revisions do not silently change. “Issued” is
 organisation-controlled; product generates a draft.
+
+## Deferred report material
+
+Clearance/free-fall calculations, rescue/training gates, broad equipment
+inspection, AS 5532 manufacturing/lab evidence and standards-derived compliance
+sections are not MVP report requirements. Candidate material remains preserved
+in `docs/standards/` and `docs/requirements/FIELD_CATALOGUE.md`; adding it to the
+active template requires partner/professional evidence and a recorded decision.

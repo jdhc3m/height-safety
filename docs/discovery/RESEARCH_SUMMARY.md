@@ -32,5 +32,6 @@ material are not committed.
 Stage 2A broad research is archived. Stage 2A.5 public focused-anchor evidence
 is complete: see `STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md` and
 `sources/STAGE_2A5_SOURCE_REGISTER.md`. Design-partner validation remains open.
-Next work is Stage 2B workflow specification from the MVP keep-bucket, without
-expanding into deferred standards candidates.
+Stage 2B translated the MVP keep-bucket into
+`docs/requirements/STAGE_2B_WORKFLOW_SPEC.md` without expanding deferred
+standards candidates. Next work is the Stage 2C technical blueprint.

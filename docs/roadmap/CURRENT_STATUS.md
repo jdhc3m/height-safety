@@ -1,10 +1,10 @@
 # Current Status
 
-Last update: 2026-08-04
+Last update: 2026-08-05
 
 ## Active stage
 
-Stage 2B — anchor workflow specification (after Stage 2A.5 public evidence).
+Stage 2C — technical blueprint.
 
 ## Completed
 
@@ -22,17 +22,25 @@ Stage 2B — anchor workflow specification (after Stage 2A.5 public evidence).
   `docs/discovery/sources/STAGE_2A5_SOURCE_REGISTER.md`.
 - MVP field cut recorded (D-008); standards candidates remain deferred.
 - Assumptions register updated with public-evidence confidence notes.
+- Stage 2B workflow specification completed:
+  `docs/requirements/STAGE_2B_WORKFLOW_SPEC.md`.
+- Job workflow, recorded outcomes, exceptions, register reconciliation,
+  dispositions, sync states and review issues separated (D-009).
+- Review blockers/warnings, immutable draft-report behavior and implementation
+  acceptance scenarios specified.
 
 ## In progress
 
-- Produce Stage 2B workflow specification from the Stage 2A.5 keep-bucket.
+- Produce the Stage 2C technical blueprint from the Stage 2B acceptance rules.
 - Keep design-partner outreach ready; practitioner validation still open.
 
 ## Next recommended task
 
-Write Stage 2B workflow, outcome, exception and draft-report specification
-using `docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md`, without promoting
-deferred AS/NZS 1891.4 or AS 5532 candidate fields into MVP requirements.
+Define component boundaries, tenant-authorised API, relational schema,
+encrypted Android job pack/outbox, private media lifecycle, conflict protocol,
+snapshot/report pipeline and automated test strategy. Record stack decisions
+without beginning feature implementation or promoting deferred standards
+candidates into the MVP.
 
 ## Blockers and decisions awaiting confirmation
 
@@ -49,7 +57,7 @@ deferred AS/NZS 1891.4 or AS 5532 candidate fields into MVP requirements.
 ## Tests and commands
 
 No application build, test or lint configuration exists. Documentation
-verification: `tools/verify-docs.sh` (run 2026-08-04; exit 0). Repository
+verification: `tools/verify-docs.sh` (run 2026-08-05; exit 0). Repository
 checks also used file listing, document reading, `git status`, `git log` and
 Markdown review. Future agents must update this section after meaningful work.
 
@@ -59,5 +67,6 @@ Markdown review. Future agents must update this section after meaningful work.
 `docs/architecture/`; `docs/roadmap/`; `docs/archive/`.
 
 Stage 2A.5: `docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md`.
+Stage 2B: `docs/requirements/STAGE_2B_WORKFLOW_SPEC.md`.
 AS 5532 review: `docs/standards/AS-5532-2025-INTEGRATION.md`.
 AS/NZS 1891.4 review: `docs/standards/AS-NZS-1891.4-2025-INTEGRATION.md`.

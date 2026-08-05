@@ -27,7 +27,7 @@ require_text() {
   fi
 }
 
-echo "Verifying Stage 2A.5 and canonical docs under $ROOT"
+echo "Verifying Stage 2A.5/2B and canonical docs under $ROOT"
 
 require_file "docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md"
 require_file "docs/discovery/sources/STAGE_2A5_SOURCE_REGISTER.md"
@@ -36,6 +36,7 @@ require_file "docs/decisions/assumptions-register.md"
 require_file "docs/discovery/RESEARCH_SUMMARY.md"
 require_file "docs/discovery/INSPECTOR_QUESTIONS.md"
 require_file "docs/requirements/FIELD_CATALOGUE.md"
+require_file "docs/requirements/STAGE_2B_WORKFLOW_SPEC.md"
 require_file "docs/product/DECISION_LOG.md"
 require_file "docs/product/NON_GOALS.md"
 require_file "docs/roadmap/CURRENT_STATUS.md"
@@ -45,8 +46,13 @@ require_text "docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md" "MVP field cu
 require_text "docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md" "Do not"
 require_text "docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md" "Never for MVP"
 require_text "docs/product/DECISION_LOG.md" "D-008"
-require_text "docs/roadmap/CURRENT_STATUS.md" "Stage 2B"
+require_text "docs/product/DECISION_LOG.md" "D-009"
+require_text "docs/requirements/STAGE_2B_WORKFLOW_SPEC.md" "Recorded outcome model"
+require_text "docs/requirements/STAGE_2B_WORKFLOW_SPEC.md" "Hard blockers"
+require_text "docs/requirements/STAGE_2B_WORKFLOW_SPEC.md" "Design-partner questions"
+require_text "docs/roadmap/CURRENT_STATUS.md" "Stage 2C"
 require_text "docs/roadmap/CURRENT_STATUS.md" "STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE"
+require_text "docs/roadmap/CURRENT_STATUS.md" "STAGE_2B_WORKFLOW_SPEC"
 require_text "docs/requirements/FIELD_CATALOGUE.md" "deferred candidates"
 require_text "docs/discovery/ASSUMPTIONS_TO_VALIDATE.md" "Partially supported"
 require_text "docs/decisions/assumptions-register.md" "../discovery/ASSUMPTIONS_TO_VALIDATE.md"
@@ -56,6 +62,12 @@ require_text "docs/product/NON_GOALS.md" "certification, compliance or standards
 if grep -qiE 'product (is|provides|issues) (a )?certif|automatic compliance conclusion' \
   "$ROOT/docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md"; then
   echo "AUTHORITY RISK: Stage 2A.5 evidence doc contains unsupported certification claim language"
+  failures=$((failures + 1))
+fi
+
+if grep -qiE 'product (is|provides|issues) (a )?certif|automatic compliance conclusion' \
+  "$ROOT/docs/requirements/STAGE_2B_WORKFLOW_SPEC.md"; then
+  echo "AUTHORITY RISK: Stage 2B workflow contains unsupported certification claim language"
   failures=$((failures + 1))
 fi
 

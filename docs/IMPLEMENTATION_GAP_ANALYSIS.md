@@ -58,10 +58,11 @@ version conflict visibility; local save/restart recovery; failed photo upload
 retry; correct association of new/missing anchors; report reproducibility;
 immutable revision behaviour; role permissions; and no sensitive data in logs.
 
-## AS/NZS 1891.4:2025 implementation additions
+## Deferred AS/NZS 1891.4:2025 candidates
 
-The supplied 2025 material adds implementation gaps beyond the original anchor
-MVP:
+The supplied 2025 material identified candidates beyond the current anchor
+MVP. They are preserved for later qualified review and are not implementation
+gaps for Stage 2C/2D:
 
 - Component-level equipment register and lifetime inspection history.
 - Traceability to manufacturer or user-installed identifier.
@@ -76,13 +77,14 @@ MVP:
 - Anchorage-capacity/professional-engineer evidence and fastener proof tests.
 - Connector compatibility, lock, orientation, roll-out and short-circuit checks.
 
-Do not implement automatic compliance conclusions until competent-person and
-professional-engineer review boundaries are approved.
+Do not implement these candidates or automatic compliance conclusions without
+partner evidence, qualified review and a recorded scope decision.
 
-## AS 5532:2025 implementation additions
+## Deferred AS 5532:2025 candidates
 
-The supplied 62-page screenshot sequence adds a product/manufacturing evidence
-layer for single-point anchors:
+The supplied 62-page screenshot sequence identified a possible
+product/manufacturing evidence layer. It is not part of the MVP site-inspection
+workflow:
 
 - Product register fields for fixed/portable class, model, batch/serial,
   attachment point, load directions, rating/person count and instruction
@@ -97,4 +99,5 @@ layer for single-point anchors:
   selection, installation, structural capacity, proof testing and inspection
   under the applicable field requirements.
 
-Do not use AS 5532 product evidence alone to issue a site compliance result.
+Do not add this layer to the MVP or use AS 5532 product evidence alone to issue
+a site compliance result.

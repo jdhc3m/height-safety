@@ -11,13 +11,13 @@ Stage 2A.5 public cut: see
 | Client | name, contact details, external reference |
 | Site | client, name/address, access notes, site reference |
 | Anchor | stable ID, site, label/register ID, location, type, manufacturer/model when known, install context, history/status, notes |
-| Job | site, reference, planned date, status, assigned inspector |
-| Inspection | job, revision, inspector, started/submitted timestamps, workflow status, notes |
-| Anchor inspection | anchor or new-anchor reference, location confirmation, observations, outcome, accessibility, notes |
+| Job | site, reference, planned date, workflow status, assigned inspector, job-pack version |
+| Inspection | job, revision, inspector, started/submitted timestamps, workflow status, submission intent, notes |
+| Anchor inspection | anchor or provisional-anchor reference, location/identity confirmation, observations, recorded outcome, exception reason, reconciliation proposal, disposition, notes |
 | Photo | private object key, capture time, local ID, anchor-inspection link, upload state, checksum, metadata policy |
 | Defect | anchor inspection, recorded description, severity if validated, evidence links |
 | Recommendation | anchor inspection, recorded action, owner/due context if validated |
-| Review action | reviewer, action, comment, requested change, timestamp |
+| Review issue/action | inspection/record reference, blocker/warning/conflict/change type, status, reviewer, comment/reason, timestamp |
 | Report revision | job, source inspection revision, template version, file, creator/reviewer, created time |
 
 Conditional until partner validation: measurements, equipment references,
