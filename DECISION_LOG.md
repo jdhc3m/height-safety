@@ -21,6 +21,9 @@
 | D-016 | 2026-08-06 | Generate neutral draft reports idempotently from approved immutable snapshots and preserve append-only workflow audit events. | See canonical decision log. | Owner-approved technical direction; retention addressed by D-018 |
 | D-017 | 2026-08-10 | Use native Android, NestJS backend and Next.js web with generated OpenAPI clients, portable PostgreSQL/S3-compatible persistence boundaries, and a joint hosting/PDF feasibility gate. | See canonical decision log. | Owner-approved technical direction; provider/renderer remain open |
 | D-018 | 2026-08-10 | Preserve server evidence during prototype; define real-data retention by pilot agreement and require safe, authorised, audited cleanup/deletion. | See canonical decision log. | Owner-approved technical direction; durations remain open |
+| D-019 | 2026-08-10 | Execute Stage 2D in risk-first order: workspace contract, OpenAPI proof, and then gated hosting/PDF and provider decisions. | See canonical decision log. | Owner-approved execution direction |
+| D-020 | 2026-08-10 | Use the approved application/client/contract/infrastructure workspace, source-controlled API migrations and one root verification entry point. | See canonical decision log. | Owner-approved workspace contract |
+| D-021 | 2026-08-10 | Prove the approved code-first OpenAPI pipeline with generated Kotlin/TypeScript clients, pinned runtimes, deterministic output and compatibility gates. | See canonical decision log. | Owner-approved; proof implemented and independently reviewable |
 
 All outcome values, required fields, report wording and partner terms remain
 open to design-partner validation. Historical decisions and research are not

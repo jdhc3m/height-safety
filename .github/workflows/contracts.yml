@@ -1,0 +1,65 @@
+name: Contracts
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - anchor-mvp-reset
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contracts-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.4.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify repository and generated contracts
+        run: tools/verify.sh
+
+      - name: Reject incompatible pull-request contract changes
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+        run: |
+          contract_path=contracts/openapi/v1/openapi.json
+          if git cat-file -e "$BASE_REF:$contract_path"; then
+            base_contract="$(mktemp)"
+            trap 'rm -f "$base_contract"' EXIT
+            git show "$BASE_REF:$contract_path" > "$base_contract"
+            tools/openapi-diff.sh "$base_contract" "$contract_path" \
+              --fail-on-incompatible
+          else
+            echo "No base-branch contract exists; compatibility check starts after this proof lands"
+          fi

@@ -1,6 +1,7 @@
 # Prototype Architecture
 
-No application exists yet. Approved lowest-complexity shape: modular monolith,
+No product application exists yet; only the bounded OpenAPI contract proof is
+scaffolded. Approved lowest-complexity shape: modular monolith,
 PostgreSQL-compatible relational database, authenticated web API, Android
 client with an encrypted Room-based local database, private object storage for
 media/reports, deterministic server-side PDF generation and append-only audit

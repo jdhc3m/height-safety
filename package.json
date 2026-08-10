@@ -1,0 +1,19 @@
+{
+  "name": "height-safety",
+  "private": true,
+  "packageManager": "pnpm@11.4.0",
+  "engines": {
+    "node": "24.18.0",
+    "pnpm": "11.4.0"
+  },
+  "scripts": {
+    "contracts:generate": "tools/contracts.sh --generate",
+    "contracts:check": "tools/contracts.sh --check",
+    "verify": "tools/verify.sh"
+  },
+  "devDependencies": {
+    "@openapitools/openapi-generator-cli": "2.40.1",
+    "@redocly/cli": "2.46.0",
+    "typescript": "5.9.3"
+  }
+}

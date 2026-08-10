@@ -1,0 +1,15 @@
+.gitignore
+.npmignore
+.openapi-generator-ignore
+README.md
+docs/HealthResponseDto.md
+docs/SystemApi.md
+package.json
+src/apis/SystemApi.ts
+src/apis/index.ts
+src/index.ts
+src/models/HealthResponseDto.ts
+src/models/index.ts
+src/runtime.ts
+tsconfig.esm.json
+tsconfig.json

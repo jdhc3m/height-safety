@@ -8,7 +8,8 @@
    through snapshots/reports without state legal-rule logic (complete; see
    `docs/blueprint/STAGE_2C_TECHNICAL_BLUEPRINT.md`).
 4. Convert the blueprint into bounded tickets, dependency order, acceptance
-   tests and provider/PDF feasibility spikes (next: Stage 2D).
+   tests and provider/PDF feasibility spikes (Stage 2D first pass created; see
+   `docs/roadmap/STAGE_2D_IMPLEMENTATION_TICKETS.md`).
 5. Build company tenancy, authentication, roles, clients, sites, anchors,
    jobs and assignments with cross-tenant tests.
 6. Build mobile claimed/assigned-job vertical slice with local saves, forms,

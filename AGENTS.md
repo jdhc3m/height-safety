@@ -38,5 +38,6 @@ Rules:
 - Preserve tenant isolation, durable offline evidence, idempotent sync,
   photograph association, conflict visibility, report revisions and auditability.
 
-Repository currently contains documentation only. No verified build, test or
-lint command exists; see `docs/roadmap/CURRENT_STATUS.md`.
+Repository currently contains documentation plus the bounded `2D-02` contract
+proof. `tools/verify.sh` is the verified root merge-gate command; broader
+Android, web and domain application scaffolding remains deferred to `3A-01`.

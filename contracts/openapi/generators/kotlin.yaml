@@ -1,0 +1,13 @@
+generatorName: kotlin
+additionalProperties:
+  artifactId: height-safety-api-client
+  artifactVersion: 0.0.0
+  dateLibrary: java8
+  groupId: au.com.heightsafety
+  hideGenerationTimestamp: true
+  library: jvm-retrofit2
+  packageName: au.com.heightsafety.api
+  serializationLibrary: kotlinx_serialization
+  sortModelPropertiesByRequiredFlag: true
+  sortParamsByRequiredFlag: true
+  useCoroutines: true

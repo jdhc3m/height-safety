@@ -7,3 +7,11 @@ private-sources/*
 .idea/
 .vscode/
 
+node_modules/
+dist/
+.tools/
+.contract-tmp/
+clients/kotlin/.gradle/
+clients/kotlin/.kotlin/
+clients/kotlin/build/
+clients/typescript/dist/

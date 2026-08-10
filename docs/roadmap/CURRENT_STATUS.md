@@ -54,20 +54,34 @@ Stage 2D — implementation planning.
   concrete partner, backup and permanent-deletion periods remain open.
 - Stage 2C technical blueprint completed:
   `docs/blueprint/STAGE_2C_TECHNICAL_BLUEPRINT.md`.
+- Stage 2D risk-first execution order approved (D-019).
+- Stage 2D repository workspace and quality-command contract approved (D-020):
+  `docs/roadmap/STAGE_2D_01_WORKSPACE_CONTRACT.md`.
+- Stage 2D OpenAPI/runtime strategy approved (D-021), including explicit Kotlin
+  fallback, deterministic-generation and generated-diff review gates.
+- The bounded `2D-02` proof is implemented and locally verified: NestJS
+  generates reviewed OpenAPI JSON, Kotlin and TypeScript clients compile,
+  repeated generation is byte-stable, and incompatible changes are rejected.
+- Pinned GitHub CI now runs the root verification command and compares pull
+  request contracts with the base branch. Generated clients are marked for
+  collapsed GitHub presentation without being ignored.
 
 ## In progress
 
-- Convert the Stage 2C blueprint into bounded Stage 2D implementation tickets,
-  dependencies, acceptance tests and feasibility spikes.
+- Send the implemented `2D-02` OpenAPI/runtime proof through independent API
+  and Android build review:
+  `docs/roadmap/STAGE_2D_02_OPENAPI_PIPELINE.md`.
+- Add board owners/agent types and concrete commands as the repository scaffold
+  is approved.
 - Keep design-partner outreach ready; practitioner validation still open.
 
 ## Next recommended task
 
-Produce a Stage 2D ticket plan ordered by risk: repository foundation and
-generated OpenAPI contract; tenancy/authentication; relational schema; Android
-offline vertical slice; media/sync; review/reporting; then the fictional demo.
-Include a hosting/PDF renderer spike before provider selection. Do not begin
-feature implementation or promote deferred standards candidates into MVP.
+Complete independent API and Android build review for `2D-02`. `2D-03` and
+`2D-05` are also ready for independent spikes, but hosting/PDF feasibility
+evidence must precede provider selection.
+Do not begin broader feature implementation or promote deferred standards
+candidates into MVP.
 
 ## Blockers and decisions awaiting confirmation
 
@@ -88,10 +102,11 @@ feature implementation or promote deferred standards candidates into MVP.
 
 ## Tests and commands
 
-No application build, test or lint configuration exists. Documentation
-verification: `tools/verify-docs.sh` (run 2026-08-10; exit 0). Repository
-checks also used file listing, document reading, `git status`, `git log` and
-Markdown review. Future agents must update this section after meaningful work.
+Verified root command: `tools/verify.sh`. On 2026-08-10 the documentation,
+OpenAPI lint, repeated byte-stable generation, committed drift, TypeScript
+compile, Kotlin/Gradle build, controlled incompatible-change fixture and
+`git diff --check` all passed locally. Product Android, web and domain test
+suites remain deferred because those applications are not scaffolded yet.
 
 ## Relevant files
 
@@ -102,5 +117,8 @@ Stage 2A.5: `docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md`.
 NSW/Queensland extension: `docs/discovery/NSW_QLD_SCOPE_EXTENSION.md`.
 Stage 2B: `docs/requirements/STAGE_2B_WORKFLOW_SPEC.md`.
 Stage 2C: `docs/blueprint/STAGE_2C_TECHNICAL_BLUEPRINT.md`.
+Stage 2D: `docs/roadmap/STAGE_2D_IMPLEMENTATION_TICKETS.md`.
+Stage 2D-01: `docs/roadmap/STAGE_2D_01_WORKSPACE_CONTRACT.md`.
+Stage 2D-02: `docs/roadmap/STAGE_2D_02_OPENAPI_PIPELINE.md`.
 AS 5532 review: `docs/standards/AS-5532-2025-INTEGRATION.md`.
 AS/NZS 1891.4 review: `docs/standards/AS-NZS-1891.4-2025-INTEGRATION.md`.
