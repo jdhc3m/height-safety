@@ -7,8 +7,11 @@ Canonical Stage 2B details:
 
 1. Office creates the client and site, selects `NSW` or `QLD`, and creates the
    anchor register and versioned job pack.
-2. Office creates a draft job and assigns one primary inspector.
-3. Inspector downloads the assigned pack; download state remains separate from
+2. Office creates and releases a draft job, with an eligible inspector or
+   inspector pool.
+3. An eligible inspector claims the released job, or the office assigns one
+   primary inspector. The claim/assignment is recorded.
+4. Inspector downloads the assigned pack; download state remains separate from
    job workflow state.
 
 ## Field capture and submission

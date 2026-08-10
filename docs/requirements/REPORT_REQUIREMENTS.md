@@ -26,9 +26,14 @@ Use:
 
 Generate only from an exact inspection snapshot. Store immutable file,
 inspection revision, template version, creation timestamp, creating user,
-reviewing user when applicable, revision number and audit events. Later edits
-create a new revision; prior revisions do not silently change. “Issued” is
-organisation-controlled; product generates a draft.
+reviewing user when applicable, jurisdiction, revision number, checksums,
+generation idempotency identity and audit references. A retry for the same
+approved snapshot/template returns the existing report revision. Later edits
+create a new revision; prior revisions do not silently change and may be marked
+superseded. “Issued” is organisation-controlled; product generates a draft.
+
+Audit events record important workflow actors, transitions and record
+references without copying full notes or media content unnecessarily.
 
 ## Deferred report material
 

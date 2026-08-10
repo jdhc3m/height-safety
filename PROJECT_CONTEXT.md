@@ -29,5 +29,6 @@ The active product baseline is organised under `docs/product/`,
 - [Assumptions](docs/discovery/ASSUMPTIONS_TO_VALIDATE.md)
 - [Design-partner plan](docs/discovery/DESIGN_PARTNER_PLAN.md)
 - [Decision log](docs/product/DECISION_LOG.md)
+- [Stage 2C technical blueprint](docs/blueprint/STAGE_2C_TECHNICAL_BLUEPRINT.md)
 - [Gap analysis](docs/roadmap/CURRENT_STATUS.md)
 - [Implementation plan](docs/roadmap/IMPLEMENTATION_PLAN.md)

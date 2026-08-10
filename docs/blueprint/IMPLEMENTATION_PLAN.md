@@ -2,14 +2,14 @@
 
 Compatibility copy. Canonical plan: [docs/roadmap/IMPLEMENTATION_PLAN.md](../roadmap/IMPLEMENTATION_PLAN.md).
 
-1. Select the existing stack once a codebase is introduced; retain a modular
-   monolith and relational storage.
-2. Establish authentication, company tenancy, roles and server-side
+1. Scaffold the approved Kotlin/Compose Android, NestJS backend and Next.js web
+   stack with generated OpenAPI clients and provider adapters.
+2. Establish managed authentication, company tenancy, roles and server-side
    authorisation tests.
 3. Implement Company/User/Client/Site/Anchor/Job/Assignment schema and CRUD.
 4. Implement anchor register import/export with stable IDs and duplicate review.
 5. Implement Inspection and AnchorInspection revisions with neutral outcomes.
-6. Build the mobile assigned-job pack and encrypted local database.
+6. Build the mobile claimed/assigned job pack and encrypted local database.
 7. Add the outbox, idempotency keys, expected versions, retry UI and conflict
    review; prove restart and no-connectivity durability.
 8. Add private photograph capture, durable references, resumable/background

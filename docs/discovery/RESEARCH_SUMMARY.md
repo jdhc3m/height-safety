@@ -40,4 +40,6 @@ is recorded in `NSW_QLD_SCOPE_EXTENSION.md`; practitioner validation in each
 state remains open.
 Stage 2B translated the MVP keep-bucket into
 `docs/requirements/STAGE_2B_WORKFLOW_SPEC.md` without expanding deferred
-standards candidates. Next work is the Stage 2C technical blueprint.
+standards candidates. Stage 2C is complete in
+`docs/blueprint/STAGE_2C_TECHNICAL_BLUEPRINT.md`; next work is Stage 2D ticket
+planning.

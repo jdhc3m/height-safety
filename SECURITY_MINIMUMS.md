@@ -6,7 +6,9 @@
   a client-supplied tenant identifier.
 - Keep photographs and reports private by default with least-privilege access.
 - Record important actions in append-only audit events.
-- Protect mobile data using platform secure storage and download only assigned jobs.
+- Protect mobile data using platform secure storage and download only
+  claimed/assigned jobs; never wipe unsynchronised evidence on logout or
+  revocation.
 - Do not log sensitive inspection data or secrets; separate development, test
   and production configuration and keep secrets out of the repository.
 - Add automated cross-tenant access tests for API, media, exports and reports

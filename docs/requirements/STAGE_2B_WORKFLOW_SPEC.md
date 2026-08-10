@@ -37,8 +37,8 @@ report authority or a compliance result.
 | Role | Allowed workflow actions | Boundary |
 | --- | --- | --- |
 | Administrator | Manage company users/settings; perform office-reviewer actions when authorised by the company | Product role does not establish technical competence |
-| Office reviewer | Prepare registers/jobs, assign one primary inspector, review submitted revisions, request changes, approve a complete snapshot for draft generation and generate draft revisions | Cannot silently rewrite inspector evidence or make the product issue a compliance conclusion |
-| Inspector | Download assigned jobs, record evidence/outcomes/exceptions/reconciliation proposals, save offline and submit an inspection revision | Cannot use the app to approve its own submission or issue a final certificate |
+| Office reviewer | Prepare and release registers/jobs, assign one primary inspector or manage claims, review submitted revisions, request changes, approve a complete snapshot for draft generation and generate draft revisions | Cannot silently rewrite inspector evidence or make the product issue a compliance conclusion |
+| Inspector | Claim an eligible released job or download an assigned job, record evidence/outcomes/exceptions/reconciliation proposals, save offline and submit an inspection revision | Cannot claim unreleased/ineligible jobs, approve its own submission or issue a final certificate |
 
 Every server action is company-scoped and role-authorised. The initial pilot
 assumes one primary inspector edits a downloaded job offline.
@@ -49,8 +49,9 @@ Download and sync conditions are tracked separately from this lifecycle.
 
 | State | Entered when | Allowed next state |
 | --- | --- | --- |
-| Draft | Office creates the job and prepares its register snapshot | Assigned |
-| Assigned | Office assigns one primary inspector | In progress |
+| Draft | Office creates the job and prepares its register snapshot | Released |
+| Released | Office marks the versioned job pack ready for eligible claim/assignment | Assigned |
+| Assigned | Office assigns one primary inspector or an eligible inspector claims a released job | In progress |
 | In progress | Inspector starts or resumes the working inspection revision | Submitted |
 | Submitted | Submission intent and inspection revision reach the server | Under review |
 | Under review | Reviewer starts review of the submitted revision | Changes requested; Approved for report generation |
@@ -60,32 +61,35 @@ Download and sync conditions are tracked separately from this lifecycle.
 
 Transition rules:
 
-1. Assignment identifies one primary inspector and a server-side job-pack
-   version.
-2. Downloading a pack does not change the job workflow state.
-3. Offline submission records durable local intent; `Submitted` is the server
+1. The office releases a prepared job. Assignment identifies one primary
+   inspector and a server-side job-pack version, whether the office assigned
+   the inspector or the inspector claimed the job.
+2. A claim is allowed only for an eligible inspector in the same company and
+   an unreleased/unclaimed job. The claim actor and time are audit events.
+3. Downloading a pack does not change the job workflow state.
+4. Offline submission records durable local intent; `Submitted` is the server
    state after that intent and its inspection revision synchronise.
-4. A changes request records reviewer, time, reason and affected records. The
+5. A changes request records reviewer, time, reason and affected records. The
    inspector edits a new working revision; submitted history remains visible.
-5. Approval records reviewer, time and exact source snapshot. It is approval
+6. Approval records reviewer, time and exact source snapshot. It is approval
    only for prototype draft generation, not certification or client issue.
-6. A later correction creates a new inspection and report revision. The prior
+7. A later correction creates a new inspection and report revision. The prior
    report file never changes and may be marked superseded only after the new
    revision exists.
 
 ## Office preparation
 
-Before assignment, the office records or selects:
+Before release, the office records or selects:
 
 - company, client, site, supported jurisdiction (`NSW` or `QLD`) and job identity;
-- one primary inspector and planned visit context;
+- eligible inspector or inspector pool and planned visit context;
 - the expected anchor register snapshot with stable IDs and available history;
 - known location, label/register ID, type, manufacturer/model and install notes;
 - site access notes and human-entered interval/last/next-due context when used;
 - source/import references when available.
 
 Missing register details are visible but do not become invented values. The
-assigned job pack is versioned so later office changes can produce an explicit
+released job pack is versioned so later office changes can produce an explicit
 update or conflict instead of silently replacing local work.
 
 ## Anchor-first field capture
@@ -243,6 +247,13 @@ workflow and requires a later authority decision.
    correction creates a distinct immutable report revision.
 11. Cross-company users cannot access the job pack, evidence, review, export or
     report file.
+12. Logout or cleanup with pending mutations/uploads is blocked and cannot erase
+    the only copy of inspection evidence.
+13. An expired offline-authorisation lease or confirmed revocation locks the
+    app without deleting queued evidence; server access remains denied until an
+    authorised recovery path is completed.
+14. Two inspectors claiming the same released job concurrently result in one
+    primary assignment; the other receives the current assignment state.
 
 ## Design-partner questions
 
@@ -276,3 +287,5 @@ encrypted Android job pack/outbox, private media lifecycle, conflict protocol,
 snapshot/report pipeline, explicit jurisdiction propagation and automated test
 strategy. It must not begin feature implementation, add a jurisdiction rules
 engine or broaden the MVP.
+
+Stage 2C delivery: `docs/blueprint/STAGE_2C_TECHNICAL_BLUEPRINT.md`.

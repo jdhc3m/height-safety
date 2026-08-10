@@ -6,6 +6,8 @@
 
 - New South Wales and Queensland workflow for installed single-point roof
   anchors, with jurisdiction explicitly recorded and no automatic state rules.
+- Read-only preview of future asset families such as static lines, guardrails
+  and walkways; no inspection workflow is implemented for them.
 - Web administration for company users, clients, sites, anchor registers, jobs,
   assignments, review, draft reports, revisions, exports and private evidence.
 - Mobile field workflow for assigned jobs, local capture, photographs, defects,
@@ -15,8 +17,9 @@
 
 ## Workflow boundary
 
-Office creates client, site, register and job; assigns inspector; inspector
-downloads, works offline if needed, records evidence, submits; reviewer checks
+Office creates client, site, register and job; releases it for an eligible
+inspector to claim or assigns an inspector; inspector downloads, works offline
+if needed, records evidence, submits; reviewer checks
 missing information or conflicts; the system generates a versioned prototype
 draft PDF. Final approval requires connectivity and remains an organisational
 responsibility.

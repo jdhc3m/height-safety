@@ -2,7 +2,7 @@
 
 # Limited Offline Sync Scope
 
-Only assigned jobs are downloadable. The mobile app stores a bounded job pack
+Only claimed/assigned jobs are downloadable. The mobile app stores a bounded job pack
 in an encrypted local database and secure platform storage. Local notes,
 outcomes, defects, recommendations and photograph references must be durable
 without connectivity.
@@ -18,5 +18,7 @@ edits an assigned job. It does not provide unrestricted offline collaboration.
 
 Office review cannot treat a job as complete while required changes or photos
 are unsynchronised. Final report approval initially requires internet access.
-Expiry, logout, device loss, local-data deletion, retry limits and the minimum
-offline duration remain design-partner validation items.
+Locking, logout or revocation must not delete unsynchronised evidence. Cleanup
+is blocked until mutations/photos are acknowledged and conflicts resolved. The
+offline-authorisation lease, revoked-account recovery, device loss, retry limits
+and minimum offline duration remain validation items.
