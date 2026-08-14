@@ -9,11 +9,19 @@
   "scripts": {
     "contracts:generate": "tools/contracts.sh --generate",
     "contracts:check": "tools/contracts.sh --check",
+    "pdf-spike:check": "node tools/pdf-spike/check.mjs",
+    "pdf-spike:linux": "tools/pdf-spike-linux.sh --all",
+    "pdf-spike:linux-termination": "tools/pdf-spike-linux-termination.sh",
+    "pdf-spike:run": "node tools/pdf-spike/benchmark.mjs",
+    "provider-spike:check": "tools/provider-spike.sh --check",
     "verify": "tools/verify.sh"
   },
   "devDependencies": {
+    "@fontsource/noto-sans": "5.3.0",
     "@openapitools/openapi-generator-cli": "2.40.1",
     "@redocly/cli": "2.46.0",
+    "pdfjs-dist": "6.2.108",
+    "playwright": "1.62.1",
     "typescript": "5.9.3"
   }
 }

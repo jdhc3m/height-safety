@@ -1,0 +1,117 @@
+{
+  "capturedAt": "2026-08-12T04:11:55.248Z",
+  "classification": "fictional-local-technical-evidence",
+  "environment": {
+    "platform": "darwin-x64",
+    "node": "24.18.0",
+    "playwright": "1.62.1",
+    "chromium": "151.0.7922.34",
+    "logicalCpuCount": 12,
+    "systemMemoryMiB": 16384
+  },
+  "fixture": {
+    "jurisdictionContext": "NSW",
+    "anchorCount": 30,
+    "photoCount": 60,
+    "photoDimensions": "1280x960",
+    "pdfPages": 31,
+    "warmPdfBytes": 6456601,
+    "fontEmbedded": "Noto Sans"
+  },
+  "limits": {
+    "warmDurationMs": 60000,
+    "singlePeakRssMiB": 1536,
+    "concurrencyPeakRssMiB": 3072,
+    "outputBytes": 26214400
+  },
+  "scenarios": [
+    {
+      "name": "cold-single",
+      "durationMs": 8444,
+      "peakRssMiB": 780,
+      "peakIntervalCpuPercent": 381
+    },
+    {
+      "name": "warm-single",
+      "durationMs": 8735,
+      "peakRssMiB": 812,
+      "peakIntervalCpuPercent": 414
+    },
+    {
+      "name": "shared-browser-concurrency-2",
+      "durationMs": 7999,
+      "peakRssMiB": 1291,
+      "peakIntervalCpuPercent": 393
+    },
+    {
+      "name": "isolated-worker-concurrency-2",
+      "durationMs": 12287,
+      "peakRssMiB": 1746,
+      "peakIntervalCpuPercent": 614
+    }
+  ],
+  "pdfInspection": {
+    "pageCount": 31,
+    "imageCount": 60,
+    "expectedAnchorContentPresent": true,
+    "fontNames": ["AAAAAA+NotoSans-Regular"],
+    "notoSansEmbedded": true
+  },
+  "interruption": {
+    "temporaryPdfObservedBeforeSigterm": true,
+    "retryStartedBeforeSigterm": true,
+    "exitCode": 143,
+    "partialArtifactsAfterRecovery": false,
+    "waitingRetryTookOver": true,
+    "secondRetryReused": true,
+    "deadOwnerLockReclaimed": true,
+    "postCommitDeadOwnerLockReclaimed": true,
+    "commitCancellationArtifactsRemoved": true,
+    "temporaryManifestReclaimed": true,
+    "workerOutputParsedAfterClose": true,
+    "browserTeardownFailurePreservesOwnership": true,
+    "browserTerminationIsBounded": true,
+    "browserLaunchIsBounded": true,
+    "workerForcedExitCode70": true,
+    "heartbeatOwnershipLossAbortsRender": true,
+    "heartbeatCannotReviveExpiredLease": true,
+    "lockWaitDeadlineEnforcedUnderContention": true,
+    "staleOwnerPublicationIsFenced": true,
+    "takeoverDuringManifestPreparationIsFenced": true,
+    "transactionCrashAutomaticallyRollsBack": true,
+    "pidReuseDoesNotImpersonateOwner": true
+  },
+  "determinism": {
+    "freshOutputDirectories": 2,
+    "byteStable": true,
+    "pdfSha256": "74aa57dca054982f927ae6f13563362b51684b1bc1e133d90ff2d73136fcc3ad"
+  },
+  "postCorrectionReliability": {
+    "consecutiveFullPasses": 18,
+    "precedingTimeouts": 1,
+    "timeoutStage": "not captured before stage diagnostics were added",
+    "coldDurationRangeMs": [7206, 31652],
+    "coldPeakRssRangeMiB": [727, 804],
+    "warmDurationRangeMs": [6851, 31566],
+    "warmPeakRssRangeMiB": [742, 835],
+    "sharedConcurrencyDurationRangeMs": [7218, 40667],
+    "sharedConcurrencyPeakRssRangeMiB": [1253, 1420],
+    "cpuMeasurement": "peak process-tree CPU calculated from cumulative CPU-time deltas between samples; sampling failure invalidates the run",
+    "candidateEnvironmentReliabilityEstablished": false
+  },
+  "acceptance": {
+    "allEngineeringLimitsPassed": true,
+    "expectedPageCount": true,
+    "expectedPageContent": true,
+    "expectedPhotoCount": true,
+    "embeddedNotoSans": true,
+    "interruptedRecoveryClean": true,
+    "freshRegenerationByteStable": true
+  },
+  "limitations": [
+    "Local macOS measurement, not a Linux container or candidate cloud environment",
+    "Forced worker exit tested locally; candidate container cleanup of Chromium descendants remains unproven",
+    "Synthetic photographs, not a real partner corpus",
+    "No queue, object storage, external renderer or cloud cost measurement"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "1.0.0",
+  "ticket": "2D-04",
+  "candidate": "cloud-run",
+  "region": "australia-southeast1",
+  "location": "Sydney, Australia",
+  "resourcePrefixPattern": "^hs2d04-[a-z0-9]{8}$",
+  "labels": {
+    "ticket": "2d-04",
+    "purpose": "provider-spike",
+    "owner": "height-safety"
+  },
+  "renderer": {
+    "cpu": 2,
+    "memoryMiB": 2048,
+    "containerConcurrency": 1,
+    "minimumInstances": 0,
+    "maximumInstances": 1,
+    "requestTimeoutSeconds": 300,
+    "fixture": "fixtures/reports/representative-photo-heavy-report.json",
+    "baseImage": "mcr.microsoft.com/playwright@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e",
+    "nodeVersion": "24.18.0",
+    "playwrightVersion": "1.62.1"
+  },
+  "queue": {
+    "service": "Cloud Tasks",
+    "maximumConcurrentDispatches": 1,
+    "maximumAttempts": 5,
+    "maximumRetryDurationSeconds": 1800,
+    "minimumBackoffSeconds": 5,
+    "maximumBackoffSeconds": 60,
+    "authentication": "OIDC service account token"
+  },
+  "storage": {
+    "service": "Cloud Storage",
+    "uniformBucketLevelAccess": true,
+    "publicAccessPrevention": "enforced",
+    "reportObjectPrefix": "reports/",
+    "evidenceObjectPrefix": "evidence/",
+    "controlObjectPrefix": "control/",
+    "temporaryFiles": "container-local only",
+    "adapterBoundaryRequired": true
+  },
+  "managedProviderApproved": false
+}

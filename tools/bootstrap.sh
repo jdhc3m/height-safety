@@ -34,4 +34,13 @@ if [[ "$actual_java" != "$expected_java" ]]; then
   exit 1
 fi
 
+java_settings="$(java -XshowSettings:properties -version 2>&1)"
+actual_java_vendor="$(sed -n 's/^[[:space:]]*java.vendor = //p' <<< "$java_settings")"
+actual_java_distribution="$(sed -n 's/^[[:space:]]*java.vendor.version = //p' <<< "$java_settings")"
+if [[ "$actual_java_vendor" != "Eclipse Adoptium" || \
+      "$actual_java_distribution" != "Temurin-$expected_java"+* ]]; then
+  echo "Temurin JDK $expected_java required; found ${actual_java_distribution:-${actual_java_vendor:-unknown vendor}}"
+  exit 1
+fi
+
 pnpm install --frozen-lockfile

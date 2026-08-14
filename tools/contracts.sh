@@ -62,6 +62,9 @@ diff -ru --exclude=dist --exclude=node_modules \
 
 pnpm exec tsc -p "$first/clients/typescript/tsconfig.json"
 pnpm exec tsc -p "$first/clients/typescript/tsconfig.esm.json"
+mkdir -p "$first/clients/kotlin/src/test/kotlin/au/com/heightsafety/api/infrastructure"
+cp "$ROOT/contracts/openapi/tests/kotlin/ApiClientBaseUrlTest.kt" \
+  "$first/clients/kotlin/src/test/kotlin/au/com/heightsafety/api/infrastructure/"
 bash "$ROOT/tools/gradle.sh" -p "$first/clients/kotlin" build --no-daemon
 
 if bash "$ROOT/tools/openapi-diff.sh" \

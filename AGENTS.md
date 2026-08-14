@@ -38,6 +38,8 @@ Rules:
 - Preserve tenant isolation, durable offline evidence, idempotent sync,
   photograph association, conflict visibility, report revisions and auditability.
 
-Repository currently contains documentation plus the bounded `2D-02` contract
-proof. `tools/verify.sh` is the verified root merge-gate command; broader
-Android, web and domain application scaffolding remains deferred to `3A-01`.
+Repository currently contains documentation, the bounded `2D-02` contract
+proof, the `2D-03` PDF feasibility harness and local guarded `2D-04` provider
+spike preparation. `tools/verify.sh` is the verified root merge-gate command;
+broader Android, web and domain application scaffolding remains deferred to
+`3A-01`. Cloud mutation remains an attended, explicitly authorised step.

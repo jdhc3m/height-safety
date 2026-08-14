@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0.0",
+  "ticket": "2D-04",
+  "status": "not-run",
+  "candidate": "cloud-run",
+  "region": "australia-southeast1",
+  "location": "Sydney, Australia",
+  "managedProviderApproved": false,
+  "configuration": null,
+  "taskDeliveryProofs": [],
+  "exerciseRuns": [],
+  "terminationRecovery": null,
+  "cost": null,
+  "destruction": null,
+  "limitations": [
+    "No cloud resources were deployed because this run was explicitly instructed not to deploy.",
+    "This placeholder is not managed-provider evidence and cannot close G-02.",
+    "Provider and production sizing remain open for owner and technical review."
+  ]
+}

@@ -1,6 +1,6 @@
 # Current Status
 
-Last update: 2026-08-10
+Last update: 2026-08-14
 
 ## Active stage
 
@@ -65,21 +65,42 @@ Stage 2D — implementation planning.
 - Pinned GitHub CI now runs the root verification command and compares pull
   request contracts with the base branch. Generated clients are marked for
   collapsed GitHub presentation without being ignored.
+- `2D-02` passed independent API/Android review after exact Temurin vendor
+  validation, immutable GitHub Action pins and an Android absolute-base-URL
+  integration test were added.
+- The local `2D-03` PDF harness passed its fictional 30-anchor, 60-photo load,
+  deterministic regeneration, font, termination cleanup, retry, memory,
+  duration, concurrency and output-size checks.
+- `2D-03` passed independent technical re-review after lease fencing, bounded
+  launch/shutdown and deadline-under-contention regressions were added.
+- The owner approved the `2D-03` separate asynchronous renderer worker at
+  initial concurrency one (D-022); provider and production sizing remain open.
+- `2D-03` then passed three corrected 2-vCPU/2-GiB Linux runs and four corrected
+  4-vCPU/4-GiB Linux runs, plus repeatable whole-container termination and
+  fresh-worker recovery. Every engineering acceptance check passed.
+- The Linux evidence supports the approved separate worker at initial
+  concurrency one; it does not select a managed provider or production size.
 
 ## In progress
 
-- Send the implemented `2D-02` OpenAPI/runtime proof through independent API
-  and Android build review:
-  `docs/roadmap/STAGE_2D_02_OPENAPI_PIPELINE.md`.
+- `2D-04` local preparation is complete: the current provider/authentication
+  comparison, guarded Cloud Run candidate, private worker, lifecycle plan,
+  sanitised evidence schema and command gates are implemented. Local `--check`
+  and `--plan` pass. No cloud resource was deployed.
+- Run the attended, explicitly authorised Cloud Run exercise, cost collection,
+  destroy verification and independent review before closing G-02.
 - Add board owners/agent types and concrete commands as the repository scaffold
   is approved.
 - Keep design-partner outreach ready; practitioner validation still open.
 
 ## Next recommended task
 
-Complete independent API and Android build review for `2D-02`. `2D-03` and
-`2D-05` are also ready for independent spikes, but hosting/PDF feasibility
-evidence must precede provider selection.
+Complete the attended managed portion of `2D-04`; `2D-05` is ready and may run
+in parallel. G-02 remains open for real Australian-region queue, private
+storage, lifecycle, termination recovery and measured cost evidence. The
+bounded command and evidence contract is in
+`STAGE_2D_04_PROVIDER_AUTH_PROOF.md`; cloud deployment still requires explicit
+authorization and must not run in CI or an unattended agent.
 Do not begin broader feature implementation or promote deferred standards
 candidates into MVP.
 
@@ -97,16 +118,28 @@ candidates into MVP.
   report-authority differences require practitioner validation in each state;
   the product must not auto-calculate or claim statutory compliance.
 - Hosting/database/object-storage provider, authentication provider, Android
-  encryption library and PDF renderer remain open behind explicit Stage 2D
-  gates.
+  encryption library, managed renderer deployment sizing/scaling and production
+  queue/storage integration remain open behind explicit Stage 2D gates. The
+  Playwright/Chromium separate-worker direction itself is approved in D-022.
 
 ## Tests and commands
 
 Verified root command: `tools/verify.sh`. On 2026-08-10 the documentation,
 OpenAPI lint, repeated byte-stable generation, committed drift, TypeScript
 compile, Kotlin/Gradle build, controlled incompatible-change fixture and
-`git diff --check` all passed locally. Product Android, web and domain test
-suites remain deferred because those applications are not scaffolded yet.
+`git diff --check` all passed locally. The Android absolute-base-URL integration
+test also passed, and an independent uncommitted-diff review reported no
+actionable correctness issues. The `2D-03` static PDF checks and full local
+benchmark passed, including a `SIGTERM` after temporary-PDF creation, clean
+takeover by an observably waiting retry, enforced timeout cleanup,
+completed-result reuse and byte-identical fresh regeneration. Eighteen consecutive
+corrected benchmark repetitions passed; one prior transient timeout remains a
+sizing warning. The constrained Linux candidate then passed seven corrected
+profile runs and a whole-container stop/recovery test. The `2D-04` local
+guarded candidate check and non-mutating Cloud Run plan also pass; managed
+evidence verification is expected to remain incomplete until an authorised
+deploy/exercise/destroy cycle. Product Android, web and domain test suites
+remain deferred because those applications are not scaffolded yet.
 
 ## Relevant files
 
@@ -120,5 +153,9 @@ Stage 2C: `docs/blueprint/STAGE_2C_TECHNICAL_BLUEPRINT.md`.
 Stage 2D: `docs/roadmap/STAGE_2D_IMPLEMENTATION_TICKETS.md`.
 Stage 2D-01: `docs/roadmap/STAGE_2D_01_WORKSPACE_CONTRACT.md`.
 Stage 2D-02: `docs/roadmap/STAGE_2D_02_OPENAPI_PIPELINE.md`.
+Stage 2D-03: `docs/roadmap/STAGE_2D_03_PDF_HOSTING_SPIKE.md`.
+Stage 2D-04: `docs/roadmap/STAGE_2D_04_PROVIDER_AUTH_PROOF.md`.
+Stage 2D-04 comparison: `docs/roadmap/STAGE_2D_04_PROVIDER_COMPARISON.md`.
+Stage 2D-04 managed evidence: `docs/roadmap/STAGE_2D_04_MANAGED_EVIDENCE.json`.
 AS 5532 review: `docs/standards/AS-5532-2025-INTEGRATION.md`.
 AS/NZS 1891.4 review: `docs/standards/AS-NZS-1891.4-2025-INTEGRATION.md`.

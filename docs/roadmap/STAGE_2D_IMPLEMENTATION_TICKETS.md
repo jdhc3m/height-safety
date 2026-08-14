@@ -50,9 +50,9 @@ the reviewer or owner closes the applicable gate.
 | ID | State | Ticket | Depends on | Exit evidence |
 | --- | --- | --- | --- | --- |
 | 2D-01 | Done | Define repository workspace and quality-command contract | Stage 2C | Approved as D-020; see `STAGE_2D_01_WORKSPACE_CONTRACT.md`; no feature scaffold created |
-| 2D-02 | Review | Prove the OpenAPI generation pipeline and pin tool runtimes | 2D-01 | Approved as D-021 and implemented; checked-in OpenAPI plus generated Kotlin and TypeScript clients compile; deterministic drift and breaking changes are CI gates; independent API/Android review pending |
-| 2D-03 | Ready | Run hosting/PDF renderer feasibility spike | 2D-01 | Representative report results and recommendation covering G-02; do not select a provider first |
-| 2D-04 | Backlog | Compare provider and authentication candidates | 2D-02, 2D-03 | Decision-ready comparison covering Australian region, portability, tenancy, invitations, MFA, revocation, cost and operations |
+| 2D-02 | Done | Prove the OpenAPI generation pipeline and pin tool runtimes | 2D-01 | D-021 implemented and independently reviewed; checked-in OpenAPI plus generated Kotlin and TypeScript clients compile; deterministic drift and breaking changes are CI gates |
+| 2D-03 | Done | Run hosting/PDF renderer feasibility spike | 2D-01 | Representative report passed repeated local and constrained-Linux tests, including container termination recovery; separate worker and initial concurrency one are owner-approved (D-022), while managed-provider evidence remains in G-02/2D-04 |
+| 2D-04 | In progress | Compare and prove provider and authentication candidates | 2D-02, 2D-03 | Local comparison and guarded Cloud Run candidate are prepared. Execute the still-authorised managed commands in `STAGE_2D_04_PROVIDER_AUTH_PROOF.md`: bounded proof covering Australian region, portability, tenancy, invitations, MFA, revocation, private object upload, queue retry after instance termination, lifecycle/cold start, renderer sizing and actual per-report platform/storage cost; owner and technical review close G-02 |
 | 2D-05 | Ready | Prove Android encrypted Room storage | 2D-01 | G-04 evidence, including key loss, schema migration and recovery behaviour |
 | 2D-06 | Backlog | Specify offline lease and evidence recovery | 2D-04, 2D-05 | State transitions and tests for expiry, revoked users, pending outbox/media and authorised recovery; resolves G-05 before pilot |
 

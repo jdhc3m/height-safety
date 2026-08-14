@@ -1,7 +1,6 @@
 # 2D-02 OpenAPI Pipeline and Runtime Pinning
 
-Status: **implementation complete; independent review pending**, 2026-08-10
-(D-021)
+Status: **Done; independently reviewed**, 2026-08-10 (D-021)
 
 ## Objective
 
@@ -189,6 +188,16 @@ OpenAPI-diff 2.1.7. `tools/contracts.sh --check` passed locally on 2026-08-10:
 pull requests, compares the proposed artifact with the base-branch artifact.
 The first change that introduces the artifact has no base contract to compare;
 subsequent pull requests cannot bypass that comparison through an ignore list.
+Third-party Actions are pinned to reviewed immutable commit SHAs, with their
+release tags retained in comments for update visibility.
+
+The OpenAPI document intentionally uses the portable relative server URL
+`/api/v1`. Retrofit requires an absolute base URL, so Android must construct the
+generated `ApiClient` with an environment-supplied absolute URL ending in
+`/api/v1/`; it must never rely on the generated default. The contract build
+copies in and runs a hand-written integration test proving that an injected
+absolute URL succeeds and the relative default fails fast. `3A-01` must retain
+this factory boundary when the Android application is scaffolded.
 
 ### Discovered limitations
 
@@ -209,5 +218,6 @@ subsequent pull requests cannot bypass that comparison through an ignore list.
 The owner approved the code-first JSON artifact, pinned Redocly/OpenAPI
 Generator/OpenAPI-diff pipeline, proposed Kotlin and TypeScript generators and
 tool-manager-neutral runtime declarations, with the deterministic-generation
-risk and `.gitattributes` safeguard added (D-021). Implementation is ready for
-the required independent API and Android build review.
+risk and `.gitattributes` safeguard added (D-021). The required independent API
+and Android build review passed after Temurin vendor validation, immutable
+GitHub Action pins and mandatory Android absolute-base-URL tests were added.

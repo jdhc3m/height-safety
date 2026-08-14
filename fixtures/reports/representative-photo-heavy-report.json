@@ -1,0 +1,23 @@
+{
+  "fixtureVersion": "1.0.0",
+  "templateVersion": "prototype-draft-v1",
+  "title": "Prototype Draft Inspection Report",
+  "company": "Fictional Height Safety Services",
+  "client": "Example Facilities Group",
+  "site": "Fictional Distribution Centre",
+  "jurisdiction": "NSW",
+  "jobReference": "DEMO-PDF-SPIKE-001",
+  "inspectionDate": "2026-08-10",
+  "generationDate": "2026-08-10T12:00:00.000Z",
+  "inspector": "Fictional Inspector",
+  "reviewer": "Fictional Office Reviewer",
+  "revision": 1,
+  "anchorCount": 30,
+  "photosPerAnchor": 2,
+  "photoWidth": 1280,
+  "photoHeight": 960,
+  "jpegQuality": 0.68,
+  "observationTemplate": "Synthetic fixture observation with location notes, visible-condition notes and a neutral recorded outcome for renderer load testing only.",
+  "recommendationTemplate": "Further assessment recorded for demonstration; this fixture makes no compliance, certification or engineering conclusion.",
+  "disclaimer": "This report was generated using an early-stage inspection workflow prototype. Inspection outcomes, technical decisions and report approval remain the responsibility of the inspecting organisation and its authorised personnel."
+}

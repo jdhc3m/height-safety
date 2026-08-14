@@ -1,0 +1,80 @@
+{
+  "capturedAt": "2026-08-12T21:12:01.109Z",
+  "classification": "fictional-local-linux-container-technical-evidence",
+  "environment": {
+    "hostRuntime": "Colima 0.10.3 on macOS Virtualization.Framework",
+    "containerPlatform": "linux-x64",
+    "baseImage": "mcr.microsoft.com/playwright@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e",
+    "derivedImage": "sha256:3d6c325cd1e5ce245ff663d6988469b2eb80832b455d2329105676c3f80c4426",
+    "node": "24.18.0",
+    "playwright": "1.62.1",
+    "chromium": "151.0.7922.34",
+    "scope": "Locally hosted constrained Linux containers; not a managed cloud service or Australian-region deployment"
+  },
+  "fixture": {
+    "jurisdictionContext": "NSW",
+    "anchorCount": 30,
+    "photoCount": 60,
+    "photoDimensions": "1280x960",
+    "pdfPages": 31,
+    "warmPdfBytes": 6409044,
+    "fontEmbedded": "Noto Sans"
+  },
+  "profiles": [
+    {
+      "name": "2vcpu-2g-concurrency-1",
+      "correctedRepetitions": 3,
+      "cgroupCpuLimit": 2,
+      "cgroupMemoryLimitMiB": 2048,
+      "rendererConcurrency": 1,
+      "coldDurationRangeMs": [8030, 8668],
+      "coldPeakRssRangeMiB": [1018, 1041],
+      "warmDurationRangeMs": [7714, 8052],
+      "warmPeakRssRangeMiB": [1078, 1095],
+      "sharedConcurrencyDurationRangeMs": [7624, 8102],
+      "sharedConcurrencyPeakRssRangeMiB": [1089, 1115],
+      "isolatedConcurrencyDurationRangeMs": [8302, 8649],
+      "isolatedConcurrencyPeakRssRangeMiB": [1225, 1255],
+      "allAcceptanceChecksPassed": true
+    },
+    {
+      "name": "4vcpu-4g-concurrency-2",
+      "correctedRepetitions": 4,
+      "cgroupCpuLimit": 4,
+      "cgroupMemoryLimitMiB": 4096,
+      "rendererConcurrency": 2,
+      "coldDurationRangeMs": [7512, 8709],
+      "coldPeakRssRangeMiB": [1037, 1062],
+      "warmDurationRangeMs": [7325, 13825],
+      "warmPeakRssRangeMiB": [1043, 1107],
+      "sharedConcurrencyDurationRangeMs": [8354, 10305],
+      "sharedConcurrencyPeakRssRangeMiB": [1550, 1635],
+      "isolatedConcurrencyDurationRangeMs": [8993, 10503],
+      "isolatedConcurrencyPeakRssRangeMiB": [2222, 2269],
+      "allAcceptanceChecksPassed": true
+    }
+  ],
+  "evidence": {
+    "expectedPageCount": true,
+    "expectedAnchorContentPresent": true,
+    "expectedPhotoCount": true,
+    "embeddedNotoSans": true,
+    "freshRegenerationByteStableWithinLinuxEnvironment": true,
+    "linuxPdfSha256": "5ae4b25af326be6da26be59647e598e1d6b7077aa20a7e722b2a3f6c0cee31ba",
+    "containerTerminationRecovery": true,
+    "temporaryArtifactsAfterRecovery": false
+  },
+  "decisionSupport": {
+    "approvedDirection": "Separate asynchronous Playwright/Chromium worker",
+    "initialRendererConcurrency": 1,
+    "reason": "Concurrency one met every limit with materially lower peak memory; concurrency two did not provide a reliable duration advantage",
+    "managedProviderSelected": false
+  },
+  "limitations": [
+    "Local constrained Linux containers, not a managed Australian-region provider",
+    "No managed queue, private object storage, PostgreSQL snapshot loading or network latency",
+    "No provider cost, autoscaling, cold-start frequency or production lifecycle measurement",
+    "Synthetic photographs, not a real partner corpus",
+    "CPU samples indicate process pressure and are not an exact provider-capacity or billing measure"
+  ]
+}
