@@ -15,3 +15,5 @@ clients/kotlin/.gradle/
 clients/kotlin/.kotlin/
 clients/kotlin/build/
 clients/typescript/dist/
+apps/android/storage-spike/.gradle/
+apps/android/storage-spike/build/

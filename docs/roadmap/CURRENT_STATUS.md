@@ -1,6 +1,6 @@
 # Current Status
 
-Last update: 2026-08-14
+Last update: 2026-08-15
 
 ## Active stage
 
@@ -80,6 +80,17 @@ Stage 2D — implementation planning.
   fresh-worker recovery. Every engineering acceptance check passed.
 - The Linux evidence supports the approved separate worker at initial
   concurrency one; it does not select a managed provider or production size.
+- A root-gate revalidation exposed and corrected an existing synchronous SQLite
+  busy-wait overshoot in the `2D-03` harness without relaxing its absolute
+  deadline. Three focused PDF checks and the complete root gate then passed;
+  independent correction review confirmed the bounded repair.
+- The bounded `2D-05` SQLCipher/Room and Android Keystore proof passes
+  compile/lint/dependency checks and seven API 31 device tests covering
+  ciphertext, restart, schema migration, missing/corrupt key material and
+  fail-closed preservation.
+- `2D-05` passed two independent correction reviews and a fresh clean closure
+  review after schema-drift, typed-failure and temporary-cleanup findings were
+  fixed. G-04 is closed; authorised evidence recovery remains 2D-06 work.
 
 ## In progress
 
@@ -95,19 +106,21 @@ Stage 2D — implementation planning.
 
 ## Next recommended task
 
-Complete the attended managed portion of `2D-04`; `2D-05` is ready and may run
-in parallel. G-02 remains open for real Australian-region queue, private
-storage, lifecycle, termination recovery and measured cost evidence. The
-bounded command and evidence contract is in
-`STAGE_2D_04_PROVIDER_AUTH_PROOF.md`; cloud deployment still requires explicit
-authorization and must not run in CI or an unattended agent.
+No further unattended local ticket is Ready. The attended managed portion of
+`2D-04` is still required, but was outside this run's no-cloud boundary. G-02
+remains open for real Australian-region queue, private storage, lifecycle,
+termination recovery and measured cost evidence. The bounded command and
+evidence contract is in `STAGE_2D_04_PROVIDER_AUTH_PROOF.md`; cloud deployment
+still requires explicit authorization and must not run in CI or an unattended
+agent. `2D-06` remains Backlog until `2D-04` and `2D-05` are both complete.
 Do not begin broader feature implementation or promote deferred standards
 candidates into MVP.
 
 ## Blockers and decisions awaiting confirmation
 
 - No design partner, operational corpus or professional validation yet.
-- No scaffolded codebase, schema migration, API, mobile app or web app exists.
+- No product Android, web or domain application scaffold or production schema
+  migration exists beyond the bounded Stage 2D proofs.
 - Offline-authorisation lease duration and recovery of unsynchronised evidence
   after account revocation require design-partner and technical validation.
 - Required fields, outcome meanings, signatures, measurements, retention and
@@ -117,9 +130,10 @@ candidates into MVP.
 - NSW and Queensland workflow, terminology, licensing, interval, proof-test and
   report-authority differences require practitioner validation in each state;
   the product must not auto-calculate or claim statutory compliance.
-- Hosting/database/object-storage provider, authentication provider, Android
-  encryption library, managed renderer deployment sizing/scaling and production
-  queue/storage integration remain open behind explicit Stage 2D gates. The
+- Hosting/database/object-storage provider, authentication provider, authorised
+  Android key-loss/revocation recovery, managed renderer deployment
+  sizing/scaling and production queue/storage integration remain open behind
+  explicit Stage 2D gates. The
   Playwright/Chromium separate-worker direction itself is approved in D-022.
 
 ## Tests and commands
@@ -136,7 +150,10 @@ completed-result reuse and byte-identical fresh regeneration. Eighteen consecuti
 corrected benchmark repetitions passed; one prior transient timeout remains a
 sizing warning. The constrained Linux candidate then passed seven corrected
 profile runs and a whole-container stop/recovery test. The `2D-04` local
-guarded candidate check and non-mutating Cloud Run plan also pass; managed
+guarded candidate check and non-mutating Cloud Run plan also pass. The `2D-05`
+compile/lint/dependency gate and seven API 31 Android instrumentation tests pass;
+permanent Keystore-key loss deliberately locks and preserves ciphertext rather
+than claiming recovery or resetting evidence. Managed
 evidence verification is expected to remain incomplete until an authorised
 deploy/exercise/destroy cycle. Product Android, web and domain test suites
 remain deferred because those applications are not scaffolded yet.
@@ -157,5 +174,6 @@ Stage 2D-03: `docs/roadmap/STAGE_2D_03_PDF_HOSTING_SPIKE.md`.
 Stage 2D-04: `docs/roadmap/STAGE_2D_04_PROVIDER_AUTH_PROOF.md`.
 Stage 2D-04 comparison: `docs/roadmap/STAGE_2D_04_PROVIDER_COMPARISON.md`.
 Stage 2D-04 managed evidence: `docs/roadmap/STAGE_2D_04_MANAGED_EVIDENCE.json`.
+Stage 2D-05: `docs/roadmap/STAGE_2D_05_ANDROID_ENCRYPTED_STORAGE_PROOF.md`.
 AS 5532 review: `docs/standards/AS-5532-2025-INTEGRATION.md`.
 AS/NZS 1891.4 review: `docs/standards/AS-NZS-1891.4-2025-INTEGRATION.md`.
