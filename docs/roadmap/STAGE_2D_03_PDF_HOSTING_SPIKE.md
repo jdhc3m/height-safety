@@ -285,6 +285,21 @@ The harness, constrained-Linux proof and separate-worker direction complete
 evidence. Until then G-02 continues to block provider selection and production
 report implementation.
 
+## 2026-08-15 merge-gate correction
+
+While validating `2D-05`, two root-gate runs exposed the bounded SQLite lock
+wait exceeding its 2,060 ms contract. The synchronous `DatabaseSync` busy wait
+could consume most of the absolute deadline in one call. Lock acquisition now
+uses 100 ms busy slices, treats SQLite busy result code 5 as contention, checks
+the same absolute deadline between attempts and uses the already bounded
+connection for best-effort cleanup if acquisition crosses the deadline. It does
+not relax the existing duration assertion.
+
+The unchanged PDF check passed three consecutive focused runs after the repair,
+and the complete root gate passed. Independent correction review confirmed the
+short busy-timeout slices and same-connection cleanup preserve the absolute
+deadline contract.
+
 ## Evidence sources
 
 Official documentation checked 2026-08-10:

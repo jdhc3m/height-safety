@@ -377,8 +377,12 @@ export function readReportLock(outputDir, key) {
 
 function tryAcquireReportLock({ outputDir, key, lockStaleMs, deadlineAtMs, timeoutMs }) {
   const remainingMs = Math.max(1, deadlineAtMs - Date.now());
-  const database = openLockDatabase(outputDir, Math.min(5000, remainingMs));
+  // DatabaseSync blocks the event loop while SQLite honours busy_timeout.
+  // Use short slices so both schema setup and BEGIN IMMEDIATE return often
+  // enough for the outer absolute deadline to remain meaningful.
+  let database;
   try {
+    database = openLockDatabase(outputDir, Math.min(100, remainingMs));
     const lock = inImmediateTransaction(database, () => {
       const existing = currentLockOwner(database, key);
       const now = Date.now();
@@ -405,15 +409,21 @@ function tryAcquireReportLock({ outputDir, key, lockStaleMs, deadlineAtMs, timeo
       return { acquired: true, ownerToken: owner.token, leaseMs };
     });
     if (Date.now() >= deadlineAtMs) {
-      if (lock.acquired) removeOwnedLock(outputDir, key, lock.ownerToken);
+      if (lock.acquired) {
+        try {
+          database.prepare('DELETE FROM report_leases WHERE report_key = ? AND owner_token = ?')
+            .run(key, lock.ownerToken);
+        } catch {}
+      }
       throw lockWaitExpiredError(timeoutMs);
     }
     return lock;
   } catch (error) {
     if (Date.now() >= deadlineAtMs) throw lockWaitExpiredError(timeoutMs);
+    if (error?.errcode === 5) return { acquired: false };
     throw error;
   } finally {
-    database.close();
+    database?.close();
   }
 }
 
