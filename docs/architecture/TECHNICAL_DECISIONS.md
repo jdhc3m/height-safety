@@ -13,6 +13,8 @@
 | T-009 | Select hosting and PDF renderer together after a representative rendering spike. | Accepted gate | Renderer memory, timeout, font and concurrency needs affect hosting suitability. |
 | T-010 | Preserve server evidence by default during prototype; agree real-data retention before pilot. | Accepted direction | Avoids evidence loss and invented retention periods. |
 
-Provider, authentication service, Android encryption library, PDF renderer,
-retention periods and revoked-account evidence recovery remain open. Each
+Provider, authentication service, production Android encryption adoption,
+retention periods and revoked-account evidence recovery remain open. D-023
+selects and proves maintained SQLCipher Android as the bounded Room candidate;
+production adoption remains conditional on its documented exit triggers. Each
 implementation choice needs tests and an update here when materially changed.

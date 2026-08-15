@@ -119,7 +119,9 @@ The lifecycle uses a hybrid model:
 
 The encrypted Room database is the Android application's source of truth while
 online or offline. Database key material is protected through Android Keystore;
-the exact encryption library remains open.
+D-023 selects and proves maintained SQLCipher Android as the bounded Room
+candidate, with production adoption conditional on its documented exit
+triggers.
 
 For every local business mutation:
 

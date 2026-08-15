@@ -3,8 +3,9 @@
 Only claimed/assigned jobs download. An encrypted Room-based local job pack
 stores notes, outcomes, defects, recommendations and durable photo references
 through restart and temporary loss of connectivity. Database encryption key
-material is protected through Android Keystore; the exact encryption library
-remains a Stage 2C implementation choice.
+material is protected through Android Keystore. D-023 selects and proves
+maintained SQLCipher Android as the bounded Room candidate; production adoption
+remains conditional on its documented exit triggers.
 
 Each mutation has client-generated stable ID, operation, entity/version,
 created time, device/session and retry state. Server idempotency prevents

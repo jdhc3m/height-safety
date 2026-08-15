@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import java.io.File
 import java.security.KeyStore
 import java.security.MessageDigest
+import java.security.ProviderException
 import java.util.UUID
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
@@ -145,8 +146,7 @@ class EncryptedStorageInstrumentedTest {
         fixture.createEvidence()
         val before = fixture.databaseHashes()
         fixture.deleteKeystoreKey()
-        val replacementDirectory = "replacement-${UUID.randomUUID()}"
-        val replacementFiles = StorageFiles(fixture.context, replacementDirectory)
+        val replacementFiles = fixture.createStorageFiles("replacement-${UUID.randomUUID()}")
         KeystorePassphraseStore(replacementFiles, fixture.alias).loadOrCreate().fill(0)
 
         val exception =
@@ -158,10 +158,32 @@ class EncryptedStorageInstrumentedTest {
         assertHashesEqual(before, fixture.databaseHashes())
     }
 
+    @Test
+    fun keystoreProviderFailureReturnsTypedUnavailableReason() {
+        val exception =
+            assertThrows(StorageUnavailableException::class.java) {
+                KeystorePassphraseStore(
+                        fixture.files,
+                        fixture.alias,
+                        wrappingKeyGenerator = { throw ProviderException("injected Keystore failure") },
+                    )
+                    .loadOrCreate()
+            }
+
+        assertEquals(StorageUnavailableReason.KEY_ACCESS_FAILED, exception.reason)
+        assertTrue(exception.cause is ProviderException)
+        assertFalse(fixture.files.hasDatabaseFootprint())
+        assertFalse(fixture.files.keyEnvelope.exists())
+    }
+
     private class Fixture : AutoCloseable {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val alias = "height-safety-storage-spike-test-${UUID.randomUUID()}"
-        val files = StorageFiles(context, "height-safety-storage-spike-test-${UUID.randomUUID()}")
+        private val createdDirectories = mutableListOf<File>()
+        val files = createStorageFiles("height-safety-storage-spike-test-${UUID.randomUUID()}")
+
+        fun createStorageFiles(directoryName: String): StorageFiles =
+            StorageFiles(context, directoryName).also { createdDirectories.add(it.directory) }
 
         fun opener() =
             EncryptedStorageOpener(
@@ -194,7 +216,10 @@ class EncryptedStorageInstrumentedTest {
         }
 
         override fun close() {
-            deleteKeystoreKey()
+            runCatching { deleteKeystoreKey() }
+            createdDirectories.forEach { directory ->
+                runCatching { check(directory.deleteRecursively() || !directory.exists()) }
+            }
         }
 
         private fun sha256(file: File): ByteArray =

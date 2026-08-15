@@ -14,6 +14,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.security.GeneralSecurityException
 import java.security.KeyStore
+import java.security.ProviderException
 import java.security.SecureRandom
 import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
@@ -58,8 +59,18 @@ class KeystorePassphraseStore(
     private val files: StorageFiles,
     private val alias: String,
     private val secureRandom: SecureRandom = SecureRandom(),
+    private val wrappingKeyGenerator: ((String) -> SecretKey)? = null,
 ) {
-    fun loadOrCreate(): ByteArray {
+    fun loadOrCreate(): ByteArray =
+        try {
+            loadOrCreateInternal()
+        } catch (exception: StorageUnavailableException) {
+            throw exception
+        } catch (exception: ProviderException) {
+            throw StorageUnavailableException(StorageUnavailableReason.KEY_ACCESS_FAILED, exception)
+        }
+
+    private fun loadOrCreateInternal(): ByteArray {
         files.directory.mkdirs()
         val envelopeExists = files.keyEnvelope.isFile
         val databaseExists = files.hasDatabaseFootprint()
@@ -109,6 +120,7 @@ class KeystorePassphraseStore(
 
     private fun generateWrappingKey(): SecretKey =
         try {
+            wrappingKeyGenerator?.let { return it(alias) }
             val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
             generator.init(
                 KeyGenParameterSpec.Builder(

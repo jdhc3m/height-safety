@@ -65,9 +65,9 @@ application's security or compliance.
   fictional job pack and pending mutation.
 - There is no `fallbackToDestructiveMigration`, key regeneration, database
   deletion or automatic cleanup path when any database footprint exists.
-- SQLCipher application logging is disabled through its no-op logger. The
-  passphrase buffer is overwritten when the Room handle closes or opening
-  fails.
+- SQLCipher Java-client logging is disabled through its no-op logger. Native
+  and core logging controls remain an adoption review item. The passphrase
+  buffer is overwritten when the Room handle closes or opening fails.
 - Room schema JSON and the resolved Gradle graph are committed. The check gate
   regenerates schema history into a temporary directory and byte-compares it
   with the committed files. The build also fails if the abandoned legacy
@@ -98,7 +98,8 @@ G-05/2D-06 work and must be designed before partner data.
 
 ## Validation evidence
 
-On 2026-08-15 the scoped non-device gate passed:
+On 2026-08-16 the scoped non-device gate passed again after the bounded review
+corrections:
 
 ```sh
 tools/android-storage-spike.sh --check
@@ -108,21 +109,23 @@ It regenerated and compared Room schema history, compiled the debug library and
 instrumentation APK, ran Android lint, checked the locked dependency graph and
 rejected the abandoned-artifact condition.
 
-The Android runtime gate also passed on a Pixel 5 API 31 x86_64 emulator:
+The Android runtime gate also passed again on a Pixel 5 API 31 x86_64 emulator:
 
 ```sh
 tools/android-storage-spike.sh --instrumented
 ```
 
-All seven instrumentation tests passed:
+All eight instrumentation tests passed:
 
 1. encrypted job-pack/outbox restart;
 2. encrypted Room schema 1 to 2 migration;
 3. ciphertext header/content and framework-SQLite rejection;
 4. missing Keystore alias with unchanged database hashes;
 5. missing envelope with unchanged database hashes;
-6. corrupt envelope with unchanged database hashes; and
-7. replacement key rejected with unchanged database hashes.
+6. corrupt envelope with unchanged database hashes;
+7. replacement key rejected with unchanged database hashes; and
+8. injected Keystore provider failure returned `KEY_ACCESS_FAILED` without a
+   database or envelope.
 
 The root gate is:
 
@@ -141,6 +144,14 @@ and native-library failures, temporary-schema cleanup and accurate repository
 scope descriptions. A fresh closure review then reported no actionable
 findings. `2D-05` is Done and the technical G-04 gate is closed.
 
+A separate closure audit on 2026-08-16 found an untyped Keystore provider
+failure path, fictional instrumentation-test artifacts, stale architecture
+summaries and an over-broad logging claim. The bounded corrections added the
+eighth provider-failure test and guarded fictional-data cleanup, aligned the
+authoritative summaries with D-023 and narrowed the logging claim. The scoped
+checks, eight API 31 tests and root gate passed; a fresh independent reviewer
+then reported no actionable findings.
+
 ## Abandoned-library risk and exit triggers
 
 The maintained library is still a third-party native dependency and Room's
@@ -152,6 +163,7 @@ controls:
 - retain the build-time ban on `android-database-sqlcipher`;
 - review SQLCipher, SQLite and Room release/security notes at each dependency
   update and before a pilot release;
+- review Java-client and native/core logging controls before product adoption;
 - run migration, restart and key-loss instrumentation tests on the minimum API,
   a current API, and supported production ABIs when the product app is
   scaffolded;

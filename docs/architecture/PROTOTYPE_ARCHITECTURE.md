@@ -1,13 +1,14 @@
 # Prototype Architecture
 
-No product application exists yet; only the bounded OpenAPI contract proof is
-scaffolded. Approved lowest-complexity shape: modular monolith,
+No product application exists yet; only bounded Stage 2D proofs are scaffolded.
+Approved lowest-complexity shape: modular monolith,
 PostgreSQL-compatible relational database, authenticated web API, Android
 client with an encrypted Room-based local database, private object storage for
 media/reports, deterministic server-side PDF generation and append-only audit
 events. Authentication uses a managed provider with invitation-only access;
-cloud provider, authentication provider and exact Android encryption library
-remain open.
+cloud provider and authentication provider remain open. D-023 selects and
+proves maintained SQLCipher Android as the bounded Room candidate; production
+adoption remains conditional on its documented exit triggers.
 
 Approved application stack: Kotlin with Jetpack Compose, Room and WorkManager
 for Android; TypeScript with NestJS for the backend; TypeScript with Next.js for
