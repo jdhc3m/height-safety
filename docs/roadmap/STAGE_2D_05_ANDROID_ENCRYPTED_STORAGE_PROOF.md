@@ -52,14 +52,20 @@ application's security or compliance.
   becomes a Room entity.
 - A random 256-bit database passphrase is wrapped with an Android Keystore AES
   key using AES-GCM, versioned associated data and a bounded envelope format.
+  The authenticated envelope records `PENDING` until the first eager database
+  open succeeds, then transitions atomically to `INITIALIZED`.
 - The key envelope and encrypted database live together below
   `noBackupFilesDir`, preventing an automatic restore of ciphertext without its
   device-bound Keystore key.
-- Envelope installation uses a same-directory temporary file, file-descriptor
-  synchronisation and rename before database creation.
+- Envelope installation and state transition use collision-safe same-directory
+  temporary files, file and directory synchronisation, and atomic rename.
 - Opening is eager. The caller receives either a working encrypted Room handle
   or a typed unavailable reason; a failed open is never treated as a fresh
   database.
+- The full key/envelope/first-database-open transition is serialised per local
+  database path. After authenticating the envelope, an initialized store must
+  have a non-empty regular primary database; a missing or zero-length primary
+  fails closed even if a sidecar remains.
 - Database and outbox writes share one Room transaction. The schema 1 to 2
   migration adds a nullable recorded-outcome field while preserving the
   fictional job pack and pending mutation.
@@ -87,6 +93,7 @@ policy and user flow belong with 2D-06 rather than this storage mechanism.
 | Envelope exists, alias missing | `KEYSTORE_KEY_MISSING` | None |
 | Envelope malformed or replacement key cannot authenticate it | `KEY_MATERIAL_INVALID` | None |
 | Keystore operation fails | `KEY_ACCESS_FAILED` | None |
+| Authenticated initialized envelope exists, primary database missing or empty | `DATABASE_MISSING` | None |
 | Cipher/Room open or migration fails | `DATABASE_OPEN_FAILED` | No delete or destructive migration |
 
 A permanently lost Keystore key cannot decrypt the local SQLCipher passphrase.
@@ -115,7 +122,7 @@ The Android runtime gate also passed again on a Pixel 5 API 31 x86_64 emulator:
 tools/android-storage-spike.sh --instrumented
 ```
 
-All eight instrumentation tests passed:
+All twelve instrumentation tests passed:
 
 1. encrypted job-pack/outbox restart;
 2. encrypted Room schema 1 to 2 migration;
@@ -123,9 +130,16 @@ All eight instrumentation tests passed:
 4. missing Keystore alias with unchanged database hashes;
 5. missing envelope with unchanged database hashes;
 6. corrupt envelope with unchanged database hashes;
-7. replacement key rejected with unchanged database hashes; and
+7. replacement key rejected with unchanged database hashes;
 8. injected Keystore provider failure returned `KEY_ACCESS_FAILED` without a
-   database or envelope.
+   database or envelope;
+9. missing initialized primary with a remaining sidecar returned
+   `DATABASE_MISSING` without creating a replacement or changing either file;
+10. zero-length initialized primary returned `DATABASE_MISSING` without
+    modification;
+11. tampered authenticated initialization state returned
+    `KEY_MATERIAL_INVALID` before database-state evaluation; and
+12. concurrent first opens produced one restartable encrypted store.
 
 The root gate is:
 
@@ -151,6 +165,17 @@ eighth provider-failure test and guarded fictional-data cleanup, aligned the
 authoritative summaries with D-023 and narrowed the logging claim. The scoped
 checks, eight API 31 tests and root gate passed; a fresh independent reviewer
 then reported no actionable findings.
+
+A further independent audit on 2026-08-16 found that partial database-file loss
+could be masked by empty database recreation and that concurrent first opens
+could race key/envelope initialization. The bounded correction authenticated
+the database-initialization state inside the envelope, failed closed on a
+missing initialized database, serialized initialization per database path and
+added runtime regressions. A fresh re-review identified sidecar-only,
+zero-length-primary and pre-authentication typing gaps; the second correction
+requires an authenticated initialized envelope plus a non-empty regular primary
+database. The twelve-test suite and both local gates passed again; a final fresh
+review reported no actionable findings.
 
 ## Abandoned-library risk and exit triggers
 

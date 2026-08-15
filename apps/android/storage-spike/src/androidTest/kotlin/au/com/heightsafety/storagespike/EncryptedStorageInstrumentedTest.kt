@@ -8,6 +8,9 @@ import java.security.KeyStore
 import java.security.MessageDigest
 import java.security.ProviderException
 import java.util.UUID
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -176,6 +179,100 @@ class EncryptedStorageInstrumentedTest {
         assertFalse(fixture.files.keyEnvelope.exists())
     }
 
+    @Test
+    fun missingInitializedDatabaseWithRemainingSidecarFailsClosed() {
+        fixture.createEvidence()
+        val envelopeHash = fixture.sha256(fixture.files.keyEnvelope)
+        fixture.files.databaseFootprint().forEach { file ->
+            assertTrue("Could not remove fictional database file ${file.name}", file.delete())
+        }
+        val remainingSidecar = File(fixture.files.database.path + "-wal")
+        remainingSidecar.writeBytes(byteArrayOf(1, 2, 3, 4))
+        val sidecarHash = fixture.sha256(remainingSidecar)
+
+        val exception =
+            assertThrows(StorageUnavailableException::class.java) {
+                fixture.opener().openLatest()
+            }
+
+        assertEquals(StorageUnavailableReason.DATABASE_MISSING, exception.reason)
+        assertFalse(fixture.files.database.exists())
+        assertArrayEquals(envelopeHash, fixture.sha256(fixture.files.keyEnvelope))
+        assertArrayEquals(sidecarHash, fixture.sha256(remainingSidecar))
+    }
+
+    @Test
+    fun zeroLengthInitializedDatabaseFailsClosedWithoutModification() {
+        fixture.createEvidence()
+        val envelopeHash = fixture.sha256(fixture.files.keyEnvelope)
+        fixture.files.databaseFootprint().forEach { file ->
+            assertTrue("Could not remove fictional database file ${file.name}", file.delete())
+        }
+        assertTrue(fixture.files.database.createNewFile())
+
+        val exception =
+            assertThrows(StorageUnavailableException::class.java) {
+                fixture.opener().openLatest()
+            }
+
+        assertEquals(StorageUnavailableReason.DATABASE_MISSING, exception.reason)
+        assertTrue(fixture.files.database.isFile)
+        assertEquals(0L, fixture.files.database.length())
+        assertArrayEquals(envelopeHash, fixture.sha256(fixture.files.keyEnvelope))
+    }
+
+    @Test
+    fun tamperedInitializationStateIsRejectedBeforeDatabaseStateCheck() {
+        KeystorePassphraseStore(fixture.files, fixture.alias).loadOrCreate().fill(0)
+        val bytes = fixture.files.keyEnvelope.readBytes()
+        bytes[ENVELOPE_STATE_LAST_BYTE_OFFSET] = 1
+        fixture.files.keyEnvelope.writeBytes(bytes)
+        val tamperedEnvelopeHash = fixture.sha256(fixture.files.keyEnvelope)
+
+        val exception =
+            assertThrows(StorageUnavailableException::class.java) {
+                fixture.opener().openLatest()
+            }
+
+        assertEquals(StorageUnavailableReason.KEY_MATERIAL_INVALID, exception.reason)
+        assertFalse(fixture.files.hasDatabaseFootprint())
+        assertArrayEquals(tamperedEnvelopeHash, fixture.sha256(fixture.files.keyEnvelope))
+    }
+
+    @Test
+    fun concurrentFirstOpenProducesOneRestartableEncryptedStore() {
+        val ready = CountDownLatch(2)
+        val start = CountDownLatch(1)
+        val executor = Executors.newFixedThreadPool(2)
+        try {
+            val opens =
+                List(2) {
+                    executor.submit {
+                        ready.countDown()
+                        assertTrue(start.await(10, TimeUnit.SECONDS))
+                        fixture.opener().openLatest().use { }
+                    }
+                }
+            assertTrue(ready.await(10, TimeUnit.SECONDS))
+            start.countDown()
+            opens.forEach { it.get(30, TimeUnit.SECONDS) }
+        } finally {
+            executor.shutdownNow()
+            assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS))
+        }
+
+        fixture.opener().openLatest().use { handle ->
+            handle.database.runInTransaction {
+                handle.database.storageDao().insertJobPack(fixture.jobPack())
+                handle.database.storageDao().insertOutbox(fixture.outbox())
+            }
+        }
+        fixture.opener().openLatest().use { restarted ->
+            assertEquals(fixture.jobPack(), restarted.database.storageDao().jobPack(JOB_ID))
+            assertEquals(fixture.outbox(), restarted.database.storageDao().outbox(MUTATION_ID))
+        }
+    }
+
     private class Fixture : AutoCloseable {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val alias = "height-safety-storage-spike-test-${UUID.randomUUID()}"
@@ -222,7 +319,7 @@ class EncryptedStorageInstrumentedTest {
             }
         }
 
-        private fun sha256(file: File): ByteArray =
+        fun sha256(file: File): ByteArray =
             MessageDigest.getInstance("SHA-256").digest(file.readBytes())
     }
 
@@ -230,6 +327,7 @@ class EncryptedStorageInstrumentedTest {
         const val JOB_ID = "job-pack-01"
         const val MUTATION_ID = "mutation-01"
         const val SENSITIVE_NOTE = "fictional anchor note that must not appear in plaintext"
+        const val ENVELOPE_STATE_LAST_BYTE_OFFSET = 11
     }
 }
 

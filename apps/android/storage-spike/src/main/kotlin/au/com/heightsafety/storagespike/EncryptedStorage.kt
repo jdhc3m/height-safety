@@ -3,6 +3,8 @@ package au.com.heightsafety.storagespike
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.system.Os
+import android.system.OsConstants
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import java.io.ByteArrayInputStream
@@ -14,6 +16,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.security.GeneralSecurityException
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.ProviderException
 import java.security.SecureRandom
 import javax.crypto.AEADBadTagException
@@ -30,6 +33,7 @@ enum class StorageUnavailableReason {
     KEYSTORE_KEY_MISSING,
     KEY_MATERIAL_INVALID,
     KEY_ACCESS_FAILED,
+    DATABASE_MISSING,
     DATABASE_OPEN_FAILED,
 }
 
@@ -71,7 +75,9 @@ class KeystorePassphraseStore(
         }
 
     private fun loadOrCreateInternal(): ByteArray {
-        files.directory.mkdirs()
+        if (!files.directory.isDirectory && !files.directory.mkdirs()) {
+            throw StorageUnavailableException(StorageUnavailableReason.KEY_ACCESS_FAILED)
+        }
         val envelopeExists = files.keyEnvelope.isFile
         val databaseExists = files.hasDatabaseFootprint()
         val keyStore = loadKeyStore()
@@ -88,18 +94,53 @@ class KeystorePassphraseStore(
         }
 
         if (envelopeExists) {
-            return decryptEnvelope(keyStore)
+            val envelope = readEnvelope()
+            val passphrase = decryptEnvelope(keyStore, envelope)
+            if (
+                envelope.state == EnvelopeState.INITIALIZED &&
+                    (!files.database.isFile || files.database.length() == 0L)
+            ) {
+                passphrase.fill(0)
+                throw StorageUnavailableException(StorageUnavailableReason.DATABASE_MISSING)
+            }
+            return passphrase
         }
 
         val wrappingKey = generateWrappingKey()
         val passphrase = ByteArray(PASSPHRASE_BYTES).also(secureRandom::nextBytes)
         try {
-            writeEnvelope(encrypt(passphrase, wrappingKey))
+            writeEnvelope(encrypt(passphrase, wrappingKey, EnvelopeState.PENDING))
         } catch (exception: Exception) {
             passphrase.fill(0)
             throw StorageUnavailableException(StorageUnavailableReason.KEY_ACCESS_FAILED, exception)
         }
         return passphrase
+    }
+
+    fun markDatabaseInitialized(passphrase: ByteArray) {
+        try {
+            val keyStore = loadKeyStore()
+            val envelope = readEnvelope()
+            val storedPassphrase = decryptEnvelope(keyStore, envelope)
+            try {
+                if (!MessageDigest.isEqual(storedPassphrase, passphrase)) {
+                    throw StorageUnavailableException(StorageUnavailableReason.KEY_MATERIAL_INVALID)
+                }
+                if (envelope.state == EnvelopeState.PENDING) {
+                    writeEnvelope(
+                        encrypt(passphrase, wrappingKey(keyStore), EnvelopeState.INITIALIZED),
+                    )
+                }
+            } finally {
+                storedPassphrase.fill(0)
+            }
+        } catch (exception: StorageUnavailableException) {
+            throw exception
+        } catch (exception: ProviderException) {
+            throw StorageUnavailableException(StorageUnavailableReason.KEY_ACCESS_FAILED, exception)
+        } catch (exception: Exception) {
+            throw StorageUnavailableException(StorageUnavailableReason.KEY_ACCESS_FAILED, exception)
+        }
     }
 
     private fun loadKeyStore(): KeyStore =
@@ -148,19 +189,22 @@ class KeystorePassphraseStore(
             throw StorageUnavailableException(StorageUnavailableReason.KEY_ACCESS_FAILED, exception)
         }
 
-    private fun encrypt(passphrase: ByteArray, key: SecretKey): Envelope {
+    private fun encrypt(
+        passphrase: ByteArray,
+        key: SecretKey,
+        state: EnvelopeState,
+    ): Envelope {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, key)
-        cipher.updateAAD(ENVELOPE_AAD)
-        return Envelope(cipher.iv, cipher.doFinal(passphrase))
+        cipher.updateAAD(envelopeAad(state))
+        return Envelope(state, cipher.iv, cipher.doFinal(passphrase))
     }
 
-    private fun decryptEnvelope(keyStore: KeyStore): ByteArray {
-        val envelope = readEnvelope()
+    private fun decryptEnvelope(keyStore: KeyStore, envelope: Envelope): ByteArray {
         return try {
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.DECRYPT_MODE, wrappingKey(keyStore), GCMParameterSpec(GCM_TAG_BITS, envelope.iv))
-            cipher.updateAAD(ENVELOPE_AAD)
+            cipher.updateAAD(envelopeAad(envelope.state))
             cipher.doFinal(envelope.ciphertext).also { passphrase ->
                 if (passphrase.size != PASSPHRASE_BYTES) {
                     passphrase.fill(0)
@@ -182,6 +226,7 @@ class KeystorePassphraseStore(
                 DataOutputStream(buffer).use { output ->
                     output.write(ENVELOPE_MAGIC)
                     output.writeInt(ENVELOPE_VERSION)
+                    output.writeInt(envelope.state.value)
                     output.writeInt(envelope.iv.size)
                     output.writeInt(envelope.ciphertext.size)
                     output.write(envelope.iv)
@@ -189,12 +234,22 @@ class KeystorePassphraseStore(
                 }
                 buffer.toByteArray()
             }
-        val temporary = File(files.directory, files.keyEnvelope.name + ".new")
-        FileOutputStream(temporary).use { output ->
-            output.write(bytes)
-            output.fd.sync()
+        val temporary = File.createTempFile(files.keyEnvelope.name + ".", ".new", files.directory)
+        try {
+            FileOutputStream(temporary).use { output ->
+                output.write(bytes)
+                output.fd.sync()
+            }
+            Os.rename(temporary.absolutePath, files.keyEnvelope.absolutePath)
+            val directoryDescriptor = Os.open(files.directory.absolutePath, OsConstants.O_RDONLY, 0)
+            try {
+                Os.fsync(directoryDescriptor)
+            } finally {
+                Os.close(directoryDescriptor)
+            }
+        } finally {
+            temporary.delete()
         }
-        check(temporary.renameTo(files.keyEnvelope)) { "Could not atomically install key envelope" }
     }
 
     private fun readEnvelope(): Envelope =
@@ -205,6 +260,7 @@ class KeystorePassphraseStore(
             DataInputStream(ByteArrayInputStream(files.keyEnvelope.readBytes())).use { input ->
                 val magic = ByteArray(ENVELOPE_MAGIC.size).also(input::readFully)
                 val version = input.readInt()
+                val state = EnvelopeState.fromValue(input.readInt())
                 val ivSize = input.readInt()
                 val ciphertextSize = input.readInt()
                 if (
@@ -218,7 +274,7 @@ class KeystorePassphraseStore(
                 }
                 val iv = ByteArray(ivSize).also(input::readFully)
                 val ciphertext = ByteArray(ciphertextSize).also(input::readFully)
-                Envelope(iv, ciphertext)
+                Envelope(state, iv, ciphertext)
             }
         } catch (exception: StorageUnavailableException) {
             throw exception
@@ -226,19 +282,38 @@ class KeystorePassphraseStore(
             throw StorageUnavailableException(StorageUnavailableReason.KEY_MATERIAL_INVALID, exception)
         }
 
-    private data class Envelope(val iv: ByteArray, val ciphertext: ByteArray)
+    private data class Envelope(
+        val state: EnvelopeState,
+        val iv: ByteArray,
+        val ciphertext: ByteArray,
+    )
+
+    private enum class EnvelopeState(val value: Int) {
+        PENDING(0),
+        INITIALIZED(1),
+        ;
+
+        companion object {
+            fun fromValue(value: Int): EnvelopeState =
+                entries.singleOrNull { it.value == value }
+                    ?: throw StorageUnavailableException(StorageUnavailableReason.KEY_MATERIAL_INVALID)
+        }
+    }
+
+    private fun envelopeAad(state: EnvelopeState): ByteArray =
+        ENVELOPE_AAD + byteArrayOf(state.value.toByte())
 
     private companion object {
         const val ANDROID_KEYSTORE = "AndroidKeyStore"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val PASSPHRASE_BYTES = 32
         const val GCM_TAG_BITS = 128
-        const val ENVELOPE_VERSION = 1
+        const val ENVELOPE_VERSION = 2
         const val MAX_CIPHERTEXT_BYTES = 128
-        const val MIN_ENVELOPE_BYTES = 4L + 4 + 4 + 4 + 12 + 1
-        const val MAX_ENVELOPE_BYTES = 4L + 4 + 4 + 4 + 32 + MAX_CIPHERTEXT_BYTES
+        const val MIN_ENVELOPE_BYTES = 4L + 4 + 4 + 4 + 4 + 12 + 1
+        const val MAX_ENVELOPE_BYTES = 4L + 4 + 4 + 4 + 4 + 32 + MAX_CIPHERTEXT_BYTES
         val ENVELOPE_MAGIC = byteArrayOf(0x48, 0x53, 0x4b, 0x45)
-        val ENVELOPE_AAD = "height-safety:android-room-key:v1".toByteArray(Charsets.UTF_8)
+        val ENVELOPE_AAD = "height-safety:android-room-key:v2".toByteArray(Charsets.UTF_8)
     }
 }
 
@@ -271,29 +346,31 @@ class EncryptedStorageOpener(
     private fun <T : RoomDatabase> open(
         databaseClass: Class<T>,
         configure: (RoomDatabase.Builder<T>) -> Unit,
-    ): EncryptedRoomHandle<T> {
-        val passphrase = passphraseStore.loadOrCreate()
-        var database: T? = null
-        try {
-            loadSqlCipher()
-            val builder =
-                Room.databaseBuilder(context.applicationContext, databaseClass, files.database.absolutePath)
-                    .openHelperFactory(SupportOpenHelperFactory(passphrase, null, true))
-                    .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-            configure(builder)
-            database = builder.build()
-            database.openHelper.writableDatabase
-            return EncryptedRoomHandle(database, passphrase)
-        } catch (exception: StorageUnavailableException) {
-            runCatching { database?.close() }
-            passphrase.fill(0)
-            throw exception
-        } catch (exception: Exception) {
-            runCatching { database?.close() }
-            passphrase.fill(0)
-            throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED, exception)
+    ): EncryptedRoomHandle<T> =
+        synchronized(initializationLock(files.database.absolutePath)) {
+            val passphrase = passphraseStore.loadOrCreate()
+            var database: T? = null
+            try {
+                loadSqlCipher()
+                val builder =
+                    Room.databaseBuilder(context.applicationContext, databaseClass, files.database.absolutePath)
+                        .openHelperFactory(SupportOpenHelperFactory(passphrase, null, true))
+                        .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+                configure(builder)
+                database = builder.build()
+                database.openHelper.writableDatabase
+                passphraseStore.markDatabaseInitialized(passphrase)
+                EncryptedRoomHandle(database, passphrase)
+            } catch (exception: StorageUnavailableException) {
+                runCatching { database?.close() }
+                passphrase.fill(0)
+                throw exception
+            } catch (exception: Exception) {
+                runCatching { database?.close() }
+                passphrase.fill(0)
+                throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED, exception)
+            }
         }
-    }
 
     private fun loadSqlCipher() {
         synchronized(SQLCIPHER_LOAD_LOCK) {
@@ -311,7 +388,14 @@ class EncryptedStorageOpener(
 
     private companion object {
         val SQLCIPHER_LOAD_LOCK = Any()
+        val INITIALIZATION_LOCKS = mutableMapOf<String, Any>()
 
         @Volatile var sqlCipherLoaded = false
+
+        fun initializationLock(databasePath: String): Any =
+            synchronized(INITIALIZATION_LOCKS) {
+                INITIALIZATION_LOCKS[databasePath]
+                    ?: Any().also { lock -> INITIALIZATION_LOCKS[databasePath] = lock }
+            }
     }
 }

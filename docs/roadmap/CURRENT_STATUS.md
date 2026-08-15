@@ -85,12 +85,17 @@ Stage 2D — implementation planning.
   deadline. Three focused PDF checks and the complete root gate then passed;
   independent correction review confirmed the bounded repair.
 - The bounded `2D-05` SQLCipher/Room and Android Keystore proof passes
-  compile/lint/dependency checks and eight API 31 device tests covering
+  compile/lint/dependency checks and twelve API 31 device tests covering
   ciphertext, restart, schema migration, missing/corrupt key material, typed
-  provider failure and fail-closed preservation.
+  provider failure, missing initialized database state, concurrent first open
+  and fail-closed preservation.
 - `2D-05` passed its earlier independent correction cycle and a fresh 2026-08-16
   closure correction/re-review after provider-failure typing, fictional test
   cleanup, architecture consistency and logging-claim findings were fixed.
+  A later independent audit also corrected missing-database recreation and a
+  concurrent first-open race, authenticated state evaluation and missing or
+  empty primary-database handling; twelve device tests, both local gates and a
+  final fresh re-review passed.
   G-04 is closed; authorised evidence recovery remains 2D-06 work.
 
 ## In progress
@@ -152,8 +157,10 @@ corrected benchmark repetitions passed; one prior transient timeout remains a
 sizing warning. The constrained Linux candidate then passed seven corrected
 profile runs and a whole-container stop/recovery test. The `2D-04` local
 guarded candidate check and non-mutating Cloud Run plan also pass. The `2D-05`
-compile/lint/dependency gate and eight API 31 Android instrumentation tests pass;
-permanent Keystore-key loss deliberately locks and preserves ciphertext rather
+compile/lint/dependency gate and twelve API 31 Android instrumentation tests pass;
+the corrected suite also rejects a missing initialized database and
+proves authenticated state handling and serialized concurrent first open.
+Permanent Keystore-key loss deliberately locks and preserves ciphertext rather
 than claiming recovery or resetting evidence. A fresh independent correction
 review reported no actionable findings. Managed
 evidence verification is expected to remain incomplete until an authorised
