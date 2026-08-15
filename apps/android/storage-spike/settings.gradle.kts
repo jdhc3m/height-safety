@@ -15,4 +15,3 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "height-safety-android-storage-spike"
-

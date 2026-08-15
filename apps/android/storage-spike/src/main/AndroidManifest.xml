@@ -4,4 +4,3 @@
         android:allowBackup="false"
         android:fullBackupContent="false" />
 </manifest>
-
