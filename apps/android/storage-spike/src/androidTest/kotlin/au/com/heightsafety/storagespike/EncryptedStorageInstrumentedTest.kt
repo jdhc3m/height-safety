@@ -97,6 +97,18 @@ class EncryptedStorageInstrumentedTest {
     }
 
     @Test
+    fun roomReadTransactionWorksThroughPinnedCipherAdapter() {
+        fixture.opener().openLatest().use { handle ->
+            handle.database.storageDao().insertJobPack(fixture.jobPack())
+
+            assertEquals(
+                fixture.jobPack(),
+                handle.database.storageDao().jobPackInReadTransaction(JOB_ID),
+            )
+        }
+    }
+
+    @Test
     fun missingKeystoreKeyFailsClosedWithoutChangingEncryptedEvidence() {
         fixture.createEvidence()
         val before = fixture.databaseHashes()

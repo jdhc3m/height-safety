@@ -8,6 +8,7 @@ import androidx.room.Insert
 import androidx.room.Index
 import androidx.room.Query
 import androidx.room.RoomDatabase
+import androidx.room.Transaction
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
@@ -90,6 +91,10 @@ interface StorageDao {
 
     @Query("SELECT * FROM job_pack WHERE id = :id")
     fun jobPack(id: String): JobPack?
+
+    @Transaction
+    @Query("SELECT * FROM job_pack WHERE id = :id")
+    fun jobPackInReadTransaction(id: String): JobPack?
 
     @Query("SELECT * FROM outbox WHERE mutationId = :mutationId")
     fun outbox(mutationId: String): OutboxMutation?

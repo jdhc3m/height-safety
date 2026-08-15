@@ -85,10 +85,11 @@ Stage 2D — implementation planning.
   deadline. Three focused PDF checks and the complete root gate then passed;
   independent correction review confirmed the bounded repair.
 - The bounded `2D-05` SQLCipher/Room and Android Keystore proof passes
-  compile/lint/dependency checks and thirteen API 31 device tests covering
+  compile/lint/dependency checks and fourteen API 31 device tests covering
   ciphertext, restart, schema migration, missing/corrupt key material, typed
-  provider failure, missing initialized database state, concurrent first open,
-  interrupted empty-store initialization and fail-closed preservation.
+  provider failure, the Room 2.x read-transaction seam, missing initialized
+  database state, concurrent first open, interrupted empty-store initialization
+  and fail-closed preservation.
 - `2D-05` passed its earlier independent correction cycle and a fresh 2026-08-16
   closure correction/re-review after provider-failure typing, fictional test
   cleanup, architecture consistency and logging-claim findings were fixed.
@@ -162,10 +163,10 @@ corrected benchmark repetitions passed; one prior transient timeout remains a
 sizing warning. The constrained Linux candidate then passed seven corrected
 profile runs and a whole-container stop/recovery test. The `2D-04` local
 guarded candidate check and non-mutating Cloud Run plan also pass. The `2D-05`
-compile/lint/dependency gate and thirteen API 31 Android instrumentation tests pass;
+compile/lint/dependency gate and fourteen API 31 Android instrumentation tests pass;
 the corrected suite also rejects a missing initialized database and
-proves authenticated state handling, interrupted empty-store recovery and
-serialized concurrent first open.
+proves authenticated state handling, interrupted empty-store recovery,
+serialized concurrent first open and the pinned Room 2.x read-transaction seam.
 Permanent Keystore-key loss deliberately locks and preserves ciphertext rather
 than claiming recovery or resetting evidence. A fresh independent correction
 review reported no actionable findings. Managed

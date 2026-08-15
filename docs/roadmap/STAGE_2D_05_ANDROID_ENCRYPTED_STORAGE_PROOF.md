@@ -17,25 +17,31 @@ models remain outside this ticket.
 ## Evidence-based candidate
 
 The spike pins Room 2.8.4 and `net.zetetic:sqlcipher-android` 4.17.0. Zetetic's
-current library describes `SupportOpenHelperFactory` integration with Room,
+current library describes `SupportOpenHelperFactory` integration with Room 2.x,
 supports API 23 and the four common Android ABIs, and identifies itself as the
 long-term replacement for the original library. The dependency gate rejects
 `net.zetetic:android-database-sqlcipher`, whose own repository marks it
 deprecated and no longer updated.
 
-Primary sources reviewed on 2026-08-15:
+Primary sources reviewed through 2026-08-16:
 
 - [Android Keystore](https://developer.android.com/privacy-and-security/keystore)
   documents non-exportable key material and key-use restrictions.
 - [Room migration guidance](https://developer.android.com/training/data-storage/room/migrating-db-versions)
   requires preserving and testing schema history and warns that destructive
   migration deletes user data.
+- [Room 3 migration guidance](https://developer.android.com/training/data-storage/room/migration-2-to-3)
+  confirms that Room 3 requires a `SQLiteDriver` and removes the
+  `SupportSQLiteOpenHelper` configuration seam used by this proof.
 - [Android Auto Backup](https://developer.android.com/identity/data/autobackup)
   confirms that normal database paths are backed up while `noBackupFilesDir`
   is excluded.
 - [SQLCipher for Android 4.17.0](https://github.com/sqlcipher/sqlcipher-android/tree/v4.17.0)
   documents its Room open-helper integration, API/ABI support, explicit native
   loading and log controls.
+- [SQLCipher's Room 2.8.4 compatibility report](https://github.com/sqlcipher/sqlcipher-android/issues/81)
+  records the read-transaction compatibility failure fixed by the explicit
+  `beginTransactionReadOnly` implementation present in 4.17.0.
 - [Zetetic's legacy migration guide](https://www.zetetic.net/sqlcipher/sqlcipher-for-android-migration/)
   identifies `sqlcipher-android` as the replacement artifact.
 - [The legacy repository](https://github.com/sqlcipher/android-database-sqlcipher)
@@ -48,8 +54,10 @@ application's security or compliance.
 
 ## Implemented proof
 
-- Room uses SQLCipher through `SupportOpenHelperFactory`; no generated API model
-  becomes a Room entity.
+- Room 2.x uses SQLCipher through `SupportOpenHelperFactory`; no generated API
+  model becomes a Room entity. A read-transaction regression, built with the
+  module's minimum SDK set to 23 and executed on API 31, exercises the
+  compatibility path that failed in earlier SQLCipher releases.
 - A random 256-bit database passphrase is wrapped with an Android Keystore AES
   key using AES-GCM, versioned associated data and a bounded envelope format.
   The authenticated envelope records `PENDING` until the first eager database
@@ -127,26 +135,28 @@ The Android runtime gate also passed again on a Pixel 5 API 31 x86_64 emulator:
 tools/android-storage-spike.sh --instrumented
 ```
 
-All thirteen instrumentation tests passed:
+All fourteen instrumentation tests passed:
 
 1. encrypted job-pack/outbox restart;
 2. encrypted Room schema 1 to 2 migration;
 3. ciphertext header/content and framework-SQLite rejection;
-4. missing Keystore alias with unchanged database hashes;
-5. missing envelope with unchanged database hashes;
-6. corrupt envelope with unchanged database hashes;
-7. replacement key rejected with unchanged database hashes;
-8. injected Keystore provider failure returned `KEY_ACCESS_FAILED` without a
+4. Room read transactions through the SQLCipher adapter on API 31, with the
+   module's minimum SDK set to 23;
+5. missing Keystore alias with unchanged database hashes;
+6. missing envelope with unchanged database hashes;
+7. corrupt envelope with unchanged database hashes;
+8. replacement key rejected with unchanged database hashes;
+9. injected Keystore provider failure returned `KEY_ACCESS_FAILED` without a
    database or envelope;
-9. interrupted envelope installation left an alias without evidence, then a
+10. interrupted envelope installation left an alias without evidence, then a
    restart reused the alias to create a restartable encrypted empty store;
-10. missing initialized primary with a remaining sidecar returned
+11. missing initialized primary with a remaining sidecar returned
    `DATABASE_MISSING` without creating a replacement or changing either file;
-11. zero-length initialized primary returned `DATABASE_MISSING` without
+12. zero-length initialized primary returned `DATABASE_MISSING` without
     modification;
-12. tampered authenticated initialization state returned
+13. tampered authenticated initialization state returned
     `KEY_MATERIAL_INVALID` before database-state evaluation; and
-13. concurrent first opens produced one restartable encrypted store.
+14. concurrent first opens produced one restartable encrypted store.
 
 The root gate is:
 
@@ -195,9 +205,10 @@ chronology clarification.
 
 ## Abandoned-library risk and exit triggers
 
-The maintained library is still a third-party native dependency and Room's
-support-open-helper seam may evolve. Adoption therefore requires all of these
-controls:
+The maintained library is still a third-party native dependency. Room 3.0 has
+already replaced the support-open-helper configuration seam with a
+`SQLiteDriver`, and no SQLCipher Room 3 driver has been proved here. Adoption
+therefore requires all of these controls:
 
 - keep the cipher behind the app-owned opener rather than importing it into
   entities or DAOs;
@@ -212,6 +223,10 @@ controls:
 - pause adoption if maintained Community releases, Room integration, required
   ABI/page-size support or acceptable licensing cease. A replacement must pass
   the same opener and evidence-preservation contract.
+- remain on the proved Room 2.x boundary until a maintained Room 3-compatible
+  cipher driver passes the same migration, restart, read-transaction and
+  key-loss suite; do not treat the Room 3 support wrapper as an encryption
+  driver.
 
 The proof does not make a support SLA, FIPS, hardware-backed-on-every-device,
 backup recovery or professional security-certification claim.
