@@ -89,10 +89,6 @@ class KeystorePassphraseStore(
         if (envelopeExists && !aliasExists) {
             throw StorageUnavailableException(StorageUnavailableReason.KEYSTORE_KEY_MISSING)
         }
-        if (!envelopeExists && aliasExists) {
-            throw StorageUnavailableException(StorageUnavailableReason.KEY_MATERIAL_MISSING)
-        }
-
         if (envelopeExists) {
             val envelope = readEnvelope()
             val passphrase = decryptEnvelope(keyStore, envelope)
@@ -106,7 +102,11 @@ class KeystorePassphraseStore(
             return passphrase
         }
 
-        val wrappingKey = generateWrappingKey()
+        val wrappingKey = if (aliasExists) wrappingKey(keyStore) else generateWrappingKey()
+        return createAndStorePassphrase(wrappingKey)
+    }
+
+    private fun createAndStorePassphrase(wrappingKey: SecretKey): ByteArray {
         val passphrase = ByteArray(PASSPHRASE_BYTES).also(secureRandom::nextBytes)
         try {
             writeEnvelope(encrypt(passphrase, wrappingKey, EnvelopeState.PENDING))

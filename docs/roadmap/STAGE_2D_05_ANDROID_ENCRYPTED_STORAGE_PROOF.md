@@ -66,6 +66,10 @@ application's security or compliance.
   database path. After authenticating the envelope, an initialized store must
   have a non-empty regular primary database; a missing or zero-length primary
   fails closed even if a sidecar remains.
+- If a first-open interruption leaves only the app-owned wrapping-key alias,
+  with no envelope or database footprint, the next open reuses that key to
+  finish empty-store initialization. Any database footprint still fails closed
+  when its envelope is absent.
 - Database and outbox writes share one Room transaction. The schema 1 to 2
   migration adds a nullable recorded-outcome field while preserving the
   fictional job pack and pending mutation.
@@ -89,6 +93,7 @@ policy and user flow belong with 2D-06 rather than this storage mechanism.
 | Condition | Recorded local result | Automatic mutation |
 | --- | --- | --- |
 | No database, envelope or alias | Initialise one device-bound key and encrypted database | Creates only the new empty spike store |
+| Wrapping-key alias exists, but no database or envelope | Reuse the existing key and finish empty-store initialization | Creates only the new empty spike store |
 | Database exists, envelope missing | `KEY_MATERIAL_MISSING` | None |
 | Envelope exists, alias missing | `KEYSTORE_KEY_MISSING` | None |
 | Envelope malformed or replacement key cannot authenticate it | `KEY_MATERIAL_INVALID` | None |
@@ -122,7 +127,7 @@ The Android runtime gate also passed again on a Pixel 5 API 31 x86_64 emulator:
 tools/android-storage-spike.sh --instrumented
 ```
 
-All twelve instrumentation tests passed:
+All thirteen instrumentation tests passed:
 
 1. encrypted job-pack/outbox restart;
 2. encrypted Room schema 1 to 2 migration;
@@ -133,13 +138,15 @@ All twelve instrumentation tests passed:
 7. replacement key rejected with unchanged database hashes;
 8. injected Keystore provider failure returned `KEY_ACCESS_FAILED` without a
    database or envelope;
-9. missing initialized primary with a remaining sidecar returned
+9. interrupted envelope installation left an alias without evidence, then a
+   restart reused the alias to create a restartable encrypted empty store;
+10. missing initialized primary with a remaining sidecar returned
    `DATABASE_MISSING` without creating a replacement or changing either file;
-10. zero-length initialized primary returned `DATABASE_MISSING` without
+11. zero-length initialized primary returned `DATABASE_MISSING` without
     modification;
-11. tampered authenticated initialization state returned
+12. tampered authenticated initialization state returned
     `KEY_MATERIAL_INVALID` before database-state evaluation; and
-12. concurrent first opens produced one restartable encrypted store.
+13. concurrent first opens produced one restartable encrypted store.
 
 The root gate is:
 
@@ -176,6 +183,15 @@ zero-length-primary and pre-authentication typing gaps; the second correction
 requires an authenticated initialized envelope plus a non-empty regular primary
 database. The twelve-test suite and both local gates passed again; a final fresh
 review reported no actionable findings.
+
+A follow-up independent audit on 2026-08-16 found that an interruption between
+Keystore alias generation and envelope installation permanently stranded an
+otherwise empty store. The bounded correction reuses the existing wrapping key
+only when neither an envelope nor database footprint exists; evidence-bearing
+states retain their fail-closed behavior. The scoped gate, thirteen API 31
+tests and complete root gate passed. A fresh re-review found no implementation,
+security, concurrency, typing or regression-test issue and requested only this
+chronology clarification.
 
 ## Abandoned-library risk and exit triggers
 

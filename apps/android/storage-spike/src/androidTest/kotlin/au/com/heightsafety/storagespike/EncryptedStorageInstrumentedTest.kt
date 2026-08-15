@@ -180,6 +180,28 @@ class EncryptedStorageInstrumentedTest {
     }
 
     @Test
+    fun interruptedEnvelopeInstallReusesOrphanedKeyForEmptyStore() {
+        assertTrue(fixture.files.keyEnvelope.mkdirs())
+
+        val exception =
+            assertThrows(StorageUnavailableException::class.java) {
+                KeystorePassphraseStore(fixture.files, fixture.alias).loadOrCreate()
+            }
+
+        assertEquals(StorageUnavailableReason.KEY_ACCESS_FAILED, exception.reason)
+        assertFalse(fixture.files.hasDatabaseFootprint())
+        assertTrue(fixture.keystoreContainsAlias())
+        assertTrue(fixture.files.keyEnvelope.delete())
+
+        fixture.opener().openLatest().use { handle ->
+            handle.database.storageDao().insertJobPack(fixture.jobPack())
+        }
+        fixture.opener().openLatest().use { restarted ->
+            assertEquals(fixture.jobPack(), restarted.database.storageDao().jobPack(JOB_ID))
+        }
+    }
+
+    @Test
     fun missingInitializedDatabaseWithRemainingSidecarFailsClosed() {
         fixture.createEvidence()
         val envelopeHash = fixture.sha256(fixture.files.keyEnvelope)
@@ -311,6 +333,9 @@ class EncryptedStorageInstrumentedTest {
                 deleteEntry(alias)
             }
         }
+
+        fun keystoreContainsAlias(): Boolean =
+            KeyStore.getInstance("AndroidKeyStore").apply { load(null) }.containsAlias(alias)
 
         override fun close() {
             runCatching { deleteKeystoreKey() }
