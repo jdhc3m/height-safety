@@ -49,8 +49,8 @@ function summariseBenchmark(benchmark) {
       node: benchmark.node,
       availableCpuCount: benchmark.availableCpuCount,
       totalMemoryMiB: benchmark.totalMemoryMiB,
-      cgroupCpuLimit: benchmark.cgroupCpuLimit,
-      cgroupMemoryLimitMiB: benchmark.cgroupMemoryLimitMiB,
+      cgroupCpuLimit: benchmark.cgroupCpuLimit ?? null,
+      cgroupMemoryLimitMiB: benchmark.cgroupMemoryLimitMiB ?? null,
       candidateProfile: benchmark.candidateProfile,
       rendererConcurrency: benchmark.rendererConcurrency,
       playwright: benchmark.playwright,
@@ -246,7 +246,6 @@ export async function executeJob(job, { bucket = process.env.SPIKE_BUCKET, runId
   const reportSha256 = createHash('sha256').update(reportBytes).digest('hex');
   const reportUpload = await createObject(bucket, reportObject, 'application/pdf', reportBytes, { runId });
   const completedAt = Date.now();
-  const processStartedAfterEnqueue = PROCESS_STARTED_AT >= job.enqueuedAt && PROCESS_STARTED_AT <= startedAt;
   const sanitised = sanitizeEvidence({
     schemaVersion: '1.0.0',
     ticket: '2D-04',
@@ -266,7 +265,7 @@ export async function executeJob(job, { bucket = process.env.SPIKE_BUCKET, runId
       requestExecutionMs: completedAt - startedAt,
       endToEndMs: completedAt - job.enqueuedAt,
     },
-    platformColdProbe: process.env.SPIKE_PLATFORM_COLD_TOKEN === job.jobId && processStartedAfterEnqueue,
+    platformColdProbe: process.env.SPIKE_PLATFORM_COLD_TOKEN === job.jobId,
     cpuStartupBoost: false,
     report: {
       object: reportObject,

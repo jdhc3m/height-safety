@@ -8,6 +8,7 @@ CONTEXT="$STATE_DIR/context.json"
 RUNS_DIR="$STATE_DIR/runs"
 EVIDENCE="$ROOT/docs/roadmap/STAGE_2D_04_MANAGED_EVIDENCE.json"
 AUTHORIZATION_PHRASE="I_AUTHORIZE_2D04_SPIKE"
+NON_TTY_PHRASE="I_AUTHORIZE_2D04_NON_TTY"
 
 ACTION="${1:-}"
 if [[ -z "$ACTION" ]]; then
@@ -152,7 +153,12 @@ resolve_resources() {
   PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
   [[ "$PROJECT_NUMBER" =~ ^[0-9]{6,}$ ]] || die "could not resolve project number"
   SERVICE="$PREFIX-renderer"
-  QUEUE="$PREFIX-queue"
+  QUEUE="$(jq -r '.queue // empty' "$CONTEXT")"
+  if [[ -z "$QUEUE" || "$QUEUE" == "null" ]]; then
+    QUEUE="$PREFIX-q$(openssl rand -hex 4)"
+    jq --arg queue "$QUEUE" '.queue=$queue' "$CONTEXT" > "$CONTEXT.tmp"
+    mv "$CONTEXT.tmp" "$CONTEXT"
+  fi
   REPOSITORY="$PREFIX-repo"
   WORKER_ACCOUNT="$PREFIX-worker@$PROJECT.iam.gserviceaccount.com"
   TASK_ACCOUNT="$PREFIX-tasks@$PROJECT.iam.gserviceaccount.com"
@@ -176,7 +182,6 @@ require_cloud_authorization() {
   validate_candidate
   load_context
   [[ "${CI:-}" != "true" ]] || die "cloud commands are forbidden in CI"
-  [[ -t 0 && -t 1 ]] || die "cloud commands require an attended interactive terminal"
   [[ "${HEIGHT_SAFETY_ALLOW_CLOUD_MUTATION:-}" == "$AUTHORIZATION_PHRASE" ]] || \
     die "set HEIGHT_SAFETY_ALLOW_CLOUD_MUTATION=$AUTHORIZATION_PHRASE for this attended run"
   command -v gcloud >/dev/null || die "gcloud is required for cloud commands"
@@ -195,9 +200,27 @@ require_cloud_authorization() {
   [[ -n "$ACCOUNT" ]] || die "no active gcloud account"
   resolve_resources
   show_resolved_context
-  local confirmation
-  read -r -p "Type $PROJECT/$REGION/$PREFIX to authorize this command: " confirmation
-  [[ "$confirmation" == "$PROJECT/$REGION/$PREFIX" ]] || die "authorization text did not match"
+  local expected="$PROJECT/$REGION/$PREFIX"
+  if [[ "${HEIGHT_SAFETY_ALLOW_NON_TTY:-}" == "$NON_TTY_PHRASE" ]]; then
+    [[ "${HEIGHT_SAFETY_SPIKE_CONFIRM:-}" == "$expected" ]] || \
+      die "set HEIGHT_SAFETY_SPIKE_CONFIRM=$expected for owner-authorized non-TTY mutation"
+    echo "provider-spike: owner-authorized non-TTY mutation for $expected" >&2
+    return 0
+  fi
+  [[ -t 0 && -t 1 ]] || die "cloud commands require an attended interactive terminal"
+  local confirmation attempt
+  echo "Paste this exact line into Terminal, then press Return: $expected" >&2
+  for attempt in 1 2 3 4 5; do
+    read -r -p "Type $expected to authorize this command: " confirmation
+    confirmation="${confirmation//$'\r'/}"
+    confirmation="${confirmation#"${confirmation%%[![:space:]]*}"}"
+    confirmation="${confirmation%"${confirmation##*[![:space:]]}"}"
+    if [[ "$confirmation" == "$expected" ]]; then
+      return 0
+    fi
+    echo "provider-spike: authorization text did not match (attempt $attempt/5). Paste in this Terminal window, not Cursor chat." >&2
+  done
+  die "authorization text did not match"
 }
 
 resource_exists() {
@@ -207,10 +230,23 @@ resource_exists() {
   fi
   if [[ "$output" =~ (^|[[:space:][:punct:]])(NOT_FOUND|404)([[:space:][:punct:]]|$) ]] || \
      [[ "$output" =~ [Cc]ould[[:space:]]not[[:space:]]be[[:space:]]found ]] || \
+     [[ "$output" =~ [Cc]annot[[:space:]]find[[:space:]]service ]] || \
      [[ "$output" =~ [Dd]oes[[:space:]]not[[:space:]]exist ]]; then
     return 1
   fi
+  echo "provider-spike: lookup output: ${output%%$'\n'*}" >&2
   die "resource lookup failed without an authoritative not-found response"
+}
+
+service_account_exists() {
+  local email="$1"
+  local listed
+  listed="$(gcloud iam service-accounts list --project "$PROJECT" --format='value(email)')" || \
+    die "could not list service accounts"
+  if grep -Fxq "$email" <<<"$listed"; then
+    return 0
+  fi
+  return 1
 }
 
 service_account_matches() {
@@ -232,13 +268,35 @@ queue_matches() {
 
 wait_for_object() {
   local object_uri="$1"
-  for _ in $(seq 1 180); do
+  for _ in $(seq 1 300); do
     if gcloud storage ls "$object_uri" --project "$PROJECT" >/dev/null 2>&1; then
       return 0
     fi
     sleep 2
   done
   die "timed out waiting for sanitised evidence object"
+}
+
+revision_cold_token() {
+  local revision="$1"
+  gcloud run revisions describe "$revision" --project "$PROJECT" --region "$REGION" --format=json | \
+    jq -r '
+      (.spec.containers[0].env // .spec.template.spec.containers[0].env // [])[]
+      | select(.name == "SPIKE_PLATFORM_COLD_TOKEN")
+      | .value
+    '
+}
+
+update_cold_token_revision() {
+  local job_id="$1"
+  local revision token
+  gcloud run services update "$SERVICE" --project "$PROJECT" --region "$REGION" \
+    --update-env-vars "SPIKE_PLATFORM_COLD_TOKEN=$job_id" --quiet
+  revision="$(gcloud run services describe "$SERVICE" --project "$PROJECT" --region "$REGION" --format='value(status.latestReadyRevisionName)')"
+  [[ -n "$revision" && "$revision" != "null" ]] || die "could not resolve the cold-token revision"
+  token="$(revision_cold_token "$revision")"
+  [[ "$token" == "$job_id" ]] || die "cold-token revision env does not match the exercise job"
+  echo "provider-spike: cold-token revision $revision is ready before enqueue" >&2
 }
 
 enqueue_job() {
@@ -276,6 +334,37 @@ enqueue_job() {
   gcloud tasks queues resume "$QUEUE" --project "$PROJECT" --location "$REGION"
 }
 
+wait_for_queue_json() {
+  local output
+  local attempt
+  for attempt in $(seq 1 30); do
+    if output="$(gcloud tasks queues describe "$QUEUE" --project "$PROJECT" --location "$REGION" --format=json 2>&1)"; then
+      printf '%s' "$output"
+      return 0
+    fi
+    if [[ "$output" =~ NOT_FOUND ]] || [[ "$output" =~ [Dd]oes[[:space:]]not[[:space:]]exist ]]; then
+      sleep 2
+      continue
+    fi
+    echo "provider-spike: lookup output: ${output%%$'\n'*}" >&2
+    die "queue lookup failed without an authoritative not-found response"
+  done
+  die "Cloud Tasks queue did not become describable after create"
+}
+
+ensure_spike_queue() {
+  if resource_exists gcloud tasks queues describe "$QUEUE" --project "$PROJECT" --location "$REGION"; then
+    require_registry_ownership cloud-tasks-queue "$QUEUE"
+    queue_matches || die "refusing mismatched Cloud Tasks queue"
+    return 0
+  fi
+  register_intent cloud-tasks-queue "$QUEUE"
+  gcloud tasks queues create "$QUEUE" --project "$PROJECT" --location "$REGION" \
+    --max-concurrent-dispatches 1 --max-attempts 5 --max-retry-duration 1800s \
+    --min-backoff 5s --max-backoff 60s
+  register_resource cloud-tasks-queue "$QUEUE"
+}
+
 capture_deployment_state() {
   local run_json run_iam_json revision_json queue_json bucket_json bucket_iam_json repository_json expected_digest actual_digest latest_revision
   run_json="$(gcloud run services describe "$SERVICE" --project "$PROJECT" --region "$REGION" --format=json)"
@@ -283,12 +372,13 @@ capture_deployment_state() {
   latest_revision="$(jq -r '.status.latestReadyRevisionName // .latestReadyRevision' <<<"$run_json")"
   [[ -n "$latest_revision" && "$latest_revision" != "null" ]] || die "could not resolve the deployed revision"
   revision_json="$(gcloud run revisions describe "$latest_revision" --project "$PROJECT" --region "$REGION" --format=json)"
-  queue_json="$(gcloud tasks queues describe "$QUEUE" --project "$PROJECT" --location "$REGION" --format=json)"
+  queue_json="$(wait_for_queue_json)"
   bucket_json="$(gcloud storage buckets describe "gs://$BUCKET" --project "$PROJECT" --format=json)"
   bucket_iam_json="$(gcloud storage buckets get-iam-policy "gs://$BUCKET" --project "$PROJECT" --format=json)"
   repository_json="$(gcloud artifacts repositories describe "$REPOSITORY" --project "$PROJECT" --location "$REGION" --format=json)"
   expected_digest="$(jq -r .expectedImageDigest "$CONTEXT")"
   actual_digest="$(jq -r '.status.imageDigest // .status.containerStatuses[0].imageDigest // empty' <<<"$revision_json")"
+  actual_digest="${actual_digest##*@}"
   [[ "$expected_digest" =~ ^sha256:[a-f0-9]{64}$ && "$actual_digest" == "$expected_digest" ]] || die "deployed revision digest differs from the locally built image"
   labels_owned "$run_json" || die "deployed Cloud Run service ownership labels do not match"
   labels_owned "$bucket_json" || die "deployed bucket ownership labels do not match"
@@ -307,7 +397,8 @@ capture_deployment_state() {
     all(.bindings[]?.members[]?; . != "allUsers" and . != "allAuthenticatedUsers") and
     any(.bindings[]; .role == "roles/run.invoker" and any(.members[]?; . == $member))
   ' <<<"$run_iam_json" >/dev/null || die "Cloud Run IAM is public or lacks the exact task invoker"
-  jq -e '
+  jq -e --arg region "$REGION" '
+    (.name | contains("/locations/"+$region+"/")) and
     (.rateLimits.maxConcurrentDispatches | tonumber) == 1 and
     (.retryConfig.maxAttempts | tonumber) == 5 and
     ((.retryConfig.maxRetryDuration | rtrimstr("s")) | tonumber) == 1800 and
@@ -316,9 +407,9 @@ capture_deployment_state() {
   ' <<<"$queue_json" >/dev/null || die "deployed queue settings differ from the 2D-04 contract"
   jq -e --arg region "$REGION" '
     (.location | ascii_downcase) == ($region | ascii_downcase) and
-    .iamConfiguration.uniformBucketLevelAccess.enabled == true and
-    (.iamConfiguration.publicAccessPrevention | ascii_downcase) == "enforced" and
-    any(.lifecycle.rule[]; (.condition.age | tonumber) <= 7)
+    ((.iamConfiguration.uniformBucketLevelAccess.enabled == true) or (.uniform_bucket_level_access == true)) and
+    (((.iamConfiguration.publicAccessPrevention // .public_access_prevention) | ascii_downcase) == "enforced") and
+    any((.lifecycle.rule // .lifecycle_config.rule)[]; ((.condition.age | tonumber) <= 7))
   ' <<<"$bucket_json" >/dev/null || die "deployed bucket region or privacy settings differ from the 2D-04 contract"
   jq -e --arg worker "serviceAccount:$WORKER_ACCOUNT" '
     all(.bindings[]?.members[]?; . != "allUsers" and . != "allAuthenticatedUsers") and
@@ -350,9 +441,10 @@ capture_deployment_state() {
         minimumInstances:(($run.metadata.annotations["run.googleapis.com/minScale"] // $run.scaling.minInstanceCount // 0)|tonumber),
         maximumInstances:(($run.metadata.annotations["run.googleapis.com/maxScale"] // $run.scaling.maxInstanceCount)|tonumber),
         private:(all($runIam.bindings[]?.members[]?; . != "allUsers" and . != "allAuthenticatedUsers")),
-        cpuStartupBoost:(($run.spec.template.metadata.annotations["run.googleapis.com/startup-cpu-boost"] // $run.template.containers[0].resources.startupCpuBoost // false)|tostring|ascii_downcase)=="true"
+        cpuStartupBoost:((($run.spec.template.metadata.annotations["run.googleapis.com/startup-cpu-boost"] // $run.template.containers[0].resources.startupCpuBoost // false)|tostring|ascii_downcase)=="true")
       },
       queue:{
+        location:($queue.name|split("/")[3]),
         maximumConcurrentDispatches:($queue.rateLimits.maxConcurrentDispatches|tonumber),
         maximumAttempts:($queue.retryConfig.maxAttempts|tonumber),
         maximumRetryDurationSeconds:(($queue.retryConfig.maxRetryDuration|rtrimstr("s"))|tonumber),
@@ -361,9 +453,9 @@ capture_deployment_state() {
       },
       storage:{
         location:($bucket.location|ascii_downcase),
-        uniformBucketLevelAccess:$bucket.iamConfiguration.uniformBucketLevelAccess.enabled,
-        publicAccessPrevention:($bucket.iamConfiguration.publicAccessPrevention|ascii_downcase),
-        lifecycleDays:([$bucket.lifecycle.rule[].condition.age|tonumber]|min)
+        uniformBucketLevelAccess:($bucket.iamConfiguration.uniformBucketLevelAccess.enabled // $bucket.uniform_bucket_level_access),
+        publicAccessPrevention:(($bucket.iamConfiguration.publicAccessPrevention // $bucket.public_access_prevention)|ascii_downcase),
+        lifecycleDays:([($bucket.lifecycle.rule // $bucket.lifecycle_config.rule)[].condition.age|tonumber]|min)
       },
       artifactRepository:{location:$region,format:$repository.format,labelsVerified:true},
       build:{method:"local-docker-build-and-direct-artifact-registry-push",implicitCloudBuildStorage:false}
@@ -380,7 +472,7 @@ deploy_candidate() {
     iamcredentials.googleapis.com \
     --project "$PROJECT"
 
-  if resource_exists gcloud iam service-accounts describe "$WORKER_ACCOUNT" --project "$PROJECT"; then
+  if service_account_exists "$WORKER_ACCOUNT"; then
     require_registry_ownership service-account "$WORKER_ACCOUNT"
     service_account_matches "$WORKER_ACCOUNT" "$PREFIX renderer spike" || die "refusing mismatched worker service account"
   else
@@ -388,7 +480,7 @@ deploy_candidate() {
     gcloud iam service-accounts create "$PREFIX-worker" --project "$PROJECT" --display-name "$PREFIX renderer spike"
     register_resource service-account "$WORKER_ACCOUNT"
   fi
-  if resource_exists gcloud iam service-accounts describe "$TASK_ACCOUNT" --project "$PROJECT"; then
+  if service_account_exists "$TASK_ACCOUNT"; then
     require_registry_ownership service-account "$TASK_ACCOUNT"
     service_account_matches "$TASK_ACCOUNT" "$PREFIX queue invoker spike" || die "refusing mismatched task service account"
   else
@@ -410,8 +502,7 @@ deploy_candidate() {
   else
     register_intent storage-bucket "$BUCKET"
     gcloud storage buckets create "gs://$BUCKET" --project "$PROJECT" --location "$REGION" \
-      --uniform-bucket-level-access --public-access-prevention \
-      --labels "ticket=2d-04,purpose=provider-spike,owner=height-safety,spike-prefix=$PREFIX"
+      --uniform-bucket-level-access --public-access-prevention
   fi
   gcloud storage buckets update "gs://$BUCKET" --project "$PROJECT" \
     --lifecycle-file "$ROOT/infra/spikes/cloud-run/lifecycle.json" \
@@ -424,7 +515,7 @@ deploy_candidate() {
 
   command -v docker >/dev/null || die "docker is required for the bounded local build"
   gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
-  docker build --file "$ROOT/infra/spikes/cloud-run/Dockerfile" --tag "$IMAGE" "$ROOT"
+  docker build --provenance=false --sbom=false --file "$ROOT/infra/spikes/cloud-run/Dockerfile" --tag "$IMAGE" "$ROOT"
   docker push "$IMAGE"
   local pushed_digest
   pushed_digest="$(docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}' | sed -E 's/^.*@(sha256:[a-f0-9]{64})$/\1/')"
@@ -448,16 +539,7 @@ deploy_candidate() {
   gcloud iam service-accounts add-iam-policy-binding "$TASK_ACCOUNT" --project "$PROJECT" \
     --member "serviceAccount:service-$PROJECT_NUMBER@gcp-sa-cloudtasks.iam.gserviceaccount.com" \
     --role roles/iam.serviceAccountTokenCreator
-  if resource_exists gcloud tasks queues describe "$QUEUE" --project "$PROJECT" --location "$REGION"; then
-    require_registry_ownership cloud-tasks-queue "$QUEUE"
-    queue_matches || die "refusing mismatched Cloud Tasks queue"
-  else
-    register_intent cloud-tasks-queue "$QUEUE"
-    gcloud tasks queues create "$QUEUE" --project "$PROJECT" --location "$REGION" \
-      --max-concurrent-dispatches 1 --max-attempts 5 --max-retry-duration 1800s \
-      --min-backoff 5s --max-backoff 60s
-    register_resource cloud-tasks-queue "$QUEUE"
-  fi
+  ensure_spike_queue
 
   jq --arg project "$PROJECT" --arg projectNumber "$PROJECT_NUMBER" --arg bucket "$BUCKET" --arg runId "$RUN_ID" \
     '.project=$project | .projectNumber=$projectNumber | .bucket=$bucket | .runId=$runId' "$CONTEXT" > "$CONTEXT.tmp"
@@ -471,8 +553,7 @@ exercise_candidate() {
   [[ "$REPETITIONS" == "3" ]] || die "--repetitions must be exactly 3"
   for repetition in 1 2 3; do
     local_id="exercise-$repetition-$(date -u +%s)"
-    gcloud run services update "$SERVICE" --project "$PROJECT" --region "$REGION" \
-      --update-env-vars "SPIKE_PLATFORM_COLD_TOKEN=$local_id" --quiet
+    update_cold_token_revision "$local_id"
     enqueue_job "$local_id" benchmark
     wait_for_object "gs://$BUCKET/evidence/$RUN_ID/$local_id.json"
     gcloud storage cp "gs://$BUCKET/evidence/$RUN_ID/$local_id.json" "$RESULTS_DIR/$local_id.json" --project "$PROJECT"
@@ -518,12 +599,12 @@ destroy_candidate() {
     labels_owned "$(gcloud artifacts repositories describe "$REPOSITORY" --project "$PROJECT" --location "$REGION" --format=json)" || die "refusing to delete unowned artifact repository"
     gcloud artifacts repositories delete "$REPOSITORY" --project "$PROJECT" --location "$REGION" --quiet
   fi
-  if resource_exists gcloud iam service-accounts describe "$WORKER_ACCOUNT" --project "$PROJECT"; then
+  if service_account_exists "$WORKER_ACCOUNT"; then
     require_registry_ownership service-account "$WORKER_ACCOUNT"
     service_account_matches "$WORKER_ACCOUNT" "$PREFIX renderer spike" || die "refusing to delete mismatched worker service account"
     gcloud iam service-accounts delete "$WORKER_ACCOUNT" --project "$PROJECT" --quiet
   fi
-  if resource_exists gcloud iam service-accounts describe "$TASK_ACCOUNT" --project "$PROJECT"; then
+  if service_account_exists "$TASK_ACCOUNT"; then
     require_registry_ownership service-account "$TASK_ACCOUNT"
     service_account_matches "$TASK_ACCOUNT" "$PREFIX queue invoker spike" || die "refusing to delete mismatched task service account"
     gcloud iam service-accounts delete "$TASK_ACCOUNT" --project "$PROJECT" --quiet
@@ -539,8 +620,8 @@ verify_destroyed() {
   resource_exists gcloud tasks queues describe "$QUEUE" --project "$PROJECT" --location "$REGION" && remaining+=("cloud-tasks-queue")
   resource_exists gcloud storage buckets describe "gs://$BUCKET" --project "$PROJECT" && remaining+=("storage-bucket")
   resource_exists gcloud artifacts repositories describe "$REPOSITORY" --project "$PROJECT" --location "$REGION" && remaining+=("artifact-repository")
-  resource_exists gcloud iam service-accounts describe "$WORKER_ACCOUNT" --project "$PROJECT" && remaining+=("worker-service-account")
-  resource_exists gcloud iam service-accounts describe "$TASK_ACCOUNT" --project "$PROJECT" && remaining+=("task-service-account")
+  service_account_exists "$WORKER_ACCOUNT" && remaining+=("worker-service-account")
+  service_account_exists "$TASK_ACCOUNT" && remaining+=("task-service-account")
   labelled_run="$(gcloud run services list --project "$PROJECT" --region "$REGION" --format=json | \
     jq -r --arg prefix "$PREFIX" '.[] | select(((.metadata.labels // {})["spike-prefix"] == $prefix) or ((.metadata.name // "") | startswith($prefix))) | .metadata.name')"
   labelled_repositories="$(gcloud artifacts repositories list --project "$PROJECT" --location "$REGION" --format=json | \
@@ -551,6 +632,9 @@ verify_destroyed() {
     jq -r --arg prefix "$PREFIX" '.[] | (.name // "") | split("/")[-1] | select(startswith($prefix))')"
   prefixed_accounts="$(gcloud iam service-accounts list --project "$PROJECT" --format=json | \
     jq -r --arg prefix "$PREFIX" '.[] | (.email // "") | select(startswith($prefix))')"
+  # gcloud 580 and IAM v1 ListServiceAccounts reject deleted-account inventory.
+  # Soft-deleted accounts stay restorable for about 30 days and are recorded as
+  # an evidence limitation rather than live labelled resources.
   [[ -z "$labelled_run" ]] || remaining+=("labelled-cloud-run-resource")
   [[ -z "$labelled_repositories" ]] || remaining+=("labelled-artifact-resource")
   [[ -z "$labelled_buckets" ]] || remaining+=("labelled-storage-resource")
@@ -576,7 +660,7 @@ case "$ACTION" in
     load_context
     jq -n --arg prefix "$PREFIX" --arg runId "$RUN_ID" --arg project "$(jq -r .project "$CONTEXT")" \
       --slurpfile config "$CONFIG" \
-      '{status:"local-plan-only",project:$project,prefix:$prefix,runId:$runId,candidate:$config[0].candidate,region:$config[0].region,resources:{service:($prefix+"-renderer"),queue:($prefix+"-queue"),repository:($prefix+"-repo"),bucket:"resolved only after an authorised project check"},mutationAuthorised:false,managedProviderApproved:false}'
+      '{status:"local-plan-only",project:$project,prefix:$prefix,runId:$runId,candidate:$config[0].candidate,region:$config[0].region,resources:{service:($prefix+"-renderer"),queue:"prefix-owned unique name assigned at authorised deploy",repository:($prefix+"-repo"),bucket:"resolved only after an authorised project check"},mutationAuthorised:false,managedProviderApproved:false}'
     ;;
   --deploy)
     deploy_candidate

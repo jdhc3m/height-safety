@@ -1,15 +1,15 @@
 # 2D-04 Provider and Authentication Comparison
 
-Status: **Local preparation complete; managed proof not run**, 2026-08-14
+Status: **Done — Cloud Run approved as first managed renderer candidate (D-024); authentication vendor deferred**,
+2026-08-18
 
 ## Decision boundary
 
-This comparison narrows the candidates but does not select a hosting or
-authentication provider. No cloud resource, tenant or paid subscription was
-created. G-02 remains open until the managed Cloud Run exercise, destruction,
-automated evidence checks and independent technical review pass. G-03 remains
-open for production database, backup and export evidence. The owner still
-selects the providers and production renderer size.
+This comparison narrowed the candidates. On 2026-08-18 the owner approved
+Cloud Run in `australia-southeast1` as the first managed draft-PDF renderer
+candidate (D-024). G-02 is closed. G-03 remains open for production database,
+backup and export evidence. Authentication remains a comparison only; the
+owner deferred the identity vendor.
 
 Only fictional fixture data may be used. The product scope remains installed
 single-point roof anchors in New South Wales and Queensland, using neutral
@@ -27,14 +27,15 @@ evidence language without compliance, certification or engineering claims.
 | Portability | Container is portable. Cloud Storage is not S3-compatible, so the application-owned storage adapter and contract tests remain mandatory | Native S3 semantics and PostgreSQL-compatible RDS reduce storage/database adapter variance |
 | Renderer fit | Directly matches the passed 2-vCPU/2-GiB Linux profile and approved initial concurrency one | Minimum Fargate memory for 2 vCPU is 4 GiB, increasing the smallest comparable candidate and requiring a new constrained run |
 | Operational burden | Low: Cloud Run, Cloud Tasks and Cloud Storage; one provider-specific adapter | Moderate: ECS task definitions, SQS consumer/orchestration, IAM roles, ECR and S3 |
-| Cost evidence | Measured duration × Sydney list price, queue operations and report storage; actual exercise still required | Fargate bills requested vCPU and memory from image download until task termination; exact Sydney proof cost is not yet measured |
-| Current result | **First bounded managed candidate**; not approved | **Credible portability alternative**; comparison only, no infrastructure implemented |
+| Cost evidence | Measured duration × hardcoded Sydney list-rate constants, queue operations and report storage; not an invoice line | Fargate bills requested vCPU and memory from image download until task termination; exact Sydney proof cost is not yet measured |
+| Current result | **First managed renderer candidate; owner-approved in D-024** | **Credible portability alternative**; comparison only, no infrastructure implemented |
 
-Cloud Run is the better first proof because it maps directly to the accepted
+Cloud Run was the better first proof because it maps directly to the accepted
 renderer profile and has the required compute, queue and object-storage
-services in the same Sydney region. AWS remains important evidence: it offers
-the cleanest S3 portability baseline, but its Fargate size floor means it is not
-an exact substitute for the tested candidate.
+services in the same Sydney region. The owner approved that candidate in
+D-024. AWS remains important evidence: it offers the cleanest S3 portability
+baseline, but its Fargate size floor means it is not an exact substitute for
+the tested candidate.
 
 ## Authentication comparison
 
@@ -68,12 +69,11 @@ position is unresolved.
 
 The exercise records the duration and output size of three full benchmark
 runs. `--collect-cost` separately prices the measured multi-render proof
-harness and an estimated warm single-render execution using the current Sydney
-request-based Cloud Run CPU and memory rates, one queue operation and one month
-of report-object storage. It excludes free-tier discounts and is not described
-as an invoice charge because billing export for a short-lived spike can be
-delayed. Current rates are stored with a retrieval date and must be checked
-again when the authorised exercise runs.
+harness and an estimated warm single-render execution using hardcoded Sydney
+request-based Cloud Run CPU and memory constants, one queue operation and one
+month of report-object storage. `sourceCheckedAt` is the collect-cost clock,
+not a live price fetch. The estimate excludes free-tier discounts and is not
+an invoice charge.
 
 The model excludes PostgreSQL, production API/web services, support, backups,
 network egress, log retention and authentication. Those costs are not caused
@@ -88,8 +88,9 @@ pilot-volume assumptions.
   Cloud Build is deliberately unused so it cannot add implicit staging or log
   buckets.
 - `tools/provider-spike.sh` is the only mutation entry point. It rejects CI,
-  non-interactive runs, production-looking projects, unresolved accounts and
-  missing execution-time authorization.
+  production-looking projects, unresolved accounts and missing execution-time
+  authorization. Owner-authorised non-TTY mutation is allowed only with the
+  explicit confirm pair documented in `STAGE_2D_04_PROVIDER_AUTH_PROOF.md`.
 - The worker accepts only a small fictional job identity and enqueue timestamp,
   uploads one final PDF directly to the private bucket, returns metadata rather
   than the PDF, and uses a create-only object write whose retry verifies the
@@ -97,17 +98,21 @@ pilot-volume assumptions.
 - The termination scenario kills the whole candidate container after a local
   temporary PDF is observed; the queued retry must publish exactly one final
   object.
-- `STAGE_2D_04_MANAGED_EVIDENCE.json` intentionally records `not-run` and
-  `managedProviderApproved: false`.
+- `STAGE_2D_04_MANAGED_EVIDENCE.json` records
+  `candidate-exercised-and-destroyed` and `managedProviderApproved: false`.
+  That false flag is the spike artifact contract. Owner approval is D-024.
+  `platformColdProbe` is a revision-token match, not a measured scale-to-zero
+  start. Cost figures are duration × hardcoded list-rate constants.
 
-The local commands pass. The deployment, managed exercise, cost collection,
-destroy verification and evidence gate remain unexecuted because this run was
-explicitly instructed not to deploy.
+The local commands, authorised managed cycle, destroy inventory and evidence
+gate have been run. No production cloud resource is deployed. The owner
+approved Cloud Run as the first managed renderer candidate (D-024) and
+deferred the authentication vendor.
 
 ## Current first-party sources
 
-Sources were checked on 2026-08-14. Prices and service capabilities must be
-rechecked at execution and owner review.
+Sources were last used as hardcoded rate constants on 2026-08-17. Recheck
+prices and service capabilities at owner review.
 
 - [Cloud Run locations](https://docs.cloud.google.com/run/docs/locations)
 - [Cloud Run pricing](https://cloud.google.com/run/pricing)

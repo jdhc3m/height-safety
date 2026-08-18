@@ -14,8 +14,12 @@
 - Do not rely on long-lived token claims alone: use short-lived access tokens
   and check current session, company and role state on every online request.
 - A bounded offline-authorisation lease permits access to a downloaded job pack
-  while disconnected. Central revocation cannot reach an offline device; lease
-  expiry or failed refresh locks the app without deleting local evidence.
+  while disconnected. Central revocation cannot reach an offline device. Lease
+  expiry, confirmed revocation, clock rollback or Keystore loss locks the app
+  without deleting local evidence. A failed network refresh does not lock a
+  still-valid lease. D-025 uses a 24-hour capture lease and a one-hour
+  administrator upload-only recovery window; G-05 remains open for
+  design-partner review.
 - Normal logout/local-data cleanup is allowed only after the outbox is empty,
   required photos are uploaded, conflicts are resolved and the server has
   acknowledged the evidence. Otherwise block cleanup; any future destructive

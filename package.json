@@ -14,6 +14,7 @@
     "pdf-spike:linux-termination": "tools/pdf-spike-linux-termination.sh",
     "pdf-spike:run": "node tools/pdf-spike/benchmark.mjs",
     "provider-spike:check": "tools/provider-spike.sh --check",
+    "offline-lease:check": "tools/offline-lease.sh --check",
     "verify": "tools/verify.sh"
   },
   "devDependencies": {

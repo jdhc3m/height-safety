@@ -10,10 +10,10 @@ The owner approved a separate asynchronous worker (D-022): keep report
 rendering out of the API process and begin with renderer concurrency one. This
 is a renderer architecture decision, not a cloud provider selection.
 
-Gate G-02 is not closed yet. The renderer has now passed in constrained Linux
-containers, but not in a managed Australian-region service. Provider selection
-must wait for `2D-04` evidence covering private storage, queueing, lifecycle and
-actual cost.
+Gate G-02 is closed (D-024). The renderer passed in constrained Linux
+containers and then in a bounded Sydney Cloud Run candidate. Production
+database, backup and export remain G-03. Authentication vendor selection
+remains open.
 
 ## Representative fixture
 
@@ -253,8 +253,10 @@ The constrained Linux test compared:
 - fresh-worker retry after whole-container termination.
 
 `2D-04` must still test a managed candidate's queue retry, direct upload to
-private object storage, Australian region, cold-start/lifecycle behavior and
-actual per-report platform and storage cost.
+private object storage, Australian region, lifecycle configuration and a
+duration-derived per-report cost estimate. Platform cold start is a
+revision-token match, not a measured scale-to-zero start, and the cost figure
+is not an invoice line.
 
 The first configuration is a test starting point, not an approved production
 size. The local two-report sample peaked above six aggregate CPU cores, so
@@ -281,9 +283,9 @@ evidence.
   practitioner review.
 
 The harness, constrained-Linux proof and separate-worker direction complete
-`2D-03`. The owner must later approve a provider after `2D-04` managed-hosting
-evidence. Until then G-02 continues to block provider selection and production
-report implementation.
+`2D-03`. The owner later approved Cloud Run as the first managed renderer
+candidate after `2D-04` (D-024). G-02 is closed. G-03 still blocks production
+database, backup and export.
 
 ## 2026-08-15 merge-gate correction
 

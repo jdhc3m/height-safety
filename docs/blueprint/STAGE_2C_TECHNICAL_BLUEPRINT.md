@@ -97,8 +97,10 @@ a role.
 - Lease expiry, failed refresh or confirmed revocation locks the application
   without deleting local evidence.
 
-The exact lease duration and revoked-account evidence-recovery path require a
-Stage 2D task and partner validation. Central revocation cannot immediately
+The exact lease duration and revoked-account evidence-recovery path are
+owner-approved as D-025 (24-hour capture lease; administrator one-hour
+upload-only recovery that does not restore the account). Design-partner review
+is still required before G-05 closes. Central revocation cannot immediately
 reach a disconnected device; documentation and UI must not claim otherwise.
 
 ## Job release, claim and assignment
@@ -193,8 +195,9 @@ duplicating full notes, photographs or report content.
   export available first.
 - Referenced records are archived/inactivated before any hard-deletion process.
 
-Backup expiry, permanent-deletion periods and revoked-account evidence recovery
-remain open before live partner deployment.
+Backup expiry and permanent-deletion periods remain open before live partner
+deployment. 2D-06 / D-025 records the owner-approved recovery path; G-05 still
+requires design-partner review.
 
 ## Portability and deployment
 
@@ -259,8 +262,8 @@ resolve or schedule these gates:
 - managed hosting/database/object-storage provider;
 - authentication provider;
 - Android database-encryption library;
-- offline-authorisation lease duration;
-- revoked-account evidence recovery;
+- offline-authorisation lease duration (owner-approved D-025; G-05 open for design-partner review);
+- revoked-account evidence recovery (owner-approved D-025; G-05 open for design-partner review);
 - PDF renderer after the hosting feasibility spike;
 - real partner retention/backup/deletion periods; and
 - design-partner validation of terminology, fields and operating workflow.

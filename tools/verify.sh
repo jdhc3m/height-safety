@@ -7,5 +7,6 @@ bash "$ROOT/tools/verify-docs.sh"
 bash "$ROOT/tools/contracts.sh" --check
 pnpm run pdf-spike:check
 pnpm run provider-spike:check
+pnpm run offline-lease:check
 bash "$ROOT/tools/android-storage-spike.sh" --check
 git -C "$ROOT" diff --check

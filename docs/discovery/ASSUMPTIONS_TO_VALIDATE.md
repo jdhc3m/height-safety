@@ -23,7 +23,7 @@ required where Status is not Accepted.
 | A-015 | Missing, replaced and newly discovered anchors need explicit states. | Out-of-service tagging and undocumented-anchor risk (S-002, S-006). | Medium–High | History | Walk exception cases | Partially supported | Keep exception outcomes in MVP. |
 | A-016 | Previous history is useful at anchor level with source revision links. | Register/history repeatedly required (S-002, S-006, S-009). | Medium | History | Test historical reports | Partially supported | — |
 | A-017 | Remediation tracking is outside first workflow except simple recommendation state. | Scope boundary. | Medium | Scope | Validate pilot success | Open | — |
-| A-018 | One disconnected visit is representative offline duration. | Unmeasured; public sources silent. | Low | Local storage | Measure sites/devices | Open | — |
+| A-018 | One disconnected visit is representative offline duration. | Unmeasured; public sources silent. | Low | Local storage | Measure sites/devices | Open | Owner accepted a 24-hour prototype lease (D-025); partner measurement still required before G-05. |
 | A-019 | Typical photo volume suits background upload. | Unmeasured. | Low | Storage/UX | Sample jobs | Open | — |
 | A-020 | CSV/structured import/export is sufficient first register migration. | Provisional. | Low | Onboarding | Test partner files | Open | — |
 | A-021 | Exports need register, evidence and draft-report references. | Aligns with public documentation themes; unvalidated with partner. | Low–Medium | Export | Ask partner | Open | — |

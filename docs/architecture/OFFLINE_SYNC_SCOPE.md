@@ -30,10 +30,15 @@ require explicit confirmation, online authorisation and a server audit event.
 
 Downloaded job access uses a bounded offline-authorisation lease. Central
 revocation takes effect immediately for server requests but cannot contact an
-offline device. When the lease expires, token refresh fails or revocation is
-confirmed, the app locks and preserves queued evidence rather than wiping it.
-Recovery or authorised upload of evidence held by a revoked account must be
-designed before partner data; temporary account restoration is not assumed.
+offline device. Lease expiry, confirmed revocation, clock rollback or Keystore
+loss locks the app and preserves queued evidence. A failed network refresh does
+not lock a still-valid lease. Pending outbox/media cannot be acknowledged while
+the server account is revoked except during a live administrator recovery
+window. Owner-approved D-025 uses a 24-hour capture lease, elapsed runtime as
+a second expiry clock, and a same-company administrator one-hour upload-only
+recovery window that does not restore the revoked account. Permanent Keystore
+loss stays fail closed and undecryptable. Temporary account restoration is not
+assumed. G-05 remains open for design-partner review before a controlled pilot.
 
 Validate with partner: offline duration/lease length, cache expiry/logout/device
 loss, revoked-account evidence recovery, storage limits, photo volume, retry

@@ -1,6 +1,6 @@
 # Current Status
 
-Last update: 2026-08-16
+Last update: 2026-08-18
 
 ## Active stage
 
@@ -42,7 +42,7 @@ Stage 2D — implementation planning.
 - Managed invitation-only authentication approved (D-014): Administrator MFA,
   optional Inspector/Office reviewer MFA, non-destructive logout and bounded
   offline authorisation. Lease duration and revoked-account evidence recovery
-  remain open.
+  are owner-approved as D-025; G-05 remains open for design-partner review.
 - Local-first, idempotent offline sync with stable photo association, visible
   conflicts and synchronisation gates approved (D-015).
 - Idempotent draft-report generation from approved immutable snapshots and
@@ -102,31 +102,30 @@ Stage 2D — implementation planning.
   reuses that alias only when no database or envelope evidence exists; the
   scoped gate, thirteen API 31 tests and root gate passed, and a fresh re-review
   found no implementation, security, concurrency, typing or regression issue.
-  G-04 is closed; authorised evidence recovery remains 2D-06 work.
+  G-04 is closed; authorised evidence recovery is owner-approved as D-025.
+  G-05 remains open for design-partner review before a controlled pilot.
+- `2D-04` is Done. The authorised Sydney Cloud Run candidate was exercised
+  and destroyed, independently reviewed, and owner-approved as the first
+  managed renderer candidate (D-024). G-02 is closed. Authentication vendor
+  selection remains deferred. The spike evidence JSON still records
+  `managedProviderApproved: false`.
+- `2D-06` is Done. The offline-authorisation lease and revoked-account
+  evidence-recovery specification and transition tests are owner-approved as
+  D-025. Independent review passed. G-05 remains open for design-partner
+  review before a controlled pilot.
 
 ## In progress
 
-- `2D-04` local preparation is complete: the current provider/authentication
-  comparison, guarded Cloud Run candidate, private worker, lifecycle plan,
-  sanitised evidence schema and command gates are implemented. Local `--check`
-  and `--plan` pass. No cloud resource was deployed.
-- Run the attended, explicitly authorised Cloud Run exercise, cost collection,
-  destroy verification and independent review before closing G-02.
 - Add board owners/agent types and concrete commands as the repository scaffold
   is approved.
 - Keep design-partner outreach ready; practitioner validation still open.
 
 ## Next recommended task
 
-No further unattended local ticket is Ready. The attended managed portion of
-`2D-04` is still required, but was outside this run's no-cloud boundary. G-02
-remains open for real Australian-region queue, private storage, lifecycle,
-termination recovery and measured cost evidence. The bounded command and
-evidence contract is in `STAGE_2D_04_PROVIDER_AUTH_PROOF.md`; cloud deployment
-still requires explicit authorization and must not run in CI or an unattended
-agent. `2D-06` remains Backlog until `2D-04` and `2D-05` are both complete.
-Do not begin broader feature implementation or promote deferred standards
-candidates into MVP.
+`3A-01` Scaffold Android, NestJS and Next.js workspaces. Do not promote
+deferred standards candidates into MVP. Authentication vendor selection
+remains deferred. G-03 still blocks production database, backup and export.
+G-05 still needs design-partner review before a controlled pilot.
 
 ## Blockers and decisions awaiting confirmation
 
@@ -134,7 +133,8 @@ candidates into MVP.
 - No product Android, web or domain application scaffold or production schema
   migration exists beyond the bounded Stage 2D proofs.
 - Offline-authorisation lease duration and recovery of unsynchronised evidence
-  after account revocation require design-partner and technical validation.
+  after account revocation are owner-approved as D-025. G-05 still requires
+  design-partner review before a controlled pilot.
 - Required fields, outcome meanings, signatures, measurements, retention and
   report wording await partner/legal/professional review.
 - AS 5532 product evidence must be validated against the licensed Standard and
@@ -142,11 +142,13 @@ candidates into MVP.
 - NSW and Queensland workflow, terminology, licensing, interval, proof-test and
   report-authority differences require practitioner validation in each state;
   the product must not auto-calculate or claim statutory compliance.
-- Hosting/database/object-storage provider, authentication provider, authorised
-  Android key-loss/revocation recovery, managed renderer deployment
-  sizing/scaling and production queue/storage integration remain open behind
-  explicit Stage 2D gates. The
-  Playwright/Chromium separate-worker direction itself is approved in D-022.
+- Database, object-storage adapter, backup and export remain behind G-03.
+  Authentication vendor selection remains deferred. Authorised Android
+  key-loss/revocation recovery is owner-approved as D-025; G-05 remains open
+  for design-partner review. Production autoscaling and
+  queue/storage integration remain implementation work after 3A. The
+  Playwright/Chromium worker (D-022) and Cloud Run first managed renderer
+  candidate (D-024) are approved.
 
 ## Tests and commands
 
@@ -162,17 +164,20 @@ completed-result reuse and byte-identical fresh regeneration. Eighteen consecuti
 corrected benchmark repetitions passed; one prior transient timeout remains a
 sizing warning. The constrained Linux candidate then passed seven corrected
 profile runs and a whole-container stop/recovery test. The `2D-04` local
-guarded candidate check and non-mutating Cloud Run plan also pass. The `2D-05`
+guarded candidate check, authorised managed cycle, destroy inventory and
+evidence gate pass; owner approval is D-024 while the spike JSON still
+records `managedProviderApproved: false`. The `2D-05`
 compile/lint/dependency gate and fourteen API 31 Android instrumentation tests pass;
 the corrected suite also rejects a missing initialized database and
 proves authenticated state handling, interrupted empty-store recovery,
 serialized concurrent first open and the pinned Room 2.x read-transaction seam.
 Permanent Keystore-key loss deliberately locks and preserves ciphertext rather
 than claiming recovery or resetting evidence. A fresh independent correction
-review reported no actionable findings. Managed
-evidence verification is expected to remain incomplete until an authorised
-deploy/exercise/destroy cycle. Product Android, web and domain test suites
-remain deferred because those applications are not scaffolded yet.
+review of `2D-05` reported no actionable findings. The `2D-06` lease/recovery
+machine passes its transition checks for expiry, revocation, pending
+outbox/media and authorised upload-only recovery; independent re-review
+reported no findings and the owner approved D-025. Product Android, web and domain test
+suites remain deferred because those applications are not scaffolded yet.
 
 ## Relevant files
 
@@ -191,5 +196,6 @@ Stage 2D-04: `docs/roadmap/STAGE_2D_04_PROVIDER_AUTH_PROOF.md`.
 Stage 2D-04 comparison: `docs/roadmap/STAGE_2D_04_PROVIDER_COMPARISON.md`.
 Stage 2D-04 managed evidence: `docs/roadmap/STAGE_2D_04_MANAGED_EVIDENCE.json`.
 Stage 2D-05: `docs/roadmap/STAGE_2D_05_ANDROID_ENCRYPTED_STORAGE_PROOF.md`.
+Stage 2D-06: `docs/roadmap/STAGE_2D_06_OFFLINE_LEASE_RECOVERY.md`.
 AS 5532 review: `docs/standards/AS-5532-2025-INTEGRATION.md`.
 AS/NZS 1891.4 review: `docs/standards/AS-NZS-1891.4-2025-INTEGRATION.md`.

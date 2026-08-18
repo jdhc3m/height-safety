@@ -11,11 +11,12 @@ is committed to object storage only after the local PDF is complete; the HTTP
 response contains metadata, never the PDF.
 
 All cloud mutations are routed through `tools/provider-spike.sh`. The command
-requires an interactive terminal, an explicit non-production project, a unique
-`hs2d04-xxxxxxxx` prefix and an execution-time authorization phrase. CI and
-unattended agents are rejected. Resource names use the exact prefix; supported
-resources also carry the `ticket=2d-04`, `purpose=provider-spike` and
-`owner=height-safety` labels.
+requires an explicit non-production project, a unique `hs2d04-xxxxxxxx` prefix
+and execution-time authorization. Mutation needs an attended TTY confirm, or
+the owner-authorised non-TTY pair documented in
+`STAGE_2D_04_PROVIDER_AUTH_PROOF.md`. CI remains forbidden. Resource names use
+the exact prefix; supported resources also carry the `ticket=2d-04`,
+`purpose=provider-spike` and `owner=height-safety` labels.
 
 Each plan creates an immutable run identifier and local registry. Evidence,
 cost and destruction records must all match that run. Existing labelled
@@ -28,4 +29,5 @@ storage.
 `lifecycle.json` applies only to fictional spike output and is not a product
 retention decision. The destroy command inventories and removes the exact
 candidate resources, and the separate verification command must prove that no
-matching resource remains.
+active matching resource remains. Soft-deleted IAM service accounts can remain
+restorable for about 30 days.

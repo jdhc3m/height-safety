@@ -564,6 +564,9 @@ try {
     lockStaleMs: 5000,
   });
   assert.equal(reusedCommittedResult.reused, true);
+  assert.equal(reusedCommittedResult.pdfSha256, committedResult.pdfSha256);
+  assert.equal(reusedCommittedResult.bytes, committedResult.bytes);
+  assert.equal(reusedCommittedResult.inputHash, committedResult.inputHash);
   assert.equal(reportLockCount(committedStaleDirectory), 0);
   assert.equal((await readdir(committedStaleDirectory)).some((name) => name.endsWith('.tmp')), false);
 

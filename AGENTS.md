@@ -39,8 +39,28 @@ Rules:
   photograph association, conflict visibility, report revisions and auditability.
 
 Repository currently contains documentation, the bounded `2D-02` contract
-proof, the `2D-03` PDF feasibility harness and local guarded `2D-04` provider
-spike preparation, plus the bounded `2D-05` Android encrypted-storage proof.
+proof, the `2D-03` PDF feasibility harness, the authorised, destroyed and
+owner-approved `2D-04` Cloud Run candidate (D-024; spike JSON still records
+`managedProviderApproved: false`), the bounded `2D-05` Android
+encrypted-storage proof, and the owner-approved `2D-06` offline-lease/recovery
+specification (D-025; G-05 remains open for design-partner review).
 `tools/verify.sh` is the verified root merge-gate command; broader Android, web
 and domain application scaffolding remains deferred to `3A-01`. Cloud mutation
-remains an attended, explicitly authorised step.
+remains an explicitly authorised step.
+
+## Agent skills
+
+### Android project guidance
+
+Use the relevant official Android skill for Android implementation and review;
+see `docs/architecture/ANDROID_SKILLS_GUIDELINE.md`. These skills guide
+platform work but do not override this repository's product scope, security,
+offline-evidence or auditability rules.
+
+### Issue tracker
+
+Issues and specs for this repo live as GitHub issues. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+This is a multi-context repository. Read `CONTEXT-MAP.md`, the relevant context `CONTEXT.md`, and applicable ADRs. See `docs/agents/domain.md`.

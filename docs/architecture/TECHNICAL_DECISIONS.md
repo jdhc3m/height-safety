@@ -12,9 +12,11 @@
 | T-008 | Isolate provider-specific database/storage code behind adapters and contract tests. | Accepted direction | Preserves the Approval 16 portability boundary. |
 | T-009 | Select hosting and PDF renderer together after a representative rendering spike. | Accepted gate | Renderer memory, timeout, font and concurrency needs affect hosting suitability. |
 | T-010 | Preserve server evidence by default during prototype; agree real-data retention before pilot. | Accepted direction | Avoids evidence loss and invented retention periods. |
+| T-011 | Issue an application-owned offline lease and recover revoked-device pending evidence only through administrator upload-only authorisation. | Owner-approved; G-05 open for design-partner review | Identity providers cannot reach a disconnected device; D-023 already fails closed on Keystore loss. |
 
 Provider, authentication service, production Android encryption adoption,
-retention periods and revoked-account evidence recovery remain open. D-023
-selects and proves maintained SQLCipher Android as the bounded Room candidate;
-production adoption remains conditional on its documented exit triggers. Each
+retention periods and G-05 design-partner review remain open. D-023 selects
+and proves maintained SQLCipher Android as the bounded Room candidate;
+production adoption remains conditional on its documented exit triggers. D-025
+is owner-approved for the 24-hour lease and upload-only recovery path. Each
 implementation choice needs tests and an update here when materially changed.

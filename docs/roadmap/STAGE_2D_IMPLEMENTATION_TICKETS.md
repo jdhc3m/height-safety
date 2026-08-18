@@ -37,10 +37,10 @@ the reviewer or owner closes the applicable gate.
 | Gate | Must be resolved before | Required evidence | Approval |
 | --- | --- | --- | --- |
 | G-01 Contract pipeline | API/domain implementation | NestJS-generated versioned OpenAPI document; generated Kotlin and TypeScript clients; breaking-change check | Technical review |
-| G-02 Hosting and PDF feasibility | Provider selection or report implementation | Representative photo-heavy report tested against candidate renderer/hosting limits, fonts, retries, memory, timeout and concurrency | Owner + technical review |
+| G-02 Hosting and PDF feasibility | Provider selection or report implementation | Representative photo-heavy report tested against candidate renderer/hosting limits, fonts, retries, memory, timeout and concurrency | Closed 2026-08-18: owner D-024 + technical review |
 | G-03 Provider portability | Production infrastructure | Australian-region comparison; standard PostgreSQL; S3-compatible semantics or tested adapter boundary; backup/export path | Owner approval |
 | G-04 Android encrypted storage | Offline job-pack implementation | Room-compatible encryption spike, Keystore integration, migration/recovery test and abandoned-library risk | Technical review |
-| G-05 Offline authorisation | Controlled pilot | Lease duration, expiry behaviour and recovery path for unsynchronised evidence after revocation | Owner + design-partner review |
+| G-05 Offline authorisation | Controlled pilot | Lease duration, expiry behaviour and recovery path for unsynchronised evidence after revocation | Owner accepted D-025; design-partner review still required before G-05 closes |
 | G-06 Real-data retention | Any real customer data | Pilot terms, export process, backup/deletion periods and authorised audited cleanup | Owner + legal/privacy review |
 
 ## Ordered tickets
@@ -51,10 +51,10 @@ the reviewer or owner closes the applicable gate.
 | --- | --- | --- | --- | --- |
 | 2D-01 | Done | Define repository workspace and quality-command contract | Stage 2C | Approved as D-020; see `STAGE_2D_01_WORKSPACE_CONTRACT.md`; no feature scaffold created |
 | 2D-02 | Done | Prove the OpenAPI generation pipeline and pin tool runtimes | 2D-01 | D-021 implemented and independently reviewed; checked-in OpenAPI plus generated Kotlin and TypeScript clients compile; deterministic drift and breaking changes are CI gates |
-| 2D-03 | Done | Run hosting/PDF renderer feasibility spike | 2D-01 | Representative report passed repeated local and constrained-Linux tests, including container termination recovery; separate worker and initial concurrency one are owner-approved (D-022), while managed-provider evidence remains in G-02/2D-04 |
-| 2D-04 | In progress | Compare and prove provider and authentication candidates | 2D-02, 2D-03 | Local comparison and guarded Cloud Run candidate are prepared. Execute the still-authorised managed commands in `STAGE_2D_04_PROVIDER_AUTH_PROOF.md`: bounded proof covering Australian region, portability, tenancy, invitations, MFA, revocation, private object upload, queue retry after instance termination, lifecycle/cold start, renderer sizing and actual per-report platform/storage cost; owner and technical review close G-02 |
+| 2D-03 | Done | Run hosting/PDF renderer feasibility spike | 2D-01 | Representative report passed repeated local and constrained-Linux tests, including container termination recovery; separate worker and initial concurrency one are owner-approved (D-022); managed renderer candidate later approved in D-024 |
+| 2D-04 | Done | Compare and prove provider and authentication candidates | 2D-02, 2D-03 | Authorised Sydney Cloud Run candidate exercised and destroyed; owner approved it as the first managed renderer candidate (D-024). Authentication remains a comparison only (vendor deferred). Spike evidence still records `managedProviderApproved: false` |
 | 2D-05 | Done | Prove Android encrypted Room storage | 2D-01 | Bounded SQLCipher/Room and Keystore proof passes fourteen API 31 device tests for encryption, restart, schema migration, pinned Room 2.x read transactions, typed provider failure, interrupted empty-store initialization, authenticated database-state loss, concurrent first open and fail-closed key loss; independent correction review passed and G-04 is closed |
-| 2D-06 | Backlog | Specify offline lease and evidence recovery | 2D-04, 2D-05 | State transitions and tests for expiry, revoked users, pending outbox/media and authorised recovery; resolves G-05 before pilot |
+| 2D-06 | Done | Specify offline lease and evidence recovery | 2D-04, 2D-05 | State transitions and tests for expiry, revoked users, pending outbox/media and authorised recovery; owner-approved as D-025. G-05 remains open for design-partner review |
 
 ### Stage 3A foundation backlog
 

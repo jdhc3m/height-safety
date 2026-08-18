@@ -1,20 +1,568 @@
 {
   "schemaVersion": "1.0.0",
   "ticket": "2D-04",
-  "status": "not-run",
+  "runId": "hs2d04-b33d2c10-20260817115058-e7452b",
+  "status": "candidate-exercised-and-destroyed",
   "candidate": "cloud-run",
   "region": "australia-southeast1",
   "location": "Sydney, Australia",
+  "capturedAt": "2026-08-17T22:25:49.742Z",
   "managedProviderApproved": false,
-  "configuration": null,
-  "taskDeliveryProofs": [],
-  "exerciseRuns": [],
-  "terminationRecovery": null,
-  "cost": null,
-  "destruction": null,
+  "configuration": {
+    "schemaVersion": "1.0.0",
+    "runId": "hs2d04-b33d2c10-20260817115058-e7452b",
+    "capturedAt": "2026-08-17T21:21:49Z",
+    "region": "australia-southeast1",
+    "ownership": {
+      "runLabelsVerified": true,
+      "bucketLabelsVerified": true,
+      "repositoryLabelsVerified": true,
+      "unlabelledResourcesRegistryVerified": true
+    },
+    "identities": {
+      "workerServiceAccountVerified": true,
+      "taskInvokerBindingVerified": true,
+      "bucketWorkerBindingsVerified": true,
+      "unexpectedDirectBucketServiceAccountsAbsent": true,
+      "publicMembersAbsent": true
+    },
+    "renderer": {
+      "imageDigest": "sha256:67fbefa8c540147731ea68361f5f9a947a013c0e377358fe60d2b2d14fe25929",
+      "cpu": "2",
+      "memory": "2Gi",
+      "concurrency": 1,
+      "timeoutSeconds": 300,
+      "minimumInstances": 0,
+      "maximumInstances": 1,
+      "private": true,
+      "cpuStartupBoost": false
+    },
+    "queue": {
+      "location": "australia-southeast1",
+      "maximumConcurrentDispatches": 1,
+      "maximumAttempts": 5,
+      "maximumRetryDurationSeconds": 1800,
+      "minimumBackoffSeconds": 5,
+      "maximumBackoffSeconds": 60
+    },
+    "storage": {
+      "location": "australia-southeast1",
+      "uniformBucketLevelAccess": true,
+      "publicAccessPrevention": "enforced",
+      "lifecycleDays": 7
+    },
+    "artifactRepository": {
+      "location": "australia-southeast1",
+      "format": "DOCKER",
+      "labelsVerified": true
+    },
+    "build": {
+      "method": "local-docker-build-and-direct-artifact-registry-push",
+      "implicitCloudBuildStorage": false
+    }
+  },
+  "taskDeliveryProofs": [
+    {
+      "schemaVersion": "1.0.0",
+      "runId": "hs2d04-b33d2c10-20260817115058-e7452b",
+      "jobId": "exercise-1-1787000312",
+      "methodPost": true,
+      "privateServiceUrl": true,
+      "oidcServiceAccountVerified": true,
+      "oidcAudienceVerified": true
+    },
+    {
+      "schemaVersion": "1.0.0",
+      "runId": "hs2d04-b33d2c10-20260817115058-e7452b",
+      "jobId": "exercise-2-1787000458",
+      "methodPost": true,
+      "privateServiceUrl": true,
+      "oidcServiceAccountVerified": true,
+      "oidcAudienceVerified": true
+    },
+    {
+      "schemaVersion": "1.0.0",
+      "runId": "hs2d04-b33d2c10-20260817115058-e7452b",
+      "jobId": "exercise-3-1787000574",
+      "methodPost": true,
+      "privateServiceUrl": true,
+      "oidcServiceAccountVerified": true,
+      "oidcAudienceVerified": true
+    },
+    {
+      "schemaVersion": "1.0.0",
+      "runId": "hs2d04-b33d2c10-20260817115058-e7452b",
+      "jobId": "termination-recovery-1787001714",
+      "methodPost": true,
+      "privateServiceUrl": true,
+      "oidcServiceAccountVerified": true,
+      "oidcAudienceVerified": true
+    }
+  ],
+  "exerciseRuns": [
+    {
+      "schemaVersion": "1.0.0",
+      "ticket": "2D-04",
+      "candidate": "cloud-run",
+      "region": "australia-southeast1",
+      "runId": "hs2d04-b33d2c10-20260817115058-e7452b",
+      "jobId": "exercise-1-1787000312",
+      "mode": "benchmark",
+      "rendererConcurrency": 1,
+      "timing": {
+        "enqueuedAt": 1787000327918,
+        "processStartedAt": 1787000319600,
+        "requestStartedAt": 1787000367708,
+        "completedAt": 1787000454785,
+        "enqueueToProcessStartMs": 0,
+        "processStartToRequestMs": 48108,
+        "requestExecutionMs": 87077,
+        "endToEndMs": 126867
+      },
+      "platformColdProbe": true,
+      "cpuStartupBoost": false,
+      "report": {
+        "object": "reports/hs2d04-b33d2c10-20260817115058-e7452b/exercise-1-1787000312.pdf",
+        "bytes": 6409590,
+        "sha256": "7e6dbbb7fa843f1c1870924fb11175edb859ec82e0e815f2f3c2b8904086e83d",
+        "uploadSha256": "7e6dbbb7fa843f1c1870924fb11175edb859ec82e0e815f2f3c2b8904086e83d",
+        "created": true,
+        "generation": "1787000454774424"
+      },
+      "benchmark": {
+        "runtime": {
+          "platform": "linux-x64",
+          "node": "v24.18.0",
+          "availableCpuCount": 4,
+          "totalMemoryMiB": 3916,
+          "candidateProfile": "cloud-run-2vcpu-2g",
+          "rendererConcurrency": 1,
+          "playwright": "1.62.1",
+          "chromium": "151.0.7922.34"
+        },
+        "fixture": {
+          "anchorCount": 30,
+          "photoCount": 60,
+          "photoDimensions": "1280x960",
+          "jurisdiction": "NSW"
+        },
+        "limits": {
+          "warmDurationMs": 60000,
+          "singlePeakRssMiB": 1536,
+          "concurrencyPeakRssMiB": 3072,
+          "outputBytes": 26214400
+        },
+        "scenarios": [
+          {
+            "name": "cold-single",
+            "durationMs": 13650,
+            "peakRssMiB": 1030,
+            "peakIntervalCpuPercent": 249
+          },
+          {
+            "name": "warm-single",
+            "durationMs": 10144,
+            "peakRssMiB": 1067,
+            "peakIntervalCpuPercent": 260
+          },
+          {
+            "name": "shared-browser-concurrency-1",
+            "durationMs": 11273,
+            "peakRssMiB": 1088,
+            "peakIntervalCpuPercent": 271
+          },
+          {
+            "name": "isolated-worker-concurrency-1",
+            "durationMs": 11004,
+            "peakRssMiB": 1218,
+            "peakIntervalCpuPercent": 256
+          }
+        ],
+        "acceptance": {
+          "warmDuration": true,
+          "singleMemory": true,
+          "concurrencyMemory": true,
+          "outputSize": true,
+          "expectedPageCount": true,
+          "expectedPageContent": true,
+          "expectedPhotoCount": true,
+          "embeddedNotoSans": true,
+          "interruptedExitExpected": true,
+          "interruptedRecoveryClean": true,
+          "retryCompleted": true,
+          "completedRetryReused": true,
+          "freshRegenerationByteStable": true
+        },
+        "interruption": {
+          "temporaryPdfObserved": true,
+          "retryStartedBeforeInterruption": true,
+          "interruptedExit": {
+            "code": 143,
+            "signal": null
+          },
+          "retry": {
+            "bytes": 6409594,
+            "pdfSha256": "80e083a14a8e6a1640278eb311f72969830288e77c309cb9c8c4d50bfc10e730",
+            "reused": false
+          },
+          "reuse": {
+            "bytes": 6409594,
+            "pdfSha256": "80e083a14a8e6a1640278eb311f72969830288e77c309cb9c8c4d50bfc10e730",
+            "reused": true
+          }
+        },
+        "deterministicRegeneration": {
+          "first": {
+            "bytes": 6409584,
+            "pdfSha256": "2687d064271abd0aa146097a2d9ca2cf9baf34fd3452ae4c1fb8b753e1186b61",
+            "reused": false
+          },
+          "second": {
+            "bytes": 6409584,
+            "pdfSha256": "2687d064271abd0aa146097a2d9ca2cf9baf34fd3452ae4c1fb8b753e1186b61",
+            "reused": false
+          }
+        },
+        "artifactDirectoryBytes": 32061975
+      }
+    },
+    {
+      "schemaVersion": "1.0.0",
+      "ticket": "2D-04",
+      "candidate": "cloud-run",
+      "region": "australia-southeast1",
+      "runId": "hs2d04-b33d2c10-20260817115058-e7452b",
+      "jobId": "exercise-2-1787000458",
+      "mode": "benchmark",
+      "rendererConcurrency": 1,
+      "timing": {
+        "enqueuedAt": 1787000475272,
+        "processStartedAt": 1787000466832,
+        "requestStartedAt": 1787000480045,
+        "completedAt": 1787000570060,
+        "enqueueToProcessStartMs": 0,
+        "processStartToRequestMs": 13213,
+        "requestExecutionMs": 90015,
+        "endToEndMs": 94788
+      },
+      "platformColdProbe": true,
+      "cpuStartupBoost": false,
+      "report": {
+        "object": "reports/hs2d04-b33d2c10-20260817115058-e7452b/exercise-2-1787000458.pdf",
+        "bytes": 6409590,
+        "sha256": "7e6dbbb7fa843f1c1870924fb11175edb859ec82e0e815f2f3c2b8904086e83d",
+        "uploadSha256": "7e6dbbb7fa843f1c1870924fb11175edb859ec82e0e815f2f3c2b8904086e83d",
+        "created": true,
+        "generation": "1787000570051061"
+      },
+      "benchmark": {
+        "runtime": {
+          "platform": "linux-x64",
+          "node": "v24.18.0",
+          "availableCpuCount": 5,
+          "totalMemoryMiB": 3916,
+          "candidateProfile": "cloud-run-2vcpu-2g",
+          "rendererConcurrency": 1,
+          "playwright": "1.62.1",
+          "chromium": "151.0.7922.34"
+        },
+        "fixture": {
+          "anchorCount": 30,
+          "photoCount": 60,
+          "photoDimensions": "1280x960",
+          "jurisdiction": "NSW"
+        },
+        "limits": {
+          "warmDurationMs": 60000,
+          "singlePeakRssMiB": 1536,
+          "concurrencyPeakRssMiB": 3072,
+          "outputBytes": 26214400
+        },
+        "scenarios": [
+          {
+            "name": "cold-single",
+            "durationMs": 14281,
+            "peakRssMiB": 1025,
+            "peakIntervalCpuPercent": 297
+          },
+          {
+            "name": "warm-single",
+            "durationMs": 10909,
+            "peakRssMiB": 1073,
+            "peakIntervalCpuPercent": 270
+          },
+          {
+            "name": "shared-browser-concurrency-1",
+            "durationMs": 10935,
+            "peakRssMiB": 1049,
+            "peakIntervalCpuPercent": 260
+          },
+          {
+            "name": "isolated-worker-concurrency-1",
+            "durationMs": 11696,
+            "peakRssMiB": 1206,
+            "peakIntervalCpuPercent": 233
+          }
+        ],
+        "acceptance": {
+          "warmDuration": true,
+          "singleMemory": true,
+          "concurrencyMemory": true,
+          "outputSize": true,
+          "expectedPageCount": true,
+          "expectedPageContent": true,
+          "expectedPhotoCount": true,
+          "embeddedNotoSans": true,
+          "interruptedExitExpected": true,
+          "interruptedRecoveryClean": true,
+          "retryCompleted": true,
+          "completedRetryReused": true,
+          "freshRegenerationByteStable": true
+        },
+        "interruption": {
+          "temporaryPdfObserved": true,
+          "retryStartedBeforeInterruption": true,
+          "interruptedExit": {
+            "code": 143,
+            "signal": null
+          },
+          "retry": {
+            "bytes": 6409594,
+            "pdfSha256": "80e083a14a8e6a1640278eb311f72969830288e77c309cb9c8c4d50bfc10e730",
+            "reused": false
+          },
+          "reuse": {
+            "bytes": 6409594,
+            "pdfSha256": "80e083a14a8e6a1640278eb311f72969830288e77c309cb9c8c4d50bfc10e730",
+            "reused": true
+          }
+        },
+        "deterministicRegeneration": {
+          "first": {
+            "bytes": 6409584,
+            "pdfSha256": "2687d064271abd0aa146097a2d9ca2cf9baf34fd3452ae4c1fb8b753e1186b61",
+            "reused": false
+          },
+          "second": {
+            "bytes": 6409584,
+            "pdfSha256": "2687d064271abd0aa146097a2d9ca2cf9baf34fd3452ae4c1fb8b753e1186b61",
+            "reused": false
+          }
+        },
+        "artifactDirectoryBytes": 32061975
+      }
+    },
+    {
+      "schemaVersion": "1.0.0",
+      "ticket": "2D-04",
+      "candidate": "cloud-run",
+      "region": "australia-southeast1",
+      "runId": "hs2d04-b33d2c10-20260817115058-e7452b",
+      "jobId": "exercise-3-1787000574",
+      "mode": "benchmark",
+      "rendererConcurrency": 1,
+      "timing": {
+        "enqueuedAt": 1787000589932,
+        "processStartedAt": 1787000582865,
+        "requestStartedAt": 1787000593192,
+        "completedAt": 1787000677314,
+        "enqueueToProcessStartMs": 0,
+        "processStartToRequestMs": 10327,
+        "requestExecutionMs": 84122,
+        "endToEndMs": 87382
+      },
+      "platformColdProbe": true,
+      "cpuStartupBoost": false,
+      "report": {
+        "object": "reports/hs2d04-b33d2c10-20260817115058-e7452b/exercise-3-1787000574.pdf",
+        "bytes": 6409590,
+        "sha256": "7e6dbbb7fa843f1c1870924fb11175edb859ec82e0e815f2f3c2b8904086e83d",
+        "uploadSha256": "7e6dbbb7fa843f1c1870924fb11175edb859ec82e0e815f2f3c2b8904086e83d",
+        "created": true,
+        "generation": "1787000677300583"
+      },
+      "benchmark": {
+        "runtime": {
+          "platform": "linux-x64",
+          "node": "v24.18.0",
+          "availableCpuCount": 5,
+          "totalMemoryMiB": 3916,
+          "candidateProfile": "cloud-run-2vcpu-2g",
+          "rendererConcurrency": 1,
+          "playwright": "1.62.1",
+          "chromium": "151.0.7922.34"
+        },
+        "fixture": {
+          "anchorCount": 30,
+          "photoCount": 60,
+          "photoDimensions": "1280x960",
+          "jurisdiction": "NSW"
+        },
+        "limits": {
+          "warmDurationMs": 60000,
+          "singlePeakRssMiB": 1536,
+          "concurrencyPeakRssMiB": 3072,
+          "outputBytes": 26214400
+        },
+        "scenarios": [
+          {
+            "name": "cold-single",
+            "durationMs": 12773,
+            "peakRssMiB": 1013,
+            "peakIntervalCpuPercent": 258
+          },
+          {
+            "name": "warm-single",
+            "durationMs": 10157,
+            "peakRssMiB": 1059,
+            "peakIntervalCpuPercent": 241
+          },
+          {
+            "name": "shared-browser-concurrency-1",
+            "durationMs": 10183,
+            "peakRssMiB": 1110,
+            "peakIntervalCpuPercent": 272
+          },
+          {
+            "name": "isolated-worker-concurrency-1",
+            "durationMs": 10951,
+            "peakRssMiB": 1196,
+            "peakIntervalCpuPercent": 250
+          }
+        ],
+        "acceptance": {
+          "warmDuration": true,
+          "singleMemory": true,
+          "concurrencyMemory": true,
+          "outputSize": true,
+          "expectedPageCount": true,
+          "expectedPageContent": true,
+          "expectedPhotoCount": true,
+          "embeddedNotoSans": true,
+          "interruptedExitExpected": true,
+          "interruptedRecoveryClean": true,
+          "retryCompleted": true,
+          "completedRetryReused": true,
+          "freshRegenerationByteStable": true
+        },
+        "interruption": {
+          "temporaryPdfObserved": true,
+          "retryStartedBeforeInterruption": true,
+          "interruptedExit": {
+            "code": 143,
+            "signal": null
+          },
+          "retry": {
+            "bytes": 6409594,
+            "pdfSha256": "80e083a14a8e6a1640278eb311f72969830288e77c309cb9c8c4d50bfc10e730",
+            "reused": false
+          },
+          "reuse": {
+            "bytes": 6409594,
+            "pdfSha256": "80e083a14a8e6a1640278eb311f72969830288e77c309cb9c8c4d50bfc10e730",
+            "reused": true
+          }
+        },
+        "deterministicRegeneration": {
+          "first": {
+            "bytes": 6409584,
+            "pdfSha256": "2687d064271abd0aa146097a2d9ca2cf9baf34fd3452ae4c1fb8b753e1186b61",
+            "reused": false
+          },
+          "second": {
+            "bytes": 6409584,
+            "pdfSha256": "2687d064271abd0aa146097a2d9ca2cf9baf34fd3452ae4c1fb8b753e1186b61",
+            "reused": false
+          }
+        },
+        "artifactDirectoryBytes": 32061975
+      }
+    }
+  ],
+  "terminationRecovery": {
+    "schemaVersion": "1.0.0",
+    "ticket": "2D-04",
+    "candidate": "cloud-run",
+    "region": "australia-southeast1",
+    "runId": "hs2d04-b33d2c10-20260817115058-e7452b",
+    "jobId": "termination-recovery-1787001714",
+    "mode": "terminate-once",
+    "rendererConcurrency": 1,
+    "timing": {
+      "enqueuedAt": 1787001717000,
+      "processStartedAt": 1787001681349,
+      "requestStartedAt": 1787002169843,
+      "completedAt": 1787002184011,
+      "enqueueToProcessStartMs": 0,
+      "processStartToRequestMs": 488494,
+      "requestExecutionMs": 14168,
+      "endToEndMs": 467011
+    },
+    "platformColdProbe": false,
+    "cpuStartupBoost": false,
+    "report": {
+      "object": "reports/hs2d04-b33d2c10-20260817115058-e7452b/termination-recovery-1787001714.pdf",
+      "bytes": 6409614,
+      "sha256": "71fa6449a8f021ffa67549bd41d8497416cb816cf6092e5aab6bf97c3b1b2791",
+      "uploadSha256": "71fa6449a8f021ffa67549bd41d8497416cb816cf6092e5aab6bf97c3b1b2791",
+      "created": true,
+      "generation": "1787002184000639"
+    },
+    "terminationRecovery": {
+      "result": {
+        "bytes": 6409614,
+        "pdfSha256": "71fa6449a8f021ffa67549bd41d8497416cb816cf6092e5aab6bf97c3b1b2791",
+        "reused": false
+      },
+      "acceptance": {
+        "expectedPageCount": true,
+        "expectedPageContent": true,
+        "expectedPhotoCount": true,
+        "embeddedNotoSans": true
+      }
+    }
+  },
+  "cost": {
+    "schemaVersion": "1.0.0",
+    "runId": "hs2d04-b33d2c10-20260817115058-e7452b",
+    "method": "Measured request execution and warm-render durations multiplied by hardcoded Sydney list rate constants, plus Cloud Run request, Cloud Tasks operation and storage estimates; excludes free-tier discounts and CPU startup boost is disabled.",
+    "measuredAverageRequestExecutionSeconds": 87.07133333333333,
+    "measuredAverageEnqueueToProcessStartSeconds": 0,
+    "measuredAverageProcessStartToRequestSeconds": 23.882666666666665,
+    "measuredAverageWarmSingleRenderSeconds": 10.403333333333334,
+    "measuredAverageReportBytes": 6409590,
+    "rates": {
+      "currency": "USD",
+      "cpuPerVcpuSecond": 0.0000336,
+      "memoryPerGibSecond": 0.0000035,
+      "queuePerOperationAfterFreeTier": 4e-7,
+      "cloudRunRequestPerOperationAfterFreeTier": 4e-7,
+      "storagePerGibMonth": 0.022,
+      "sourceCheckedAt": "2026-08-17",
+      "source": "https://cloud.google.com/run/pricing"
+    },
+    "estimatedProofHarnessRunUsd": 0.006592819642275984,
+    "estimatedWarmSingleRenderUsd": 0.0009040540422759851,
+    "actualInvoiceAttributionAvailable": false,
+    "limitation": "Queue latency is reported separately and never priced as Cloud Run compute. Container startup billing and billing-export SKU attribution are unavailable to this bounded harness, so these are duration-derived estimates rather than actual invoice cost."
+  },
+  "destruction": {
+    "schemaVersion": "1.0.0",
+    "ticket": "2D-04",
+    "runId": "hs2d04-b33d2c10-20260817115058-e7452b",
+    "prefix": "hs2d04-b33d2c10",
+    "verifiedAt": "2026-08-17T22:00:55Z",
+    "remaining": [],
+    "passed": true
+  },
   "limitations": [
-    "No cloud resources were deployed because this run was explicitly instructed not to deploy.",
-    "This placeholder is not managed-provider evidence and cannot close G-02.",
-    "Provider and production sizing remain open for owner and technical review."
+    "This is fictional spike evidence, not production approval or sizing.",
+    "platformColdProbe is true when the request ran on the Cloud Run revision whose SPIKE_PLATFORM_COLD_TOKEN matched the job. Cloud Run may health-check that revision before enqueue, so processStartedAt can precede enqueuedAt and enqueueToProcessStartMs can be 0. Browser cold/warm timings remain the in-request scenarios.",
+    "Cloud Run did not expose a finite cgroup CPU/memory quota in the captured runs; in-container availableCpuCount and totalMemoryMiB exceeded the 2 vCPU / 2 GiB service spec. Service capture still records cpu 2 and memory 2Gi.",
+    "Deleted IAM service accounts remain restorable for about 30 days. gcloud 580 and IAM v1 ListServiceAccounts cannot inventory those deleted accounts, so verify-destroyed proves no active prefix accounts remain.",
+    "Cost distinguishes the multi-render proof harness from an estimated warm single-render execution and is not an invoice line item. Rates are hardcoded Sydney list constants; sourceCheckedAt is the collect-cost clock, not a live price fetch.",
+    "Authentication provider selection remains an owner decision.",
+    "Per-run cpuStartupBoost is recorded as false because the worker emits the deploy-time --no-cpu-boost contract; it is not read from the running instance.",
+    "Database, backup, export and production scaling remain outside this managed renderer proof."
   ]
 }

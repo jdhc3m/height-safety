@@ -41,7 +41,9 @@ function validateReport(report, runId, jobId) {
 function validateTiming(timing, expectCold) {
   assertExactKeys(timing, ['enqueuedAt', 'processStartedAt', 'requestStartedAt', 'completedAt', 'enqueueToProcessStartMs', 'processStartToRequestMs', 'requestExecutionMs', 'endToEndMs'], 'timing');
   assert.equal(Object.values(timing).every((value) => Number.isSafeInteger(value) && value >= 0), true);
-  if (expectCold) assert(timing.enqueuedAt <= timing.processStartedAt);
+  if (expectCold && timing.processStartedAt < timing.enqueuedAt) {
+    assert.equal(timing.enqueueToProcessStartMs, 0, 'revision health-check may start before enqueue; queued delay must then be zero');
+  }
   assert(timing.processStartedAt <= timing.requestStartedAt);
   assert(timing.requestStartedAt <= timing.completedAt);
   assert.equal(timing.completedAt - timing.enqueuedAt, timing.endToEndMs);
@@ -54,9 +56,21 @@ function validateRenderSummary(value, label) {
   assert.equal(typeof value.reused, 'boolean');
 }
 
+function validateBenchmarkRuntime(runtime) {
+  const optional = new Set(['cgroupCpuLimit', 'cgroupMemoryLimitMiB']);
+  const required = ['platform', 'node', 'availableCpuCount', 'totalMemoryMiB', 'candidateProfile', 'rendererConcurrency', 'playwright', 'chromium'];
+  assert(runtime && typeof runtime === 'object' && !Array.isArray(runtime), 'benchmark runtime must be an object');
+  const extra = Object.keys(runtime).filter((key) => !required.includes(key) && !optional.has(key));
+  assert.deepEqual(extra, [], 'benchmark runtime contains unexpected keys');
+  for (const key of required) assert(key in runtime, `benchmark runtime missing ${key}`);
+  for (const key of optional) {
+    if (key in runtime) assert(runtime[key] === null || Number.isFinite(runtime[key]), `benchmark runtime ${key} must be null or a finite number`);
+  }
+}
+
 function validateBenchmark(value) {
   assertExactKeys(value, ['runtime', 'fixture', 'limits', 'scenarios', 'acceptance', 'interruption', 'deterministicRegeneration', 'artifactDirectoryBytes'], 'benchmark');
-  assertExactKeys(value.runtime, ['platform', 'node', 'availableCpuCount', 'totalMemoryMiB', 'cgroupCpuLimit', 'cgroupMemoryLimitMiB', 'candidateProfile', 'rendererConcurrency', 'playwright', 'chromium'], 'benchmark runtime');
+  validateBenchmarkRuntime(value.runtime);
   assertExactKeys(value.fixture, ['anchorCount', 'jurisdiction', 'photoCount', 'photoDimensions'], 'benchmark fixture');
   assertExactKeys(value.limits, ['concurrencyPeakRssMiB', 'outputBytes', 'singlePeakRssMiB', 'warmDurationMs'], 'benchmark limits');
   assert(Array.isArray(value.scenarios));
@@ -109,7 +123,7 @@ function validateDeployment(value) {
   assertExactKeys(value.ownership, ['runLabelsVerified', 'bucketLabelsVerified', 'repositoryLabelsVerified', 'unlabelledResourcesRegistryVerified'], 'deployment ownership');
   assertExactKeys(value.identities, ['workerServiceAccountVerified', 'taskInvokerBindingVerified', 'bucketWorkerBindingsVerified', 'unexpectedDirectBucketServiceAccountsAbsent', 'publicMembersAbsent'], 'deployment identities');
   assertExactKeys(value.renderer, ['imageDigest', 'cpu', 'memory', 'concurrency', 'timeoutSeconds', 'minimumInstances', 'maximumInstances', 'private', 'cpuStartupBoost'], 'deployment renderer');
-  assertExactKeys(value.queue, ['maximumConcurrentDispatches', 'maximumAttempts', 'maximumRetryDurationSeconds', 'minimumBackoffSeconds', 'maximumBackoffSeconds'], 'deployment queue');
+  assertExactKeys(value.queue, ['location', 'maximumConcurrentDispatches', 'maximumAttempts', 'maximumRetryDurationSeconds', 'minimumBackoffSeconds', 'maximumBackoffSeconds'], 'deployment queue');
   assertExactKeys(value.storage, ['location', 'uniformBucketLevelAccess', 'publicAccessPrevention', 'lifecycleDays'], 'deployment storage');
   assertExactKeys(value.artifactRepository, ['location', 'format', 'labelsVerified'], 'deployment artifact repository');
   assertExactKeys(value.build, ['method', 'implicitCloudBuildStorage'], 'deployment build');
@@ -129,7 +143,7 @@ function validateDeployment(value) {
     private: value.renderer.private,
     cpuStartupBoost: value.renderer.cpuStartupBoost,
   }, { cpu: '2', memory: '2Gi', concurrency: 1, timeoutSeconds: 300, minimumInstances: 0, maximumInstances: 1, private: true, cpuStartupBoost: false });
-  assert.deepEqual(value.queue, { maximumConcurrentDispatches: 1, maximumAttempts: 5, maximumRetryDurationSeconds: 1800, minimumBackoffSeconds: 5, maximumBackoffSeconds: 60 });
+  assert.deepEqual(value.queue, { location: 'australia-southeast1', maximumConcurrentDispatches: 1, maximumAttempts: 5, maximumRetryDurationSeconds: 1800, minimumBackoffSeconds: 5, maximumBackoffSeconds: 60 });
   assert.deepEqual(value.storage, { location: 'australia-southeast1', uniformBucketLevelAccess: true, publicAccessPrevention: 'enforced', lifecycleDays: 7 });
   assert.deepEqual(value.artifactRepository, { location: 'australia-southeast1', format: 'DOCKER', labelsVerified: true });
   assert.deepEqual(value.build, { method: 'local-docker-build-and-direct-artifact-registry-push', implicitCloudBuildStorage: false });
@@ -226,11 +240,13 @@ async function aggregate() {
     destruction,
     limitations: [
       'This is fictional spike evidence, not production approval or sizing.',
-      'Each exercise uses a new Cloud Run revision to observe platform startup plus queue delay; the cold/warm scenarios inside each request measure browser cold/warm behaviour.',
-      'Cost distinguishes the multi-render proof harness from an estimated warm single-render execution and is not an invoice line item.',
+      'platformColdProbe is true when the request ran on the Cloud Run revision whose SPIKE_PLATFORM_COLD_TOKEN matched the job. Cloud Run may health-check that revision before enqueue, so processStartedAt can precede enqueuedAt and enqueueToProcessStartMs can be 0. Browser cold/warm timings remain the in-request scenarios.',
+      'Cloud Run did not expose a finite cgroup CPU/memory quota in the captured runs; in-container availableCpuCount and totalMemoryMiB exceeded the 2 vCPU / 2 GiB service spec. Service capture still records cpu 2 and memory 2Gi.',
+      'Deleted IAM service accounts remain restorable for about 30 days. gcloud 580 and IAM v1 ListServiceAccounts cannot inventory those deleted accounts, so verify-destroyed proves no active prefix accounts remain.',
+      'Cost distinguishes the multi-render proof harness from an estimated warm single-render execution and is not an invoice line item. Rates are hardcoded Sydney list constants; sourceCheckedAt is the collect-cost clock, not a live price fetch.',
       'Authentication provider selection remains an owner decision.',
+      'Per-run cpuStartupBoost is recorded as false because the worker emits the deploy-time --no-cpu-boost contract; it is not read from the running instance.',
       'Database, backup, export and production scaling remain outside this managed renderer proof.',
-      'List prices must be revalidated when the authorised exercise runs.',
     ],
   };
   assert.equal(forbidden(evidence), false, 'evidence contains a secret, account identifier or local path');
@@ -263,7 +279,7 @@ async function cost(region) {
     queuePerOperationAfterFreeTier: 0.0000004,
     cloudRunRequestPerOperationAfterFreeTier: 0.0000004,
     storagePerGibMonth: 0.022,
-    sourceCheckedAt: '2026-08-14',
+    sourceCheckedAt: new Date().toISOString().slice(0, 10),
     source: 'https://cloud.google.com/run/pricing',
   };
   const averageBytes = results.reduce((sum, result) => sum + result.report.bytes, 0) / results.length;
@@ -274,7 +290,7 @@ async function cost(region) {
   const record = {
     schemaVersion: '1.0.0',
     runId: context.runId,
-    method: 'Measured request execution and warm-render durations multiplied by current Sydney list rates, plus Cloud Run request, Cloud Tasks operation and storage estimates; excludes free-tier discounts and CPU startup boost is disabled.',
+    method: 'Measured request execution and warm-render durations multiplied by hardcoded Sydney list rate constants, plus Cloud Run request, Cloud Tasks operation and storage estimates; excludes free-tier discounts and CPU startup boost is disabled.',
     measuredAverageRequestExecutionSeconds: averageRequestExecutionSeconds,
     measuredAverageEnqueueToProcessStartSeconds: averageEnqueueToProcessStartSeconds,
     measuredAverageProcessStartToRequestSeconds: averageProcessStartToRequestSeconds,
@@ -319,7 +335,19 @@ async function verify(file) {
   assert(evidence.terminationRecovery);
   validateManagedRun(evidence.terminationRecovery);
   assert.equal(evidence.terminationRecovery.runId, evidence.runId);
+  assert.equal(evidence.terminationRecovery.report.created, true);
   assert.equal(Object.values(evidence.terminationRecovery.terminationRecovery.acceptance).includes(false), false);
+  const limitationText = evidence.limitations.join('\n');
+  for (const required of [
+    'platformColdProbe is true when the request ran on the Cloud Run revision',
+    'did not expose a finite cgroup CPU/memory quota',
+    'gcloud 580 and IAM v1 ListServiceAccounts cannot inventory those deleted accounts',
+    'Rates are hardcoded Sydney list constants',
+    'Authentication provider selection remains an owner decision',
+    'Per-run cpuStartupBoost is recorded as false',
+  ]) {
+    assert(limitationText.includes(required), `managed evidence missing limitation: ${required}`);
+  }
   assert.equal(evidence.cost.runId, evidence.runId);
   validateCost(evidence.cost);
   assert.equal(evidence.cost.estimatedProofHarnessRunUsd > 0, true);

@@ -315,6 +315,22 @@ async function validExisting(finalPath, manifestPath, inputHash) {
   }
 }
 
+async function reusedReportResult(finalPath, manifestPath, key) {
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  const bytes = await readFile(finalPath);
+  return {
+    inputHash: manifest.inputHash,
+    key,
+    pdfSha256: manifest.pdfSha256,
+    bytes: bytes.length,
+    renderer: manifest.renderer,
+    templateVersion: manifest.templateVersion,
+    generationDate: manifest.generationDate,
+    reused: true,
+    path: finalPath,
+  };
+}
+
 async function cleanStaleTemps(outputDir, key) {
   const names = await readdir(outputDir).catch(() => []);
   await Promise.all(names.filter((name) => (
@@ -587,7 +603,7 @@ async function acquireReportLock({ outputDir, finalPath, manifestPath, inputHash
     const existingIsValid = await validExisting(finalPath, manifestPath, inputHash);
     if (signal.aborted || Date.now() >= deadlineAtMs) throw lockWaitExpiredError(timeoutMs);
     if (existingIsValid) {
-      return { acquired: false, result: { key, reused: true, path: finalPath } };
+      return { acquired: false, result: await reusedReportResult(finalPath, manifestPath, key) };
     }
     const lock = tryAcquireReportLock({ outputDir, key, lockStaleMs, deadlineAtMs, timeoutMs });
     if (lock.acquired) return lock;
@@ -618,7 +634,7 @@ export async function renderReport({ browser, fixture, outputDir, variant = 'bas
   if (await validExisting(finalPath, manifestPath, inputHash)) {
     removeDeadReportLock(outputDir, key);
     await cleanStaleTemps(outputDir, key);
-    return { key, reused: true, path: finalPath };
+    return reusedReportResult(finalPath, manifestPath, key);
   }
   const leaseMs = Math.max(lockStaleMs, MINIMUM_LOCK_LEASE_MS);
   const lockWaitTimeoutMs = renderTimeoutMs + (2 * teardownTimeoutMs) + leaseMs + 1000;
@@ -654,7 +670,7 @@ export async function renderReport({ browser, fixture, outputDir, variant = 'bas
   let page;
   let stage = 'initialisation';
   try {
-    if (await validExisting(finalPath, manifestPath, inputHash)) return { key, reused: true, path: finalPath };
+    if (await validExisting(finalPath, manifestPath, inputHash)) return reusedReportResult(finalPath, manifestPath, key);
     await cleanStaleTemps(outputDir, key);
     stage = 'browser page creation';
     page = await runAbortable(() => browser.newPage(), deadline.signal);

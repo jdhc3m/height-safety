@@ -1,7 +1,7 @@
 # 2D-04 Managed Provider and Authentication Proof
 
-Status: **In progress — local preparation complete; managed proof not run**,
-2026-08-14
+Status: **Done — owner approved Cloud Run as first managed renderer candidate (D-024); authentication vendor deferred**,
+2026-08-18
 
 ## Objective
 
@@ -54,14 +54,20 @@ tools/verify.sh
 `--exercise`, `--terminate-during-render`, `--collect-cost`, `--destroy` and
 `--verify-destroyed` touch a cloud account and require explicit authorization
 at execution time.
-They must never run from an unattended review agent or CI. The script must show
+They must never run from CI or an unattended review agent. Cloud mutation
+requires `HEIGHT_SAFETY_ALLOW_CLOUD_MUTATION` plus either an attended TTY
+confirm, or the owner-authorised non-TTY pair
+`HEIGHT_SAFETY_ALLOW_NON_TTY=I_AUTHORIZE_2D04_NON_TTY` and
+`HEIGHT_SAFETY_SPIKE_CONFIRM=<project>/<region>/<prefix>`. The script must show
 and validate the resolved account, project, region and unique spike prefix
 before mutation; refuse a production project; use least-privilege credentials;
 and allow `--destroy` to target only resources carrying that exact prefix and
 ownership labels. Destruction must write a sanitised result, and
-`--verify-destroyed` must inventory the same project and prove no labelled
-resource remains before `--verify-evidence` can pass. No secret, account
-identifier or signed URL may enter Git.
+`--verify-destroyed` must inventory the same project and prove no active
+labelled or prefix resource remains before `--verify-evidence` can pass. Soft-
+deleted IAM service accounts can remain restorable for about 30 days and are
+recorded as a limitation. No secret, account identifier or signed URL may
+enter Git.
 
 ## Managed-hosting acceptance
 
@@ -72,17 +78,21 @@ The managed candidate must prove:
   the pinned Linux image and initial concurrency one;
 - one private queued job creates one private object directly rather than
   returning the PDF through a long API request;
-- three cold and three warm fixture runs record duration, peak memory, output
-  size, page/photo/font inspection and deterministic regeneration;
+- three queued jobs each record in-request cold and warm fixture timings,
+  duration, peak memory, output size, page/photo/font inspection and
+  deterministic regeneration; `platformColdProbe` is a revision-token match
+  and is not a measured scale-to-zero start;
 - forced instance termination during rendering leaves no published partial
   object and a queued retry completes exactly one report;
 - object access is private, temporary local files are disposable, and logs and
   evidence contain no report payload or credentials;
 - lifecycle, retry, timeout and scaling configuration are captured;
-- measured platform, queue and storage cost is converted to an explicit
-  per-report estimate with assumptions; and
-- post-destroy inventory proves no resource with the spike prefix or ownership
-  labels remains; and
+- measured request and warm-render durations are converted with hardcoded
+  Sydney list-rate constants into an explicit per-report estimate; this is not
+  an invoice line; and
+- post-destroy inventory proves no active resource with the spike prefix or
+  ownership labels remains; soft-deleted IAM service accounts can stay
+  restorable for about 30 days and are recorded as a limitation; and
 - the evidence JSON records limitations and `managedProviderApproved: false`.
 
 Failure of any renderer limit or recovery assertion returns the ticket to
@@ -99,8 +109,11 @@ after reviewing the evidence.
 
 ## Review and gate closure
 
-Independent technical review verifies scripts, infrastructure boundaries,
-sanitised evidence and repeatability. The owner then decides whether to approve
-a provider and managed renderer size. G-02 remains open unless both reviews
-pass; G-03 may remain open if portability, backup or export evidence is still
-incomplete.
+Independent technical review verified scripts, infrastructure boundaries,
+sanitised evidence and repeatability. On 2026-08-18 the owner approved Cloud
+Run in `australia-southeast1` as the first managed draft-PDF renderer
+candidate at 2 vCPU / 2 GiB and concurrency one (D-024). G-02 is closed.
+Authentication remains a comparison only; the owner deferred the identity
+vendor. G-03 remains open for production database, backup and export evidence.
+The spike evidence JSON still records `managedProviderApproved: false` because
+that file is the disposable run artifact, not the product decision.
