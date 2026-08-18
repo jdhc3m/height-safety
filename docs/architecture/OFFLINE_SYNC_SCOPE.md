@@ -10,7 +10,9 @@ remains conditional on its documented exit triggers.
 Each mutation has client-generated stable ID, operation, entity/version,
 created time, device/session and retry state. Server idempotency prevents
 duplicates. Expected versions and semantic conflict handling prevent silent
-last-write-wins for evidence, outcomes, identity or review actions.
+last-write-wins for evidence, outcomes, identity or review actions. Those
+identity and conflict rules belong in the product Kotlin/JVM field domain
+(D-026); WorkManager only drains the adapter queue.
 
 The durable local outbox and its business mutation are written consistently.
 Persistent Android background work drains the queue when connectivity returns;

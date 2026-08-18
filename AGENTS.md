@@ -32,6 +32,9 @@ Rules:
 - Record the supported site jurisdiction explicitly as NSW or Queensland; do
   not infer legal rules, intervals, authority or compliance from that value.
 - Inspect existing patterns before introducing frameworks.
+- Keep product Android field domain as Kotlin/JVM with no Android/Room/Retrofit
+  APIs (D-026); do not add Kotlin Multiplatform or iOS until that product
+  decision exists. See `docs/architecture/ANDROID_DOMAIN_BOUNDARY.md`.
 - Make small, reviewable changes and add appropriate tests for every code
   change.
 - Preserve historical research; do not delete it.
@@ -42,11 +45,10 @@ Repository currently contains documentation, the bounded `2D-02` contract
 proof, the `2D-03` PDF feasibility harness, the authorised, destroyed and
 owner-approved `2D-04` Cloud Run candidate (D-024; spike JSON still records
 `managedProviderApproved: false`), the bounded `2D-05` Android
-encrypted-storage proof, and the owner-approved `2D-06` offline-lease/recovery
-specification (D-025; G-05 remains open for design-partner review).
-`tools/verify.sh` is the verified root merge-gate command; broader Android, web
-and domain application scaffolding remains deferred to `3A-01`. Cloud mutation
-remains an explicitly authorised step.
+encrypted-storage proof, the owner-approved `2D-06` offline-lease/recovery
+specification (D-025; G-05 remains open for design-partner review), and the
+`3A-01` Android/API/web foundation scaffold. `tools/verify.sh` is the verified
+root merge-gate command. Cloud mutation remains an explicitly authorised step.
 
 ## Agent skills
 

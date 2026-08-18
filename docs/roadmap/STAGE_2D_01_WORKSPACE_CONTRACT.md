@@ -15,7 +15,7 @@ to demonstrate OpenAPI generation.
 ```text
 height-safety/
 ├── apps/
-│   ├── android/                 # Kotlin, Compose, Room and WorkManager
+│   ├── android/                 # Product Gradle build (3A-01); 2D-05 spike today
 │   ├── api/                     # NestJS modular-monolith API
 │   │   └── migrations/          # ordered, source-controlled DB migrations
 │   └── web/                     # Next.js office application
@@ -47,6 +47,21 @@ Generated clients are separate from Android Room entities, application domain
 models and NestJS DTOs. Provider SDKs remain below `infra/` or an
 application-owned adapter; domain modules do not import them directly.
 
+`3A-01` adds Gradle modules under `apps/android/` without changing this
+top-level layout (D-026):
+
+```text
+apps/android/
+├── storage-spike/    # 2D-05 proof only; not the product shape
+├── domain/           # Kotlin/JVM field domain; no Android plugin
+├── app/              # Compose UI, Android framework, generated-client wiring
+└── data/             # later: Room/SQLCipher/Keystore adapters when 3B-02 lands
+```
+
+Do not add `org.jetbrains.kotlin.multiplatform`, iOS targets, or a
+repository-root `shared/` module in `3A-01`. Constraints:
+`docs/architecture/ANDROID_DOMAIN_BOUNDARY.md`.
+
 ## Root command contract
 
 The scaffold must eventually provide these stable commands:
@@ -54,7 +69,7 @@ The scaffold must eventually provide these stable commands:
 | Command | Contract |
 | --- | --- |
 | `tools/bootstrap.sh` | Verify pinned runtimes and install locked dependencies without adding or upgrading packages. |
-| `tools/format.sh --check` | Check formatting across documentation, TypeScript and Kotlin without rewriting files. |
+| `tools/format.sh --check` | Check documentation integrity and Prettier-supported TypeScript/JSON without rewriting files; Android lint/compile checks cover Kotlin and Gradle sources. |
 | `tools/lint.sh` | Run static analysis for shell, TypeScript, NestJS/Next.js and Kotlin. |
 | `tools/test.sh` | Run unit and repository-level tests; later include PostgreSQL integration suites. |
 | `tools/contracts.sh --check` | Generate OpenAPI and both clients in a temporary location, lint the contract and fail on committed-output drift or incompatible changes. |

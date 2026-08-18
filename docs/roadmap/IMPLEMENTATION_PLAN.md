@@ -11,7 +11,8 @@
    tests and provider/PDF feasibility spikes (Stage 2D first pass created; see
    `docs/roadmap/STAGE_2D_IMPLEMENTATION_TICKETS.md`).
 5. Build company tenancy, authentication, roles, clients, sites, anchors,
-   jobs and assignments with cross-tenant tests.
+   jobs and assignments with cross-tenant tests. Android product scaffold
+   includes a Kotlin/JVM field-domain module (D-026); do not add KMP or iOS.
 6. Build mobile claimed/assigned-job vertical slice with local saves, forms,
    photos, defects, recommendations, exceptions and submission.
 7. Add durable encrypted job packs, outbox, idempotency, retries, photo queue,

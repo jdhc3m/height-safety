@@ -197,7 +197,9 @@ generated `ApiClient` with an environment-supplied absolute URL ending in
 `/api/v1/`; it must never rely on the generated default. The contract build
 copies in and runs a hand-written integration test proving that an injected
 absolute URL succeeds and the relative default fails fast. `3A-01` must retain
-this factory boundary when the Android application is scaffolded.
+this factory boundary when the Android application is scaffolded. The factory
+and generated models stay in the Android app/adapter layer; they must not
+become the Kotlin/JVM field domain (D-026).
 
 ### Discovered limitations
 

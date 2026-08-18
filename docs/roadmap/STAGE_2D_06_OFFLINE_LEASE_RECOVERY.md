@@ -156,4 +156,5 @@ controlled pilot.
 
 `2D-06` is Done. D-025 is owner-approved. Next implementation ticket is
 `3A-01`. Authentication vendor selection remains deferred. Do not treat this
-machine as the Android product.
+machine as the Android product. Product lease transitions belong in the
+Kotlin/JVM `:domain` module when `3C-04` is implemented (D-026).

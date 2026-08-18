@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "scripts": {
     "build": "nest build",
-    "contract:generate": "node dist/generate-openapi.js"
+    "contract:generate": "node dist/generate-openapi.js",
+    "lint": "tsc --noEmit",
+    "test": "node --test test/*.test.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@nestjs/common": "11.1.28",

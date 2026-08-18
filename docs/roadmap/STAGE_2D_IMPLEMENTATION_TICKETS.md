@@ -58,31 +58,31 @@ the reviewer or owner closes the applicable gate.
 
 ### Stage 3A foundation backlog
 
-| ID | Ticket | Depends on | Acceptance boundary |
-| --- | --- | --- | --- |
-| 3A-01 | Scaffold Android, NestJS and Next.js workspaces | 2D-01, 2D-02 | Reproducible build/lint/test commands run locally and in CI |
-| 3A-02 | Add database migrations and tenant isolation | 3A-01, G-03 | Company-scoped PostgreSQL schema; cross-tenant read/write tests fail closed |
-| 3A-03 | Add invitation auth, roles and sessions | 3A-02, 2D-04 | Administrator MFA enforced; inspector/reviewer MFA optional; revocation and claims tested |
-| 3A-04 | Add site, jurisdiction and anchor register APIs | 3A-02, G-01 | NSW/QLD recorded as context; no legal-rule engine or future-asset domain model |
-| 3A-05 | Add job release, claim and assignment | 3A-03, 3A-04 | Atomic single-primary-inspector claim; office assignment and race tests; independent review retained |
+| ID | State | Ticket | Depends on | Acceptance boundary |
+| --- | --- | --- | --- | --- |
+| 3A-01 | Done | Scaffold Android, NestJS and Next.js workspaces | 2D-01, 2D-02 | Reproducible build/lint/test commands run locally and in CI; Android includes a Kotlin/JVM `:domain` module with no Android/Room/Retrofit APIs (D-026); no KMP plugin or iOS target; root gate passed and independent review found no actionable issues |
+| 3A-02 | Backlog | Add database migrations and tenant isolation | 3A-01, G-03 | Company-scoped PostgreSQL schema; cross-tenant read/write tests fail closed |
+| 3A-03 | Backlog | Add invitation auth, roles and sessions | 3A-02, 2D-04 | Administrator MFA enforced; inspector/reviewer MFA optional; revocation and claims tested |
+| 3A-04 | Backlog | Add site, jurisdiction and anchor register APIs | 3A-02, G-01 | NSW/QLD recorded as context; no legal-rule engine or future-asset domain model |
+| 3A-05 | Backlog | Add job release, claim and assignment | 3A-03, 3A-04 | Atomic single-primary-inspector claim; office assignment and race tests; independent review retained |
 
 ### Stage 3B anchor vertical-slice backlog
 
 | ID | Ticket | Depends on | Acceptance boundary |
 | --- | --- | --- | --- |
 | 3B-01 | Build Android sign-in and eligible-job list | 3A-03, 3A-05 | Inspector sees only authorised company jobs and explicit sync state |
-| 3B-02 | Download and open a versioned job pack | 3B-01, G-04 | Encrypted local pack is usable offline and records its authorisation lease |
-| 3B-03 | Capture anchor evidence, notes and photos | 3B-02 | Required fields, outcomes, exceptions and inspector input follow Stage 2B; local saves survive restart |
+| 3B-02 | Download and open a versioned job pack | 3B-01, G-04 | Encrypted local pack is usable offline and records its authorisation lease; Room/SQLCipher stay in an Android adapter, not `:domain` |
+| 3B-03 | Capture anchor evidence, notes and photos | 3B-02 | Required fields, outcomes, exceptions and inspector input follow Stage 2B; local saves survive restart; capture rules live in `:domain` |
 | 3B-04 | Review and queue submission | 3B-03 | Blockers/warnings are distinct; submission creates durable outbox work rather than claiming server success |
 
 ### Stage 3C offline and synchronisation backlog
 
 | ID | Ticket | Depends on | Acceptance boundary |
 | --- | --- | --- | --- |
-| 3C-01 | Implement idempotent mutation outbox | 3B-04 | Retry/restart/duplicate tests preserve one logical mutation and visible state |
+| 3C-01 | Implement idempotent mutation outbox | 3B-04 | Retry/restart/duplicate tests preserve one logical mutation and visible state; identity/state rules in `:domain`, WorkManager drain in an Android adapter |
 | 3C-02 | Implement durable photo upload queue | 3B-03, G-03 | Stable media IDs, resumable retry and no orphaned photo association |
 | 3C-03 | Implement conflict and server-acknowledgement handling | 3C-01, 3C-02 | Conflict is visible; server acknowledgement gates local completion and cleanup |
-| 3C-04 | Implement logout, lease expiry and revocation safety | 3C-03, 2D-06 | Logout never silently destroys pending evidence; empty-outbox cleanup and audited recovery paths are tested |
+| 3C-04 | Implement logout, lease expiry and revocation safety | 3C-03, 2D-06 | Logout never silently destroys pending evidence; empty-outbox cleanup and audited recovery paths are tested; D-025 transitions are JVM-tested in `:domain` |
 
 ### Stage 3D review and reporting backlog
 

@@ -3,7 +3,8 @@
 Compatibility copy. Canonical plan: [docs/roadmap/IMPLEMENTATION_PLAN.md](../roadmap/IMPLEMENTATION_PLAN.md).
 
 1. Scaffold the approved Kotlin/Compose Android, NestJS backend and Next.js web
-   stack with generated OpenAPI clients and provider adapters.
+   stack with generated OpenAPI clients, provider adapters, and a Kotlin/JVM
+   Android field-domain module (D-026).
 2. Establish managed authentication, company tenancy, roles and server-side
    authorisation tests.
 3. Implement Company/User/Client/Site/Anchor/Job/Assignment schema and CRUD.

@@ -12,7 +12,9 @@ a recovery service. It contains only fictional job-pack and outbox records.
 
 The spike lives under `apps/android/storage-spike/`. Product screens, sign-in,
 job download, photographs, WorkManager synchronisation and broader domain
-models remain outside this ticket.
+models remain outside this ticket. D-026 forbids copying this spike's mixed
+storage types into the product `:domain` module; product Room/SQLCipher stays
+in an Android adapter.
 
 ## Evidence-based candidate
 

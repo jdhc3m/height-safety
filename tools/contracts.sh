@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 mode="${1:---check}"
 
+source "$ROOT/tools/java-env.sh"
+
 if [[ "$mode" != "--check" && "$mode" != "--generate" ]]; then
   echo "Usage: tools/contracts.sh [--check|--generate]"
   exit 1

@@ -1,14 +1,16 @@
 # Current Status
 
-Last update: 2026-08-18
+Last update: 2026-08-19
 
 ## Active stage
 
-Stage 2D — implementation planning.
+Stage 3A — foundation implementation; `3A-01` is Done. `3A-02` remains blocked
+by G-03.
 
 ## Completed
 
-- Repository inspected; documentation-only baseline confirmed.
+- Repository inspected; documentation and bounded technical-proof baseline
+  confirmed.
 - Broad research preserved under `docs/archive/` and marked historical.
 - Product narrowed to New South Wales and Queensland installed single-point
   roof anchors using one neutral evidence workflow.
@@ -113,25 +115,34 @@ Stage 2D — implementation planning.
   evidence-recovery specification and transition tests are owner-approved as
   D-025. Independent review passed. G-05 remains open for design-partner
   review before a controlled pilot.
+- D-026 accepted: product Android field domain will be a Kotlin/JVM module
+  with Android/Room/OpenAPI kept in adapters; Kotlin Multiplatform and iOS
+  remain deferred. Constraints:
+  `docs/architecture/ANDROID_DOMAIN_BOUNDARY.md`.
+- `3A-01` scaffolded the Android product build (`:app` plus Kotlin/JVM
+  `:domain`), NestJS API workspace commands and a minimal Next.js office
+  workspace. The scaffold contains no customer data or feature workflow.
+- `3A-01` passed the root `tools/verify.sh` gate and independent review found no
+  actionable correctness issues. The reviewer’s direct Android Gradle run was
+  environment-blocked by sandbox socket permissions; the approved root gate
+  supplied the Android validation.
 
 ## In progress
 
-- Add board owners/agent types and concrete commands as the repository scaffold
-  is approved.
 - Keep design-partner outreach ready; practitioner validation still open.
 
 ## Next recommended task
 
-`3A-01` Scaffold Android, NestJS and Next.js workspaces. Do not promote
-deferred standards candidates into MVP. Authentication vendor selection
-remains deferred. G-03 still blocks production database, backup and export.
+`3A-02` only after G-03 closes. Do not add Kotlin Multiplatform, an iOS target
+or deferred standards candidates. Authentication vendor selection remains
+deferred. G-03 still blocks production database, backup and export.
 G-05 still needs design-partner review before a controlled pilot.
 
 ## Blockers and decisions awaiting confirmation
 
 - No design partner, operational corpus or professional validation yet.
-- No product Android, web or domain application scaffold or production schema
-  migration exists beyond the bounded Stage 2D proofs.
+- No production schema migration exists; product Android, web and Kotlin/JVM
+  domain scaffolds now exist from `3A-01`.
 - Offline-authorisation lease duration and recovery of unsynchronised evidence
   after account revocation are owner-approved as D-025. G-05 still requires
   design-partner review before a controlled pilot.
@@ -176,13 +187,13 @@ than claiming recovery or resetting evidence. A fresh independent correction
 review of `2D-05` reported no actionable findings. The `2D-06` lease/recovery
 machine passes its transition checks for expiry, revocation, pending
 outbox/media and authorised upload-only recovery; independent re-review
-reported no findings and the owner approved D-025. Product Android, web and domain test
-suites remain deferred because those applications are not scaffolded yet.
+reported no findings and the owner approved D-025. `3A-01` adds product Android,
+web and domain checks; feature test suites remain deferred to their tickets.
 
 ## Relevant files
 
 `AGENTS.md`; `docs/product/`; `docs/discovery/`; `docs/requirements/`;
-`docs/architecture/`; `docs/roadmap/`; `docs/archive/`.
+`docs/architecture/`; `docs/roadmap/`; `docs/archive/`; `docs/adr/`.
 
 Stage 2A.5: `docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md`.
 NSW/Queensland extension: `docs/discovery/NSW_QLD_SCOPE_EXTENSION.md`.
@@ -197,5 +208,7 @@ Stage 2D-04 comparison: `docs/roadmap/STAGE_2D_04_PROVIDER_COMPARISON.md`.
 Stage 2D-04 managed evidence: `docs/roadmap/STAGE_2D_04_MANAGED_EVIDENCE.json`.
 Stage 2D-05: `docs/roadmap/STAGE_2D_05_ANDROID_ENCRYPTED_STORAGE_PROOF.md`.
 Stage 2D-06: `docs/roadmap/STAGE_2D_06_OFFLINE_LEASE_RECOVERY.md`.
+Android field domain boundary (D-026): `docs/architecture/ANDROID_DOMAIN_BOUNDARY.md`.
+ADR: `docs/adr/0001-kmp-ready-android-domain.md`.
 AS 5532 review: `docs/standards/AS-5532-2025-INTEGRATION.md`.
 AS/NZS 1891.4 review: `docs/standards/AS-NZS-1891.4-2025-INTEGRATION.md`.

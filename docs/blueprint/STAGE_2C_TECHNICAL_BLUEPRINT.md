@@ -18,7 +18,7 @@ Approved stack direction:
 
 | Area | Direction |
 | --- | --- |
-| Android | Kotlin, Jetpack Compose, Room and WorkManager |
+| Android | Kotlin, Jetpack Compose, Room and WorkManager; field domain is a Kotlin/JVM module (D-026) |
 | Backend | TypeScript and NestJS modular monolith |
 | Office web | TypeScript and Next.js |
 | Server database | PostgreSQL-compatible relational database |
@@ -57,6 +57,8 @@ reviewed OpenAPI artifact is the cross-platform wire contract.
 - Generate a Kotlin client for Android.
 - Generate a TypeScript client for office web.
 - Keep generated API models separate from Room entities and domain models.
+- Keep Android field domain in a Kotlin/JVM module that does not import the
+  generated client, Room or Android APIs (D-026).
 - Regenerate clients in CI and fail when generated changes are not committed.
 - Detect incompatible API changes before merge.
 - Use stable opaque IDs, explicit enum/string evolution and ISO timestamps.
@@ -118,6 +120,12 @@ The lifecycle uses a hybrid model:
 - Inspector submission never approves its own evidence.
 
 ## Android local data and synchronisation
+
+Product Android field rules (outcomes, exceptions, outbox identity, sync gates,
+conflict classification and lease lock versus evidence preservation) live in a
+Kotlin/JVM `:domain` module. Encrypted Room, Keystore, WorkManager and CameraX
+stay in Android adapters. Do not apply Kotlin Multiplatform in this prototype
+(D-026; `docs/architecture/ANDROID_DOMAIN_BOUNDARY.md`).
 
 The encrypted Room database is the Android application's source of truth while
 online or offline. Database key material is protected through Android Keystore;

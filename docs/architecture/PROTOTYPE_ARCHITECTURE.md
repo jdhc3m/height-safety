@@ -1,7 +1,8 @@
 # Prototype Architecture
 
-No product application exists yet; only bounded Stage 2D proofs are scaffolded.
-Approved lowest-complexity shape: modular monolith,
+The product foundation is scaffolded by `3A-01`; feature workflows remain
+deferred to their dependency-ordered tickets. Approved lowest-complexity shape:
+modular monolith,
 PostgreSQL-compatible relational database, authenticated web API, Android
 client with an encrypted Room-based local database, private object storage for
 media/reports, deterministic server-side PDF generation and append-only audit
@@ -15,7 +16,11 @@ for Android; TypeScript with NestJS for the backend; TypeScript with Next.js for
 the office web application. Versioned OpenAPI generated from NestJS is the
 cross-platform API contract. CI generates Kotlin and TypeScript clients and
 checks committed contract changes; generated API models do not become Room
-database entities.
+database entities. Product Android field rules live in a Kotlin/JVM `:domain`
+module with no Android or JVM-only I/O APIs (D-026); Room, WorkManager, CameraX
+and the generated Kotlin client stay in Android adapters. Kotlin Multiplatform
+and iOS remain deferred. Details:
+`docs/architecture/ANDROID_DOMAIN_BOUNDARY.md`.
 
 Modules: identity/tenancy; clients/sites/anchors; jobs/assignments; inspections
 and evidence; sync/media; review; reports; audit. Keep module boundaries clear

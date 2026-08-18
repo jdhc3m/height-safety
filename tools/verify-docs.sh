@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Documentation integrity checks for the docs-only repository.
+# Documentation integrity checks for the product repository.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -27,7 +27,7 @@ require_text() {
   fi
 }
 
-echo "Verifying Stage 2A.5/2B/2C/2D, dual-state scope and canonical docs under $ROOT"
+echo "Verifying canonical product docs and Stage 2 scope under $ROOT"
 
 require_file "docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md"
 require_file "docs/discovery/NSW_QLD_SCOPE_EXTENSION.md"
@@ -43,6 +43,9 @@ require_file "docs/product/NON_GOALS.md"
 require_file "docs/roadmap/CURRENT_STATUS.md"
 require_file "docs/roadmap/ROADMAP.md"
 require_file "docs/blueprint/STAGE_2C_TECHNICAL_BLUEPRINT.md"
+require_file "docs/architecture/DATA_MODEL.md"
+require_file "docs/architecture/ANDROID_DOMAIN_BOUNDARY.md"
+require_file "docs/adr/0001-kmp-ready-android-domain.md"
 require_file "docs/roadmap/STAGE_2D_IMPLEMENTATION_TICKETS.md"
 require_file "docs/roadmap/STAGE_2D_01_WORKSPACE_CONTRACT.md"
 require_file "docs/roadmap/STAGE_2D_02_OPENAPI_PIPELINE.md"
@@ -54,6 +57,8 @@ require_file "docs/roadmap/STAGE_2D_04_PROVIDER_COMPARISON.md"
 require_file "docs/roadmap/STAGE_2D_04_MANAGED_EVIDENCE.json"
 require_file "docs/roadmap/STAGE_2D_05_ANDROID_ENCRYPTED_STORAGE_PROOF.md"
 require_file "docs/roadmap/STAGE_2D_06_OFFLINE_LEASE_RECOVERY.md"
+require_file "docs/architecture/ANDROID_DOMAIN_BOUNDARY.md"
+require_file "docs/adr/0001-kmp-ready-android-domain.md"
 
 require_text "docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md" "MVP field cut"
 require_text "docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md" "Do not"
@@ -126,6 +131,11 @@ require_text "docs/roadmap/STAGE_2D_06_OFFLINE_LEASE_RECOVERY.md" "upload-only"
 require_text "docs/roadmap/STAGE_2D_06_OFFLINE_LEASE_RECOVERY.md" "temporary account restoration"
 require_text "docs/roadmap/STAGE_2D_06_OFFLINE_LEASE_RECOVERY.md" "G-05 remains open"
 require_text "docs/product/DECISION_LOG.md" "D-025"
+require_text "docs/product/DECISION_LOG.md" "D-026"
+require_text "docs/architecture/ANDROID_DOMAIN_BOUNDARY.md" "org.jetbrains.kotlin.jvm"
+require_text "docs/architecture/ANDROID_DOMAIN_BOUNDARY.md" "org.jetbrains.kotlin.multiplatform"
+require_text "docs/roadmap/STAGE_2D_IMPLEMENTATION_TICKETS.md" "Kotlin/JVM \`:domain\`"
+require_text "docs/architecture/TECHNICAL_DECISIONS.md" "T-012"
 require_text "docs/discovery/ASSUMPTIONS_TO_VALIDATE.md" "Partially supported"
 require_text "docs/decisions/assumptions-register.md" "../discovery/ASSUMPTIONS_TO_VALIDATE.md"
 require_text "docs/product/NON_GOALS.md" "certification, compliance or standards interpretation"

@@ -28,6 +28,7 @@
 | D-023 | 2026-08-15 | Use sqlcipher-android behind Room with Keystore-wrapped passphrase for the Android encrypted-storage candidate. | See canonical decision log. | Accepted; G-04 closed; recovery owner-approved in D-025 |
 | D-024 | 2026-08-18 | Use Cloud Run in Sydney as the first managed draft-PDF renderer candidate at 2 vCPU / 2 GiB and concurrency one. | See canonical decision log. | Owner-approved; G-02 closed; auth vendor deferred |
 | D-025 | 2026-08-18 | Use a 24-hour application-issued offline lease and administrator upload-only recovery that does not restore a revoked account. | See canonical decision log. | Owner-approved; 2D-06 Done; G-05 remains open for design-partner review |
+| D-026 | 2026-08-18 | Keep Android field domain as a Kotlin/JVM module and defer KMP/iOS sharing until iOS is an approved product. | See canonical decision log. | Owner-accepted technical direction; scaffold still `3A-01` |
 
 All outcome values, required fields, report wording and partner terms remain
 open to design-partner validation. Historical decisions and research are not

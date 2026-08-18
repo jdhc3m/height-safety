@@ -6,10 +6,11 @@ certification, compliance or standards interpretation; generic rules engine;
 automatic jurisdiction-specific logic; jurisdictions beyond New South Wales
 and Queensland; customer-configurable compliance; accounting, payroll,
 invoicing, advanced CRM or scheduling; customer portals; AI technical
-conclusions; offline final approval; concurrent offline editing; enterprise
-integrations; or microservices without demonstrated need. Future-asset preview
-cards are informational only and must not become hidden register or inspection
-scope.
+conclusions; offline final approval; concurrent offline editing; native iOS
+field capture; enterprise integrations; or microservices without demonstrated
+need. Future-asset preview cards are informational only and must not become
+hidden register or inspection scope. D-026 prepares Android field domain for a
+later iOS extract without adding iOS or Kotlin Multiplatform to this prototype.
 
 These may be reconsidered only after repeated design-partner evidence and a
 recorded decision. Broad research remains in `docs/archive/`.

@@ -37,7 +37,9 @@ async function generate(): Promise<void> {
     await app.init();
     const config = new DocumentBuilder()
       .setTitle('Height Safety API')
-      .setDescription('Prototype API contract; not a compliance or certification service.')
+      .setDescription(
+        'Prototype API contract; not a compliance or certification service.',
+      )
       .setVersion('1.0.0')
       .addServer('/api/v1', 'Version 1 API')
       .build();
@@ -47,7 +49,11 @@ async function generate(): Promise<void> {
     const stableDocument = sortForStableJson(document);
 
     await mkdir(dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, `${JSON.stringify(stableDocument, null, 2)}\n`, 'utf8');
+    await writeFile(
+      outputPath,
+      `${JSON.stringify(stableDocument, null, 2)}\n`,
+      'utf8',
+    );
   } finally {
     await app.close();
   }
