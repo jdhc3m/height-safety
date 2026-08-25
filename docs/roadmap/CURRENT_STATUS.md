@@ -1,11 +1,11 @@
 # Current Status
 
-Last update: 2026-08-19
+Last update: 2026-08-25
 
 ## Active stage
 
-Stage 3A — foundation implementation; `3A-01` is Done. `3A-02` remains blocked
-by G-03.
+Stage 3A — foundation implementation; `3A-01` is Done. G-03 is Done as D-027;
+`3A-02` is in Review.
 
 ## Completed
 
@@ -126,23 +126,39 @@ by G-03.
   actionable correctness issues. The reviewer’s direct Android Gradle run was
   environment-blocked by sandbox socket permissions; the approved root gate
   supplied the Android validation.
+- G-03 evidence is prepared without cloud mutation: first-party Australian
+  provider research, a disposable PostgreSQL 17 schema execution, a tested
+  application-owned private object-storage boundary, and deterministic
+  fictional backup/export restore checks. The owner approved the gate as D-027;
+  production provider, native backup configuration, retention/RPO/RTO and
+  strict backup/log/subprocessor residency remain open. See
+  `docs/roadmap/G-03_PROVIDER_PORTABILITY.md`.
+- `3A-02` adds the company-scoped PostgreSQL migration set, composite tenant
+  keys, private object-reference/report/photo metadata, idempotency constraints,
+  transaction-local tenant context binding and forced row-level policies. The
+  PostgreSQL integration test rejects cross-company reads/writes and missing
+  context; the implementation is ready for independent technical review.
 
 ## In progress
 
+- `3A-02` is in Review; production provider selection, runtime deployment-role
+  configuration and later feature APIs remain separate work.
 - Keep design-partner outreach ready; practitioner validation still open.
 
 ## Next recommended task
 
-`3A-02` only after G-03 closes. Do not add Kotlin Multiplatform, an iOS target
-or deferred standards candidates. Authentication vendor selection remains
-deferred. G-03 still blocks production database, backup and export.
+Complete the independent review of `3A-02`. Do not add Kotlin Multiplatform, an
+iOS target or deferred standards candidates. Authentication vendor selection
+remains deferred. Production provider/native backup configuration,
+retention/RPO/RTO and strict backup/log/subprocessor residency remain open.
 G-05 still needs design-partner review before a controlled pilot.
 
 ## Blockers and decisions awaiting confirmation
 
 - No design partner, operational corpus or professional validation yet.
-- No production schema migration exists; product Android, web and Kotlin/JVM
-  domain scaffolds now exist from `3A-01`.
+- The `3A-02` product schema and tenant-isolation boundary are implemented;
+  feature APIs, invitation authentication and production runtime-role
+  deployment remain in later tickets.
 - Offline-authorisation lease duration and recovery of unsynchronised evidence
   after account revocation are owner-approved as D-025. G-05 still requires
   design-partner review before a controlled pilot.
@@ -153,13 +169,16 @@ G-05 still needs design-partner review before a controlled pilot.
 - NSW and Queensland workflow, terminology, licensing, interval, proof-test and
   report-authority differences require practitioner validation in each state;
   the product must not auto-calculate or claim statutory compliance.
-- Database, object-storage adapter, backup and export remain behind G-03.
+- Production provider/native backup configuration, retention/RPO/RTO and
+  strict backup/log/subprocessor residency remain open after G-03. The
+  tenant-isolation API integration, object-storage integration, backup
+  scheduling and export workflow remain implementation work in later tickets.
   Authentication vendor selection remains deferred. Authorised Android
   key-loss/revocation recovery is owner-approved as D-025; G-05 remains open
-  for design-partner review. Production autoscaling and
-  queue/storage integration remain implementation work after 3A. The
-  Playwright/Chromium worker (D-022) and Cloud Run first managed renderer
-  candidate (D-024) are approved.
+  for design-partner review. Production autoscaling and queue/storage
+  integration remain implementation work after 3A. The Playwright/Chromium
+  worker (D-022) and Cloud Run first managed renderer candidate (D-024) are
+  approved.
 
 ## Tests and commands
 
@@ -188,7 +207,9 @@ review of `2D-05` reported no actionable findings. The `2D-06` lease/recovery
 machine passes its transition checks for expiry, revocation, pending
 outbox/media and authorised upload-only recovery; independent re-review
 reported no findings and the owner approved D-025. `3A-01` adds product Android,
-web and domain checks; feature test suites remain deferred to their tickets.
+web and domain checks; feature test suites remain deferred to their tickets. The
+`3A-02` static migration checks, live PostgreSQL 17 cross-tenant read/write test
+and complete `tools/verify.sh` gate passed on 2026-08-25.
 
 ## Relevant files
 
@@ -208,6 +229,8 @@ Stage 2D-04 comparison: `docs/roadmap/STAGE_2D_04_PROVIDER_COMPARISON.md`.
 Stage 2D-04 managed evidence: `docs/roadmap/STAGE_2D_04_MANAGED_EVIDENCE.json`.
 Stage 2D-05: `docs/roadmap/STAGE_2D_05_ANDROID_ENCRYPTED_STORAGE_PROOF.md`.
 Stage 2D-06: `docs/roadmap/STAGE_2D_06_OFFLINE_LEASE_RECOVERY.md`.
+Stage 3A-02 migrations: `apps/api/migrations/` and
+`apps/api/test/tenant-schema.test.mjs`.
 Android field domain boundary (D-026): `docs/architecture/ANDROID_DOMAIN_BOUNDARY.md`.
 ADR: `docs/adr/0001-kmp-ready-android-domain.md`.
 AS 5532 review: `docs/standards/AS-5532-2025-INTEGRATION.md`.

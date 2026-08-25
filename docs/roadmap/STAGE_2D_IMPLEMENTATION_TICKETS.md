@@ -38,7 +38,7 @@ the reviewer or owner closes the applicable gate.
 | --- | --- | --- | --- |
 | G-01 Contract pipeline | API/domain implementation | NestJS-generated versioned OpenAPI document; generated Kotlin and TypeScript clients; breaking-change check | Technical review |
 | G-02 Hosting and PDF feasibility | Provider selection or report implementation | Representative photo-heavy report tested against candidate renderer/hosting limits, fonts, retries, memory, timeout and concurrency | Closed 2026-08-18: owner D-024 + technical review |
-| G-03 Provider portability | Production infrastructure | Australian-region comparison; standard PostgreSQL; S3-compatible semantics or tested adapter boundary; backup/export path | Owner approval |
+| G-03 Provider portability | Production infrastructure | Evidence passed 2026-08-24: Australian-region comparison, standard PostgreSQL, S3-compatible semantics via tested storage adapter boundary, and deterministic backup/export restore proof | Owner-approved D-027; production provider/native backup/retention details remain open |
 | G-04 Android encrypted storage | Offline job-pack implementation | Room-compatible encryption spike, Keystore integration, migration/recovery test and abandoned-library risk | Technical review |
 | G-05 Offline authorisation | Controlled pilot | Lease duration, expiry behaviour and recovery path for unsynchronised evidence after revocation | Owner accepted D-025; design-partner review still required before G-05 closes |
 | G-06 Real-data retention | Any real customer data | Pilot terms, export process, backup/deletion periods and authorised audited cleanup | Owner + legal/privacy review |
@@ -61,7 +61,7 @@ the reviewer or owner closes the applicable gate.
 | ID | State | Ticket | Depends on | Acceptance boundary |
 | --- | --- | --- | --- | --- |
 | 3A-01 | Done | Scaffold Android, NestJS and Next.js workspaces | 2D-01, 2D-02 | Reproducible build/lint/test commands run locally and in CI; Android includes a Kotlin/JVM `:domain` module with no Android/Room/Retrofit APIs (D-026); no KMP plugin or iOS target; root gate passed and independent review found no actionable issues |
-| 3A-02 | Backlog | Add database migrations and tenant isolation | 3A-01, G-03 | Company-scoped PostgreSQL schema; cross-tenant read/write tests fail closed |
+| 3A-02 | Review | Add database migrations and tenant isolation | 3A-01, G-03 | Company-scoped PostgreSQL schema; composite tenant keys, runtime context/RLS boundary, and live PostgreSQL cross-tenant read/write tests pass; independent review required |
 | 3A-03 | Backlog | Add invitation auth, roles and sessions | 3A-02, 2D-04 | Administrator MFA enforced; inspector/reviewer MFA optional; revocation and claims tested |
 | 3A-04 | Backlog | Add site, jurisdiction and anchor register APIs | 3A-02, G-01 | NSW/QLD recorded as context; no legal-rule engine or future-asset domain model |
 | 3A-05 | Backlog | Add job release, claim and assignment | 3A-03, 3A-04 | Atomic single-primary-inspector claim; office assignment and race tests; independent review retained |

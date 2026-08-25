@@ -24,7 +24,7 @@ Approved stack direction:
 | Server database | PostgreSQL-compatible relational database |
 | Media/reports | S3-compatible private object storage or a provider adapter passing equivalent contract tests |
 | Authentication | Managed, invitation-only provider; exact provider open |
-| Deployment | Containerised backend/web on a managed Australian-region platform; provider open |
+| Deployment | Containerised backend/web on a managed Australian-region platform; broader provider open, with Cloud Run Sydney renderer candidate recorded in D-024 |
 
 No Kubernetes, microservices, multi-region deployment, generic rules engine or
 event-streaming platform is required for the prototype.
@@ -221,7 +221,9 @@ requires design-partner review.
 - Select an Australian region near initial users and co-locate dependent
   services where practical.
 
-Google Cloud Run is an evaluation candidate, not an approved provider.
+Google Cloud Run in `australia-southeast1` is the owner-approved first managed
+draft-renderer candidate (D-024). This does not select the production database,
+object-storage provider or broader hosting platform.
 
 ## PDF/hosting feasibility gate
 
@@ -237,7 +239,9 @@ The spike must use a realistic report fixture with photographs and evaluate:
 - idempotent recovery after interrupted generation.
 
 Compare in-API rendering, a separate worker container and an external renderer.
-Record provider/renderer choice only after the spike passes agreed limits.
+Record provider/renderer choices only after the applicable evidence gate passes.
+The renderer candidate is recorded in D-024; G-03 still covers production
+database, object-storage, backup and export portability.
 
 ## Required automated verification
 

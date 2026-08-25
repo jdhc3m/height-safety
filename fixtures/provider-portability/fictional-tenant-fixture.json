@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "1.0.0",
+  "records": [
+    {
+      "recordType": "company",
+      "recordId": "company-nsw-fictional",
+      "companyId": "company-nsw-fictional",
+      "name": "Fictional Sydney Anchors",
+      "jurisdiction": "NSW"
+    },
+    {
+      "recordType": "site",
+      "recordId": "site-nsw-fictional",
+      "companyId": "company-nsw-fictional",
+      "name": "Fictional Sydney Site",
+      "jurisdiction": "NSW"
+    },
+    {
+      "recordType": "evidence",
+      "recordId": "evidence-nsw-fictional",
+      "companyId": "company-nsw-fictional",
+      "siteId": "site-nsw-fictional",
+      "recordedOutcome": "recorded outcome"
+    },
+    {
+      "recordType": "company",
+      "recordId": "company-qld-fictional",
+      "companyId": "company-qld-fictional",
+      "name": "Fictional Brisbane Anchors",
+      "jurisdiction": "QLD"
+    },
+    {
+      "recordType": "site",
+      "recordId": "site-qld-fictional",
+      "companyId": "company-qld-fictional",
+      "name": "Fictional Brisbane Site",
+      "jurisdiction": "QLD"
+    },
+    {
+      "recordType": "evidence",
+      "recordId": "evidence-qld-fictional",
+      "companyId": "company-qld-fictional",
+      "siteId": "site-qld-fictional",
+      "recordedOutcome": "recorded outcome"
+    }
+  ],
+  "objects": [
+    {
+      "objectId": "photo-nsw-fictional",
+      "companyId": "company-nsw-fictional",
+      "key": "company-nsw-fictional/evidence/photo-nsw-fictional.jpg",
+      "contentType": "image/jpeg",
+      "body": "fictional NSW evidence photograph"
+    },
+    {
+      "objectId": "report-nsw-fictional",
+      "companyId": "company-nsw-fictional",
+      "key": "company-nsw-fictional/reports/report-nsw-fictional.pdf",
+      "contentType": "application/pdf",
+      "body": "fictional NSW draft report"
+    },
+    {
+      "objectId": "photo-qld-fictional",
+      "companyId": "company-qld-fictional",
+      "key": "company-qld-fictional/evidence/photo-qld-fictional.jpg",
+      "contentType": "image/jpeg",
+      "body": "fictional Queensland evidence photograph"
+    }
+  ]
+}
