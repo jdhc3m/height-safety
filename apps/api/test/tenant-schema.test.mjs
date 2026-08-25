@@ -83,6 +83,7 @@ test('3A-02 migrations define one tenant-scoped product schema', async () => {
   ]);
 
   assert.match(runtimeRoleMigration, /height_safety_runtime/);
+  assert.match(runtimeRoleMigration, /NOBYPASSRLS/);
   assert.match(
     tenantSchemaMigration,
     /CREATE FUNCTION height_safety_current_company_id/,
@@ -98,7 +99,18 @@ test('3A-02 migrations define one tenant-scoped product schema', async () => {
     /FOREIGN KEY \(company_id, site_id, jurisdiction\)/,
   );
   assert.match(tenantSchemaMigration, /UNIQUE \(company_id, idempotency_key\)/);
-  assert.match(tenantSchemaMigration, /object_key LIKE company_id \|\| '\/%'/);
+  assert.match(
+    tenantSchemaMigration,
+    /left\(object_key, length\(company_id\) \+ 1\) = company_id \|\| '\/'/,
+  );
+  assert.match(tenantSchemaMigration, /anchor_inspections_anchor_site_fk/);
+  assert.match(
+    tenantSchemaMigration,
+    /review_issues_anchor_inspection_inspection_fk/,
+  );
+  assert.match(tenantSchemaMigration, /report_revisions_snapshot_fk/);
+  assert.match(tenantSchemaMigration, /inspection_snapshots_immutable/);
+  assert.match(tenantSchemaMigration, /disposition = 'removed_from_service'/);
 
   for (const table of TENANT_TABLES) {
     assert.match(
@@ -161,17 +173,124 @@ test(
             (company_id, site_id, client_id, name, jurisdiction)
           VALUES
             ('company-a', 'site-a', 'client-a', 'Fictional Site A', 'NSW'),
+            ('company-a', 'site-a-other', 'client-a', 'Fictional Site A Other', 'NSW'),
             ('company-b', 'site-b', 'client-b', 'Fictional Site B', 'QLD');
+          INSERT INTO users
+            (company_id, user_id, identity_subject, email, role)
+          VALUES
+            ('company-a', 'inspector-a', 'subject-a', 'a@example.test', 'inspector'),
+            ('company-b', 'inspector-b', 'subject-b', 'b@example.test', 'inspector');
+          INSERT INTO anchors (company_id, anchor_id, site_id) VALUES
+            ('company-a', 'anchor-a', 'site-a'),
+            ('company-a', 'anchor-a-other', 'site-a-other'),
+            ('company-b', 'anchor-b', 'site-b');
+          INSERT INTO jobs
+            (company_id, job_id, site_id, jurisdiction, reference)
+          VALUES
+            ('company-a', 'job-a', 'site-a', 'NSW', 'job-a-reference'),
+            ('company-a', 'job-a-other', 'site-a-other', 'NSW', 'job-a-other-reference'),
+            ('company-b', 'job-b', 'site-b', 'QLD', 'job-b-reference');
+          INSERT INTO inspections
+            (company_id, inspection_id, job_id, site_id, jurisdiction, revision_number, inspector_user_id)
+          VALUES
+            ('company-a', 'inspection-a', 'job-a', 'site-a', 'NSW', 1, 'inspector-a'),
+            ('company-a', 'inspection-a-other', 'job-a-other', 'site-a-other', 'NSW', 1, 'inspector-a'),
+            ('company-b', 'inspection-b', 'job-b', 'site-b', 'QLD', 1, 'inspector-b');
+          INSERT INTO inspection_snapshots
+            (company_id, snapshot_id, inspection_id, jurisdiction, snapshot_document, sha256)
+          VALUES
+            ('company-a', 'snapshot-a', 'inspection-a', 'NSW', '{}', 'snapshot-a-sha'),
+            ('company-a', 'snapshot-a-other', 'inspection-a-other', 'NSW', '{}', 'snapshot-a-other-sha');
+          INSERT INTO anchor_inspections
+            (company_id, anchor_inspection_id, inspection_id, site_id, anchor_id)
+          VALUES
+            ('company-a', 'anchor-inspection-a', 'inspection-a', 'site-a', 'anchor-a'),
+            ('company-a', 'anchor-inspection-a-other', 'inspection-a-other', 'site-a-other', 'anchor-a-other');
+          INSERT INTO reports (company_id, report_id, job_id) VALUES
+            ('company-a', 'report-a', 'job-a'),
+            ('company-b', 'report-b', 'job-b');
+          INSERT INTO object_references
+            (company_id, object_id, object_key, content_type, byte_size, sha256)
+          VALUES
+            ('company-a', 'report-object-a', 'company-a/reports/report-a.pdf', 'application/pdf', 1, 'report-object-a-sha');
+          INSERT INTO report_revisions
+            (company_id, report_revision_id, report_id, job_id, source_inspection_id, source_snapshot_id,
+             jurisdiction, revision_number, template_version, generation_idempotency_key, object_id,
+             sha256, created_by_user_id)
+          VALUES
+            ('company-a', 'revision-a', 'report-a', 'job-a', 'inspection-a', 'snapshot-a',
+             'NSW', 1, 'template-1', 'generation-a', 'report-object-a', 'revision-a-sha', 'inspector-a');
         `,
         { schema },
       );
+
+      const objectPrefixOutput = runPsql(
+        `
+          INSERT INTO companies (company_id, name)
+          VALUES ('company_%', 'Wildcard Company');
+          DO $$
+          DECLARE rejected boolean := FALSE;
+          BEGIN
+            BEGIN
+              INSERT INTO object_references
+                (company_id, object_id, object_key, content_type, byte_size, sha256)
+              VALUES
+                ('company_%', 'wildcard-rejected', 'companyX/evidence/photo.jpg', 'image/jpeg', 1, 'wildcard-rejected-sha');
+            EXCEPTION WHEN check_violation THEN
+              rejected := TRUE;
+            END;
+            IF NOT rejected THEN
+              RAISE EXCEPTION 'wildcard object prefix unexpectedly succeeded';
+            END IF;
+          END
+          $$;
+          INSERT INTO object_references
+            (company_id, object_id, object_key, content_type, byte_size, sha256)
+          VALUES
+            ('company_%', 'wildcard-accepted', 'company_%/evidence/photo.jpg', 'image/jpeg', 1, 'wildcard-accepted-sha');
+          SELECT CASE
+            WHEN (SELECT count(*) FROM object_references WHERE company_id = 'company_%') = 1
+            THEN 'literal-object-prefix-passed'
+            ELSE 'literal-object-prefix-failed'
+          END;
+        `,
+        { schema },
+      );
+      assert.match(objectPrefixOutput, /literal-object-prefix-passed/);
+
+      const roleAttributesOutput = runPsql(
+        `
+          SELECT CASE
+            WHEN rolcanlogin = FALSE
+              AND rolsuper = FALSE
+              AND rolcreatedb = FALSE
+              AND rolcreaterole = FALSE
+              AND rolinherit = FALSE
+              AND rolreplication = FALSE
+              AND rolbypassrls = FALSE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.audit_events', 'UPDATE') = FALSE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.audit_events', 'DELETE') = FALSE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.report_revisions', 'UPDATE') = FALSE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.report_revisions', 'DELETE') = FALSE
+              AND has_column_privilege('height_safety_runtime', current_schema() || '.report_revisions', 'superseded_at', 'UPDATE') = TRUE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.inspection_snapshots', 'UPDATE') = FALSE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.inspection_snapshots', 'DELETE') = FALSE
+            THEN 'runtime-role-attributes-passed'
+            ELSE 'runtime-role-attributes-failed'
+          END
+          FROM pg_roles
+          WHERE rolname = 'height_safety_runtime';
+        `,
+        { schema },
+      );
+      assert.match(roleAttributesOutput, /runtime-role-attributes-passed/);
 
       const tenantReadOutput = runPsql(
         `
           BEGIN;
           SELECT set_config('app.company_id', 'company-a', true);
           SELECT CASE
-            WHEN (SELECT count(*) FROM sites) = 1
+            WHEN (SELECT count(*) FROM sites) = 2
               AND (SELECT count(*) FROM sites WHERE site_id = 'site-b') = 0
               AND (SELECT count(*) FROM clients WHERE client_id = 'client-b') = 0
             THEN 'tenant-read-isolation-passed'
@@ -224,6 +343,211 @@ test(
         { schema, asRuntimeRole: true },
       );
       assert.match(tenantWriteOutput, /tenant-write-isolation-passed/);
+
+      const relationshipOutput = runPsql(
+        `
+          BEGIN;
+          SELECT set_config('app.company_id', 'company-a', true);
+          DO $$
+          DECLARE rejected boolean := FALSE;
+          BEGIN
+            BEGIN
+              INSERT INTO anchor_inspections
+                (company_id, anchor_inspection_id, inspection_id, site_id, anchor_id)
+              VALUES
+                ('company-a', 'anchor-inspection-wrong-site', 'inspection-a', 'site-a', 'anchor-a-other');
+            EXCEPTION WHEN foreign_key_violation THEN
+              rejected := TRUE;
+            END;
+            IF NOT rejected THEN
+              RAISE EXCEPTION 'cross-site anchor inspection unexpectedly succeeded';
+            END IF;
+          END
+          $$;
+          DO $$
+          DECLARE rejected boolean := FALSE;
+          BEGIN
+            BEGIN
+              INSERT INTO review_issues
+                (company_id, review_issue_id, inspection_id, anchor_inspection_id, issue_type, reason)
+              VALUES
+                ('company-a', 'review-issue-cross-job', 'inspection-a', 'anchor-inspection-a-other', 'conflict', 'cross-job fixture');
+            EXCEPTION WHEN foreign_key_violation THEN
+              rejected := TRUE;
+            END;
+            IF NOT rejected THEN
+              RAISE EXCEPTION 'cross-job review issue unexpectedly succeeded';
+            END IF;
+          END
+          $$;
+          DO $$
+          DECLARE rejected boolean := FALSE;
+          BEGIN
+            BEGIN
+              INSERT INTO anchor_inspections
+                (company_id, anchor_inspection_id, inspection_id, site_id, anchor_id, recorded_outcome, exception_reason)
+              VALUES
+                ('company-a', 'anchor-inspection-inaccessible', 'inspection-a', 'site-a', 'anchor-a', 'serviceable', 'inaccessible');
+            EXCEPTION WHEN check_violation THEN
+              rejected := TRUE;
+            END;
+            IF NOT rejected THEN
+              RAISE EXCEPTION 'inaccessible serviceable record unexpectedly succeeded';
+            END IF;
+          END
+          $$;
+          DO $$
+          DECLARE rejected boolean := FALSE;
+          BEGIN
+            BEGIN
+              INSERT INTO anchor_inspections
+                (company_id, anchor_inspection_id, inspection_id, site_id, anchor_id, recorded_outcome)
+              VALUES
+                ('company-a', 'anchor-inspection-no-exception', 'inspection-a', 'site-a', 'anchor-a', 'not_inspected');
+            EXCEPTION WHEN check_violation THEN
+              rejected := TRUE;
+            END;
+            IF NOT rejected THEN
+              RAISE EXCEPTION 'not-inspected record without exception unexpectedly succeeded';
+            END IF;
+          END
+          $$;
+          DO $$
+          DECLARE rejected boolean := FALSE;
+          BEGIN
+            BEGIN
+              INSERT INTO anchor_inspections
+                (company_id, anchor_inspection_id, inspection_id, site_id, anchor_id, recorded_outcome, disposition)
+              VALUES
+                ('company-a', 'anchor-inspection-replaced', 'inspection-a', 'site-a', 'anchor-a', 'serviceable', 'replaced');
+            EXCEPTION WHEN check_violation THEN
+              rejected := TRUE;
+            END;
+            IF NOT rejected THEN
+              RAISE EXCEPTION 'replacement disposition unexpectedly succeeded';
+            END IF;
+          END
+          $$;
+          DO $$
+          DECLARE rejected boolean := FALSE;
+          BEGIN
+            BEGIN
+              INSERT INTO report_revisions
+                (company_id, report_revision_id, report_id, job_id, source_inspection_id, source_snapshot_id,
+                 jurisdiction, revision_number, template_version, generation_idempotency_key, object_id,
+                 sha256, created_by_user_id)
+              VALUES
+                ('company-a', 'revision-cross-job', 'report-a', 'job-a', 'inspection-a-other', 'snapshot-a',
+                 'NSW', 2, 'template-1', 'generation-cross-job', 'report-object-a', 'revision-sha', 'inspector-a');
+            EXCEPTION WHEN foreign_key_violation THEN
+              rejected := TRUE;
+            END;
+            IF NOT rejected THEN
+              RAISE EXCEPTION 'cross-job report revision unexpectedly succeeded';
+            END IF;
+          END
+          $$;
+          UPDATE report_revisions
+          SET superseded_at = '2026-08-25T00:00:00Z'
+          WHERE report_revision_id = 'revision-a';
+          DO $$
+          DECLARE rejected boolean := FALSE;
+          BEGIN
+            BEGIN
+              UPDATE report_revisions SET sha256 = 'changed'
+              WHERE report_revision_id = 'revision-a';
+            EXCEPTION WHEN OTHERS THEN
+              rejected := TRUE;
+            END;
+            IF NOT rejected THEN
+              RAISE EXCEPTION 'report revision content update unexpectedly succeeded';
+            END IF;
+          END
+          $$;
+          DO $$
+          DECLARE rejected boolean := FALSE;
+          BEGIN
+            BEGIN
+              DELETE FROM report_revisions WHERE report_revision_id = 'revision-a';
+            EXCEPTION WHEN OTHERS THEN
+              rejected := TRUE;
+            END;
+            IF NOT rejected THEN
+              RAISE EXCEPTION 'report revision delete unexpectedly succeeded';
+            END IF;
+          END
+          $$;
+          INSERT INTO audit_events
+            (company_id, audit_event_id, action, target_type, target_id)
+          VALUES
+            ('company-a', 'audit-event-a', 'created', 'fixture', 'fixture-a');
+          DO $$
+          DECLARE rejected boolean := FALSE;
+          BEGIN
+            BEGIN
+              UPDATE audit_events SET action = 'changed'
+              WHERE audit_event_id = 'audit-event-a';
+            EXCEPTION WHEN OTHERS THEN
+              rejected := TRUE;
+            END;
+            IF NOT rejected THEN
+              RAISE EXCEPTION 'audit update unexpectedly succeeded';
+            END IF;
+          END
+          $$;
+          DO $$
+          DECLARE rejected boolean := FALSE;
+          BEGIN
+            BEGIN
+              DELETE FROM audit_events WHERE audit_event_id = 'audit-event-a';
+            EXCEPTION WHEN OTHERS THEN
+              rejected := TRUE;
+            END;
+            IF NOT rejected THEN
+              RAISE EXCEPTION 'audit delete unexpectedly succeeded';
+            END IF;
+          END
+          $$;
+          DO $$
+          DECLARE rejected boolean := FALSE;
+          BEGIN
+            BEGIN
+              UPDATE inspection_snapshots SET sha256 = 'changed'
+              WHERE snapshot_id = 'snapshot-a';
+            EXCEPTION WHEN OTHERS THEN
+              rejected := TRUE;
+            END;
+            IF NOT rejected THEN
+              RAISE EXCEPTION 'snapshot update unexpectedly succeeded';
+            END IF;
+          END
+          $$;
+          DO $$
+          DECLARE rejected boolean := FALSE;
+          BEGIN
+            BEGIN
+              DELETE FROM inspection_snapshots WHERE snapshot_id = 'snapshot-a';
+            EXCEPTION WHEN OTHERS THEN
+              rejected := TRUE;
+            END;
+            IF NOT rejected THEN
+              RAISE EXCEPTION 'snapshot delete unexpectedly succeeded';
+            END IF;
+          END
+          $$;
+          SELECT CASE
+            WHEN (SELECT count(*) FROM audit_events WHERE audit_event_id = 'audit-event-a' AND action = 'created') = 1
+              AND (SELECT sha256 FROM inspection_snapshots WHERE snapshot_id = 'snapshot-a') = 'snapshot-a-sha'
+              AND (SELECT sha256 FROM report_revisions WHERE report_revision_id = 'revision-a') = 'revision-a-sha'
+              AND (SELECT superseded_at FROM report_revisions WHERE report_revision_id = 'revision-a') = '2026-08-25 00:00:00+00'
+            THEN 'relationship-and-immutability-passed'
+            ELSE 'relationship-and-immutability-failed'
+          END;
+          ROLLBACK;
+        `,
+        { schema, asRuntimeRole: true },
+      );
+      assert.match(relationshipOutput, /relationship-and-immutability-passed/);
 
       const ownerVerificationOutput = runPsql(
         `

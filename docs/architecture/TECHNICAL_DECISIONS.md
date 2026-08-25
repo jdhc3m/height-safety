@@ -14,7 +14,7 @@
 | T-010 | Preserve server evidence by default during prototype; agree real-data retention before pilot. | Accepted direction | Avoids evidence loss and invented retention periods. |
 | T-011 | Issue an application-owned offline lease and recover revoked-device pending evidence only through administrator upload-only authorisation. | Owner-approved; G-05 open for design-partner review | Identity providers cannot reach a disconnected device; D-023 already fails closed on Keystore loss. |
 | T-012 | Keep product Android field domain as a Kotlin/JVM module with no Android or JVM-only I/O APIs; defer KMP until iOS is an approved product. | Accepted direction (D-026) | Avoids mixing Room/WorkManager/OpenAPI models into field rules and keeps a later `commonMain` extract possible without changing D-017. |
-| T-013 | Use composite company keys plus a dedicated runtime role, transaction-local company context and forced PostgreSQL row-level policies for tenant isolation. | Implemented in `3A-02`; technical review required (D-028) | Fails closed for missing or cross-company database access while leaving current-session membership and role authorisation in the API. |
+| T-013 | Use composite company keys plus a dedicated runtime role, transaction-local company context and forced PostgreSQL row-level policies for tenant isolation. | Implemented and independently reviewed in `3A-02` (D-028) | Fails closed for missing or cross-company database access while leaving current-session membership and role authorisation in the API. |
 
 Provider, authentication service, production Android encryption adoption,
 retention periods and G-05 design-partner review remain open. D-023 selects

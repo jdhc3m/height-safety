@@ -24,7 +24,11 @@ else
 fi
 
 psql() {
-  "${PSQL_PREFIX[@]}" "$PSQL_BIN" "$@"
+  if (( ${#PSQL_PREFIX[@]} > 0 )); then
+    "${PSQL_PREFIX[@]}" "$PSQL_BIN" "$@"
+  else
+    command "$PSQL_BIN" "$@"
+  fi
 }
 
 schema_name="hs_g03_$(openssl rand -hex 6 2>/dev/null || date -u +%s)"
@@ -46,7 +50,7 @@ run_psql() {
 
 run_psql \
   -c "CREATE SCHEMA \"$schema_name\"; SET search_path TO \"$schema_name\"" \
-  -f "$SCHEMA_PATH" >/dev/null
+  -f - < "$SCHEMA_PATH" >/dev/null
 
 run_psql -c "
   SET search_path TO \"$schema_name\";

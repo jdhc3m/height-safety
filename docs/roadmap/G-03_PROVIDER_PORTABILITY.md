@@ -72,8 +72,8 @@ HEIGHT_SAFETY_POSTGRES_URL='postgresql://...' \
   tools/provider-portability/postgresql-check.sh
 ```
 
-The product migrations and complete tenant-isolation API tests remain the
-scope of `3A-02`; this proof does not claim that ticket is implemented.
+The product migrations and complete tenant-isolation API tests are the separate
+scope of `3A-02`; this bounded proof does not replace that implementation.
 
 ### Application-owned object-storage boundary
 
@@ -136,6 +136,6 @@ The checked-in machine-readable result is
 The owner approved G-03 as a **provider-portability evidence gate** on
 2026-08-24 (D-027). Production provider selection, native backup
 configuration, concrete retention/RPO/RTO and strict backup/log/subprocessor
-residency remain deferred. `3A-02` is unblocked and may use portable
-PostgreSQL migrations and the tested application-owned storage/export
-boundaries; it must add the complete product schema and cross-tenant API tests.
+residency remain deferred. `3A-02` is unblocked and uses portable PostgreSQL
+migrations and the tested application-owned storage/export boundaries; its
+complete product schema and cross-tenant API tests passed independent review.

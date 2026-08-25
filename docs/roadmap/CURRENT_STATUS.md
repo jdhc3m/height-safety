@@ -5,7 +5,7 @@ Last update: 2026-08-25
 ## Active stage
 
 Stage 3A — foundation implementation; `3A-01` is Done. G-03 is Done as D-027;
-`3A-02` is in Review.
+`3A-02` is Done.
 
 ## Completed
 
@@ -137,17 +137,19 @@ Stage 3A — foundation implementation; `3A-01` is Done. G-03 is Done as D-027;
   keys, private object-reference/report/photo metadata, idempotency constraints,
   transaction-local tenant context binding and forced row-level policies. The
   PostgreSQL integration test rejects cross-company reads/writes and missing
-  context; the implementation is ready for independent technical review.
+  context; relationship, role-privilege, immutability and portability checks
+  also pass. Independent review found and fixed actionable issues; `3A-02` is
+  Done.
 
 ## In progress
 
-- `3A-02` is in Review; production provider selection, runtime deployment-role
-  configuration and later feature APIs remain separate work.
+- Production provider selection, runtime deployment-role configuration and later
+  feature APIs remain separate work from the completed `3A-02` boundary.
 - Keep design-partner outreach ready; practitioner validation still open.
 
 ## Next recommended task
 
-Complete the independent review of `3A-02`. Do not add Kotlin Multiplatform, an
+Start `3A-03` invitation auth, roles and sessions. Do not add Kotlin Multiplatform, an
 iOS target or deferred standards candidates. Authentication vendor selection
 remains deferred. Production provider/native backup configuration,
 retention/RPO/RTO and strict backup/log/subprocessor residency remain open.
@@ -209,7 +211,10 @@ outbox/media and authorised upload-only recovery; independent re-review
 reported no findings and the owner approved D-025. `3A-01` adds product Android,
 web and domain checks; feature test suites remain deferred to their tickets. The
 `3A-02` static migration checks, live PostgreSQL 17 cross-tenant read/write test
-and complete `tools/verify.sh` gate passed on 2026-08-25.
+and complete `tools/verify.sh` gate passed on 2026-08-25. The root test gate
+requires `TEST_POSTGRES_URL` for a disposable PostgreSQL database and explicit
+`TEST_POSTGRES_ALLOW_MIGRATION=1`, plus `HEIGHT_SAFETY_POSTGRES_URL` for the
+live portability schema check; the CI workflow provisions PostgreSQL 17.
 
 ## Relevant files
 

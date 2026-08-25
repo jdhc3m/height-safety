@@ -21,3 +21,15 @@ BEGIN
   END IF;
 END
 $$;
+
+-- Normalise an existing role as well as a newly-created one. A pre-existing
+-- role must not retain login, superuser, replication or row-security bypass
+-- privileges from an earlier environment.
+ALTER ROLE height_safety_runtime
+  NOLOGIN
+  NOSUPERUSER
+  NOCREATEDB
+  NOCREATEROLE
+  NOINHERIT
+  NOREPLICATION
+  NOBYPASSRLS;

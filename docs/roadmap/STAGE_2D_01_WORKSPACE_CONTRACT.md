@@ -71,9 +71,9 @@ The scaffold must eventually provide these stable commands:
 | `tools/bootstrap.sh` | Verify pinned runtimes and install locked dependencies without adding or upgrading packages. |
 | `tools/format.sh --check` | Check documentation integrity and Prettier-supported TypeScript/JSON without rewriting files; Android lint/compile checks cover Kotlin and Gradle sources. |
 | `tools/lint.sh` | Run static analysis for shell, TypeScript, NestJS/Next.js and Kotlin. |
-| `tools/test.sh` | Run unit and repository-level tests; later include PostgreSQL integration suites. |
+| `tools/test.sh` | Run unit and repository-level tests, including live PostgreSQL integration suites when database components exist; `TEST_POSTGRES_URL` must point to a disposable database and `TEST_POSTGRES_ALLOW_MIGRATION=1` must be explicit. |
 | `tools/contracts.sh --check` | Generate OpenAPI and both clients in a temporary location, lint the contract and fail on committed-output drift or incompatible changes. |
-| `tools/verify.sh` | Run documentation, formatting, lint, contract and test checks used as the merge gate. |
+| `tools/verify.sh` | Run documentation, formatting, lint, contract, live PostgreSQL and repository checks used as the merge gate. |
 
 The existing `tools/verify-docs.sh` remains the documentation check and is
 called by `tools/verify.sh`. Scripts must fail fast, produce non-interactive CI

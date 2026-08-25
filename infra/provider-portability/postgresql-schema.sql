@@ -45,7 +45,9 @@ CREATE TABLE object_references (
   PRIMARY KEY (company_id, object_id),
   UNIQUE (company_id, object_key),
   CONSTRAINT object_key_is_tenant_scoped
-    CHECK (object_key LIKE company_id || '/%')
+    CHECK (
+      left(object_key, length(company_id) + 1) = company_id || '/'
+    )
 );
 
 CREATE INDEX evidence_records_company_site_idx

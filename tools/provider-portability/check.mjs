@@ -358,7 +358,10 @@ async function main() {
     /CREATE EXTENSION|CREATE POLICY|USING\s*\(/i,
   );
   assert.match(postgresSchema, /FOREIGN KEY \(company_id, site_id\)/);
-  assert.match(postgresSchema, /object_key LIKE company_id \|\| '\/%'/);
+  assert.match(
+    postgresSchema,
+    /left\(object_key, length\(company_id\) \+ 1\) = company_id \|\| '\/'/,
+  );
 
   const temporaryDirectory = await mkdtemp(
     join(tmpdir(), 'height-safety-g03-'),

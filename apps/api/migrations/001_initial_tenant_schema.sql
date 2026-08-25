@@ -102,7 +102,9 @@ CREATE TABLE anchors (
   CONSTRAINT anchors_register_status_ck
     CHECK (register_status IN ('active', 'inactive', 'archived')),
   CONSTRAINT anchors_register_id_unique
-    UNIQUE (company_id, site_id, register_id)
+    UNIQUE (company_id, site_id, register_id),
+  CONSTRAINT anchors_id_site_unique
+    UNIQUE (company_id, anchor_id, site_id)
 );
 
 CREATE TABLE jobs (
@@ -143,7 +145,9 @@ CREATE TABLE jobs (
   CONSTRAINT jobs_reference_unique
     UNIQUE (company_id, reference),
   CONSTRAINT jobs_id_jurisdiction_unique
-    UNIQUE (company_id, job_id, jurisdiction)
+    UNIQUE (company_id, job_id, jurisdiction),
+  CONSTRAINT jobs_id_site_unique
+    UNIQUE (company_id, job_id, site_id)
 );
 
 CREATE TABLE job_assignments (
@@ -180,6 +184,7 @@ CREATE TABLE inspections (
   company_id text NOT NULL,
   inspection_id text NOT NULL,
   job_id text NOT NULL,
+  site_id text NOT NULL,
   jurisdiction text NOT NULL,
   revision_number integer NOT NULL,
   inspector_user_id text NOT NULL,
@@ -196,6 +201,9 @@ CREATE TABLE inspections (
   CONSTRAINT inspections_job_fk
     FOREIGN KEY (company_id, job_id)
     REFERENCES jobs (company_id, job_id),
+  CONSTRAINT inspections_job_site_fk
+    FOREIGN KEY (company_id, job_id, site_id)
+    REFERENCES jobs (company_id, job_id, site_id),
   CONSTRAINT inspections_job_jurisdiction_fk
     FOREIGN KEY (company_id, job_id, jurisdiction)
     REFERENCES jobs (company_id, job_id, jurisdiction),
@@ -211,13 +219,18 @@ CREATE TABLE inspections (
   CONSTRAINT inspections_job_revision_unique
     UNIQUE (company_id, job_id, revision_number),
   CONSTRAINT inspections_id_jurisdiction_unique
-    UNIQUE (company_id, inspection_id, jurisdiction)
+    UNIQUE (company_id, inspection_id, jurisdiction),
+  CONSTRAINT inspections_id_job_jurisdiction_unique
+    UNIQUE (company_id, inspection_id, job_id, jurisdiction),
+  CONSTRAINT inspections_id_site_unique
+    UNIQUE (company_id, inspection_id, site_id)
 );
 
 CREATE TABLE anchor_inspections (
   company_id text NOT NULL,
   anchor_inspection_id text NOT NULL,
   inspection_id text NOT NULL,
+  site_id text NOT NULL,
   anchor_id text,
   provisional_anchor_id text,
   identity_confirmation text,
@@ -230,14 +243,22 @@ CREATE TABLE anchor_inspections (
   created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (company_id, anchor_inspection_id),
+  CONSTRAINT anchor_inspections_id_inspection_unique
+    UNIQUE (company_id, anchor_inspection_id, inspection_id),
   CONSTRAINT anchor_inspections_company_fk
     FOREIGN KEY (company_id) REFERENCES companies (company_id),
   CONSTRAINT anchor_inspections_inspection_fk
     FOREIGN KEY (company_id, inspection_id)
     REFERENCES inspections (company_id, inspection_id),
+  CONSTRAINT anchor_inspections_inspection_site_fk
+    FOREIGN KEY (company_id, inspection_id, site_id)
+    REFERENCES inspections (company_id, inspection_id, site_id),
   CONSTRAINT anchor_inspections_anchor_fk
     FOREIGN KEY (company_id, anchor_id)
     REFERENCES anchors (company_id, anchor_id),
+  CONSTRAINT anchor_inspections_anchor_site_fk
+    FOREIGN KEY (company_id, anchor_id, site_id)
+    REFERENCES anchors (company_id, anchor_id, site_id),
   CONSTRAINT anchor_inspections_reference_ck
     CHECK (
       (anchor_id IS NOT NULL AND provisional_anchor_id IS NULL)
@@ -262,10 +283,23 @@ CREATE TABLE anchor_inspections (
         'identity_issue'
       )
     ),
+  CONSTRAINT anchor_inspections_exception_outcome_ck
+    CHECK (
+      exception_reason IS NULL
+      OR recorded_outcome IS NULL
+      OR exception_reason = 'identity_issue'
+      OR recorded_outcome = 'not_inspected'
+    ),
   CONSTRAINT anchor_inspections_disposition_ck
     CHECK (
       disposition IS NULL
-      OR disposition IN ('removed_from_service', 'retained', 'replaced')
+      OR disposition = 'removed_from_service'
+    ),
+  CONSTRAINT anchor_inspections_not_inspected_exception_ck
+    CHECK (
+      recorded_outcome IS NULL
+      OR recorded_outcome <> 'not_inspected'
+      OR exception_reason IS NOT NULL
     )
 );
 
@@ -330,7 +364,9 @@ CREATE TABLE object_references (
   CONSTRAINT object_references_key_unique
     UNIQUE (company_id, object_key),
   CONSTRAINT object_references_key_scoped_ck
-    CHECK (object_key LIKE company_id || '/%'),
+    CHECK (
+      left(object_key, length(company_id) + 1) = company_id || '/'
+    ),
   CONSTRAINT object_references_size_nonnegative_ck
     CHECK (byte_size >= 0)
 );
@@ -377,8 +413,24 @@ CREATE TABLE inspection_snapshots (
   CONSTRAINT inspection_snapshots_jurisdiction_allowed_ck
     CHECK (jurisdiction IN ('NSW', 'QLD')),
   CONSTRAINT inspection_snapshots_id_jurisdiction_unique
-    UNIQUE (company_id, snapshot_id, jurisdiction)
+    UNIQUE (company_id, snapshot_id, jurisdiction),
+  CONSTRAINT inspection_snapshots_snapshot_inspection_unique
+    UNIQUE (company_id, snapshot_id, jurisdiction, inspection_id)
 );
+
+CREATE FUNCTION height_safety_reject_snapshot_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE EXCEPTION 'inspection_snapshots are immutable';
+END
+$$;
+
+CREATE TRIGGER inspection_snapshots_immutable
+  BEFORE UPDATE OR DELETE ON inspection_snapshots
+  FOR EACH ROW
+  EXECUTE FUNCTION height_safety_reject_snapshot_mutation();
 
 CREATE TABLE reports (
   company_id text NOT NULL,
@@ -392,13 +444,16 @@ CREATE TABLE reports (
     FOREIGN KEY (company_id, job_id)
     REFERENCES jobs (company_id, job_id),
   CONSTRAINT reports_job_unique
-    UNIQUE (company_id, job_id)
+    UNIQUE (company_id, job_id),
+  CONSTRAINT reports_id_job_unique
+    UNIQUE (company_id, report_id, job_id)
 );
 
 CREATE TABLE report_revisions (
   company_id text NOT NULL,
   report_revision_id text NOT NULL,
   report_id text NOT NULL,
+  job_id text NOT NULL,
   source_inspection_id text NOT NULL,
   source_snapshot_id text NOT NULL,
   jurisdiction text NOT NULL,
@@ -417,12 +472,25 @@ CREATE TABLE report_revisions (
   CONSTRAINT report_revisions_report_fk
     FOREIGN KEY (company_id, report_id)
     REFERENCES reports (company_id, report_id),
-  CONSTRAINT report_revisions_inspection_fk
-    FOREIGN KEY (company_id, source_inspection_id)
-    REFERENCES inspections (company_id, inspection_id),
+  CONSTRAINT report_revisions_report_job_fk
+    FOREIGN KEY (company_id, report_id, job_id)
+    REFERENCES reports (company_id, report_id, job_id),
+  CONSTRAINT report_revisions_inspection_job_fk
+    FOREIGN KEY (company_id, source_inspection_id, job_id, jurisdiction)
+    REFERENCES inspections (company_id, inspection_id, job_id, jurisdiction),
   CONSTRAINT report_revisions_snapshot_fk
-    FOREIGN KEY (company_id, source_snapshot_id, jurisdiction)
-    REFERENCES inspection_snapshots (company_id, snapshot_id, jurisdiction),
+    FOREIGN KEY (
+      company_id,
+      source_snapshot_id,
+      jurisdiction,
+      source_inspection_id
+    )
+    REFERENCES inspection_snapshots (
+      company_id,
+      snapshot_id,
+      jurisdiction,
+      inspection_id
+    ),
   CONSTRAINT report_revisions_object_fk
     FOREIGN KEY (company_id, object_id)
     REFERENCES object_references (company_id, object_id),
@@ -462,6 +530,9 @@ CREATE TABLE review_issues (
   CONSTRAINT review_issues_anchor_inspection_fk
     FOREIGN KEY (company_id, anchor_inspection_id)
     REFERENCES anchor_inspections (company_id, anchor_inspection_id),
+  CONSTRAINT review_issues_anchor_inspection_inspection_fk
+    FOREIGN KEY (company_id, anchor_inspection_id, inspection_id)
+    REFERENCES anchor_inspections (company_id, anchor_inspection_id, inspection_id),
   CONSTRAINT review_issues_reviewer_fk
     FOREIGN KEY (company_id, reviewer_user_id)
     REFERENCES users (company_id, user_id),
@@ -551,6 +622,20 @@ CREATE TABLE audit_events (
     FOREIGN KEY (company_id, actor_user_id)
     REFERENCES users (company_id, user_id)
 );
+
+CREATE FUNCTION height_safety_reject_audit_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE EXCEPTION 'audit_events is append-only';
+END
+$$;
+
+CREATE TRIGGER audit_events_append_only
+  BEFORE UPDATE OR DELETE ON audit_events
+  FOR EACH ROW
+  EXECUTE FUNCTION height_safety_reject_audit_mutation();
 
 CREATE INDEX users_company_idx ON users (company_id);
 CREATE INDEX clients_company_idx ON clients (company_id);
@@ -730,3 +815,8 @@ BEGIN
   );
 END
 $$;
+
+REVOKE UPDATE, DELETE ON audit_events FROM height_safety_runtime;
+REVOKE UPDATE, DELETE ON report_revisions FROM height_safety_runtime;
+REVOKE UPDATE, DELETE ON inspection_snapshots FROM height_safety_runtime;
+GRANT UPDATE (superseded_at) ON report_revisions TO height_safety_runtime;
