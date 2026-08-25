@@ -1,6 +1,119 @@
 {
   "components": {
     "schemas": {
+      "AcceptInvitationDto": {
+        "properties": {
+          "invitationToken": {
+            "description": "One-time opaque invitation token.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "providerAccessToken": {
+            "description": "Short-lived access token issued by the selected managed identity provider.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "providerAccessToken",
+          "invitationToken"
+        ],
+        "type": "object"
+      },
+      "AuthMeResponseDto": {
+        "properties": {
+          "companyId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "mfaSatisfied": {
+            "type": "boolean"
+          },
+          "role": {
+            "enum": [
+              "administrator",
+              "office_reviewer",
+              "inspector"
+            ],
+            "type": "string"
+          },
+          "sessionExpiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "email",
+          "role",
+          "companyId",
+          "sessionId",
+          "mfaSatisfied",
+          "sessionExpiresAt"
+        ],
+        "type": "object"
+      },
+      "AuthUserResponseDto": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "administrator",
+              "office_reviewer",
+              "inspector"
+            ],
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "email",
+          "role"
+        ],
+        "type": "object"
+      },
+      "CreateInvitationDto": {
+        "properties": {
+          "email": {
+            "example": "inspector@example.test",
+            "format": "email",
+            "type": "string"
+          },
+          "expiresAt": {
+            "example": "2026-09-01T00:00:00.000Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "administrator",
+              "office_reviewer",
+              "inspector"
+            ],
+            "example": "inspector",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "role",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
       "HealthResponseDto": {
         "properties": {
           "buildVersion": {
@@ -26,6 +139,96 @@
           "generatedAt"
         ],
         "type": "object"
+      },
+      "InvitationResponseDto": {
+        "properties": {
+          "companyId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "invitationId": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "administrator",
+              "office_reviewer",
+              "inspector"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "invitationId",
+          "email",
+          "role",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
+      "ProviderAccessTokenDto": {
+        "properties": {
+          "providerAccessToken": {
+            "description": "Short-lived access token issued by the selected managed identity provider.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "providerAccessToken"
+        ],
+        "type": "object"
+      },
+      "SessionResponseDto": {
+        "properties": {
+          "accessToken": {
+            "description": "Opaque application session token. Store it in platform-secure client storage.",
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthUserResponseDto"
+          }
+        },
+        "required": [
+          "accessToken",
+          "companyId",
+          "expiresAt",
+          "user"
+        ],
+        "type": "object"
+      },
+      "SessionRevokedResponseDto": {
+        "properties": {
+          "revoked": {
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "revoked"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "access-token": {
+        "bearerFormat": "opaque",
+        "scheme": "bearer",
+        "type": "http"
       }
     }
   },
@@ -40,6 +243,206 @@
   },
   "openapi": "3.0.0",
   "paths": {
+    "/auth/invitations": {
+      "post": {
+        "operationId": "createInvitation",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvitationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Create an invitation for a company user",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/auth/invitations/accept": {
+      "post": {
+        "operationId": "acceptInvitation",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInvitationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Accept an invitation using a verified provider identity",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "operationId": "getCurrentAuth",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMeResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Read current session membership and role",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/auth/sessions": {
+      "post": {
+        "operationId": "createSession",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderAccessTokenDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Create an application session from a provider access token",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/auth/sessions/revoke": {
+      "post": {
+        "operationId": "revokeCurrentSession",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionRevokedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Revoke the current application session",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "getHealth",

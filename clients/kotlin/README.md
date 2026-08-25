@@ -45,17 +45,35 @@ All URIs are relative to */api/v1*
 
 | Class | Method | HTTP request | Description |
 | ------------ | ------------- | ------------- | ------------- |
+| *IdentityApi* | [**acceptInvitation**](docs/IdentityApi.md#acceptinvitation) | **POST** auth/invitations/accept | Accept an invitation using a verified provider identity |
+| *IdentityApi* | [**createInvitation**](docs/IdentityApi.md#createinvitation) | **POST** auth/invitations | Create an invitation for a company user |
+| *IdentityApi* | [**createSession**](docs/IdentityApi.md#createsession) | **POST** auth/sessions | Create an application session from a provider access token |
+| *IdentityApi* | [**getCurrentAuth**](docs/IdentityApi.md#getcurrentauth) | **GET** auth/me | Read current session membership and role |
+| *IdentityApi* | [**revokeCurrentSession**](docs/IdentityApi.md#revokecurrentsession) | **POST** auth/sessions/revoke | Revoke the current application session |
 | *SystemApi* | [**getHealth**](docs/SystemApi.md#gethealth) | **GET** health | Check API health |
 
 
 <a id="documentation-for-models"></a>
 ## Documentation for Models
 
+ - [au.com.heightsafety.api.models.AcceptInvitationDto](docs/AcceptInvitationDto.md)
+ - [au.com.heightsafety.api.models.AuthMeResponseDto](docs/AuthMeResponseDto.md)
+ - [au.com.heightsafety.api.models.AuthUserResponseDto](docs/AuthUserResponseDto.md)
+ - [au.com.heightsafety.api.models.CreateInvitationDto](docs/CreateInvitationDto.md)
  - [au.com.heightsafety.api.models.HealthResponseDto](docs/HealthResponseDto.md)
+ - [au.com.heightsafety.api.models.InvitationResponseDto](docs/InvitationResponseDto.md)
+ - [au.com.heightsafety.api.models.ProviderAccessTokenDto](docs/ProviderAccessTokenDto.md)
+ - [au.com.heightsafety.api.models.SessionResponseDto](docs/SessionResponseDto.md)
+ - [au.com.heightsafety.api.models.SessionRevokedResponseDto](docs/SessionRevokedResponseDto.md)
 
 
 <a id="documentation-for-authorization"></a>
 ## Documentation for Authorization
 
-Endpoints do not require authorization.
+
+Authentication schemes defined for the API:
+<a id="access-token"></a>
+### access-token
+
+- **Type**: HTTP Bearer Token authentication (opaque)
 

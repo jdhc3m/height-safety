@@ -16,16 +16,23 @@ Next, try it out.
 ```ts
 import {
   Configuration,
-  SystemApi,
+  IdentityApi,
 } from '@height-safety/api-client';
-import type { GetHealthRequest } from '@height-safety/api-client';
+import type { AcceptInvitationRequest } from '@height-safety/api-client';
 
 async function example() {
   console.log("🚀 Testing @height-safety/api-client SDK...");
-  const api = new SystemApi();
+  const api = new IdentityApi();
+
+  const body = {
+    // string
+    xCompanyId: xCompanyId_example,
+    // AcceptInvitationDto
+    acceptInvitationDto: ...,
+  } satisfies AcceptInvitationRequest;
 
   try {
-    const data = await api.getHealth();
+    const data = await api.acceptInvitation(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -45,17 +52,35 @@ All URIs are relative to */api/v1*
 
 | Class | Method | HTTP request | Description
 | ----- | ------ | ------------ | -------------
+*IdentityApi* | [**acceptInvitation**](docs/IdentityApi.md#acceptinvitation) | **POST** /auth/invitations/accept | Accept an invitation using a verified provider identity
+*IdentityApi* | [**createInvitation**](docs/IdentityApi.md#createinvitation) | **POST** /auth/invitations | Create an invitation for a company user
+*IdentityApi* | [**createSession**](docs/IdentityApi.md#createsession) | **POST** /auth/sessions | Create an application session from a provider access token
+*IdentityApi* | [**getCurrentAuth**](docs/IdentityApi.md#getcurrentauth) | **GET** /auth/me | Read current session membership and role
+*IdentityApi* | [**revokeCurrentSession**](docs/IdentityApi.md#revokecurrentsession) | **POST** /auth/sessions/revoke | Revoke the current application session
 *SystemApi* | [**getHealth**](docs/SystemApi.md#gethealth) | **GET** /health | Check API health
 
 
 ### Models
 
+- [AcceptInvitationDto](docs/AcceptInvitationDto.md)
+- [AuthMeResponseDto](docs/AuthMeResponseDto.md)
+- [AuthUserResponseDto](docs/AuthUserResponseDto.md)
+- [CreateInvitationDto](docs/CreateInvitationDto.md)
 - [HealthResponseDto](docs/HealthResponseDto.md)
+- [InvitationResponseDto](docs/InvitationResponseDto.md)
+- [ProviderAccessTokenDto](docs/ProviderAccessTokenDto.md)
+- [SessionResponseDto](docs/SessionResponseDto.md)
+- [SessionRevokedResponseDto](docs/SessionRevokedResponseDto.md)
 
 ### Authorization
 
-Endpoints do not require authorization.
 
+Authentication schemes defined for the API:
+<a id="access-token"></a>
+#### access-token
+
+
+- **Type**: HTTP Bearer Token authentication (opaque)
 
 ## About
 

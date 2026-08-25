@@ -42,6 +42,10 @@ async function generate(): Promise<void> {
       )
       .setVersion('1.0.0')
       .addServer('/api/v1', 'Version 1 API')
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'opaque' },
+        'access-token',
+      )
       .build();
     const document = SwaggerModule.createDocument(app, config);
     document.info.license = { name: 'Proprietary prototype' };

@@ -4,8 +4,8 @@ Last update: 2026-08-25
 
 ## Active stage
 
-Stage 3A — foundation implementation; `3A-01` is Done. G-03 is Done as D-027;
-`3A-02` is Done.
+Stage 3A — foundation implementation; `3A-01`, `3A-02` and `3A-03` are Done.
+G-03 is Done as D-027.
 
 ## Completed
 
@@ -140,6 +140,15 @@ Stage 3A — foundation implementation; `3A-01` is Done. G-03 is Done as D-027;
   context; relationship, role-privilege, immutability and portability checks
   also pass. Independent review found and fixed actionable issues; `3A-02` is
   Done.
+- `3A-03` adds a provider-neutral invitation and application-session boundary:
+  verified-email identities, Administrator MFA enforcement, optional
+  Inspector/Office reviewer MFA, current-membership role checks, one-time
+  invitation digests, short-lived opaque session digests, revocation and
+  audit-event emission hooks. Invitation/session tables use the existing
+  company-scoped RLS boundary; focused policy tests, generated API clients and
+  the live PostgreSQL cross-company checks pass. The identity-provider and
+  durable application persistence adapters remain deliberately unconfigured
+  while vendor selection is deferred.
 
 ## In progress
 
@@ -149,18 +158,20 @@ Stage 3A — foundation implementation; `3A-01` is Done. G-03 is Done as D-027;
 
 ## Next recommended task
 
-Start `3A-03` invitation auth, roles and sessions. Do not add Kotlin Multiplatform, an
-iOS target or deferred standards candidates. Authentication vendor selection
-remains deferred. Production provider/native backup configuration,
-retention/RPO/RTO and strict backup/log/subprocessor residency remain open.
-G-05 still needs design-partner review before a controlled pilot.
+Start `3A-04` site, jurisdiction and anchor register APIs. Do not add Kotlin
+Multiplatform, an iOS target or deferred standards candidates. Authentication
+vendor selection and the durable identity/runtime adapters remain deferred.
+Production provider/native backup configuration, retention/RPO/RTO and strict
+backup/log/subprocessor residency remain open. G-05 still needs design-partner
+review before a controlled pilot.
 
 ## Blockers and decisions awaiting confirmation
 
 - No design partner, operational corpus or professional validation yet.
-- The `3A-02` product schema and tenant-isolation boundary are implemented;
-  feature APIs, invitation authentication and production runtime-role
-  deployment remain in later tickets.
+- The `3A-02` product schema and tenant-isolation boundary plus the bounded
+  `3A-03` auth policy/session contract are implemented; site/register feature
+  APIs, durable auth adapters and production runtime-role deployment remain in
+  later work.
 - Offline-authorisation lease duration and recovery of unsynchronised evidence
   after account revocation are owner-approved as D-025. G-05 still requires
   design-partner review before a controlled pilot.
@@ -210,9 +221,11 @@ machine passes its transition checks for expiry, revocation, pending
 outbox/media and authorised upload-only recovery; independent re-review
 reported no findings and the owner approved D-025. `3A-01` adds product Android,
 web and domain checks; feature test suites remain deferred to their tickets. The
-`3A-02` static migration checks, live PostgreSQL 17 cross-tenant read/write test
-and complete `tools/verify.sh` gate passed on 2026-08-25. The root test gate
-requires `TEST_POSTGRES_URL` for a disposable PostgreSQL database and explicit
+`3A-02`/`3A-03` static migration checks, live PostgreSQL 17 cross-tenant
+read/write test, focused auth tests, API type-check and generated contract
+checks passed on 2026-08-25. The complete `tools/verify.sh` gate also passed
+against disposable PostgreSQL 17 on 2026-08-25. The root test gate requires
+`TEST_POSTGRES_URL` for a disposable PostgreSQL database and explicit
 `TEST_POSTGRES_ALLOW_MIGRATION=1`, plus `HEIGHT_SAFETY_POSTGRES_URL` for the
 live portability schema check; the CI workflow provisions PostgreSQL 17.
 
@@ -236,6 +249,9 @@ Stage 2D-05: `docs/roadmap/STAGE_2D_05_ANDROID_ENCRYPTED_STORAGE_PROOF.md`.
 Stage 2D-06: `docs/roadmap/STAGE_2D_06_OFFLINE_LEASE_RECOVERY.md`.
 Stage 3A-02 migrations: `apps/api/migrations/` and
 `apps/api/test/tenant-schema.test.mjs`.
+Stage 3A-03 identity boundary: `apps/api/src/identity/`,
+`apps/api/migrations/002_identity_auth_schema.sql` and
+`apps/api/test/auth.test.mjs`.
 Android field domain boundary (D-026): `docs/architecture/ANDROID_DOMAIN_BOUNDARY.md`.
 ADR: `docs/adr/0001-kmp-ready-android-domain.md`.
 AS 5532 review: `docs/standards/AS-5532-2025-INTEGRATION.md`.

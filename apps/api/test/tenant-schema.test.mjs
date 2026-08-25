@@ -13,6 +13,10 @@ const TENANT_SCHEMA_MIGRATION = new URL(
   '../migrations/001_initial_tenant_schema.sql',
   import.meta.url,
 );
+const AUTH_SCHEMA_MIGRATION = new URL(
+  '../migrations/002_identity_auth_schema.sql',
+  import.meta.url,
+);
 const TENANT_TABLES = [
   'companies',
   'users',
@@ -36,6 +40,8 @@ const TENANT_TABLES = [
   'sync_mutations',
   'outbox_items',
   'audit_events',
+  'user_invitations',
+  'user_sessions',
 ];
 
 const databaseUrl = process.env.TEST_POSTGRES_URL;
@@ -76,11 +82,14 @@ async function readMigration(url) {
   return readFile(url, 'utf8');
 }
 
-test('3A-02 migrations define one tenant-scoped product schema', async () => {
-  const [runtimeRoleMigration, tenantSchemaMigration] = await Promise.all([
-    readMigration(RUNTIME_ROLE_MIGRATION),
-    readMigration(TENANT_SCHEMA_MIGRATION),
-  ]);
+test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async () => {
+  const [runtimeRoleMigration, tenantSchemaMigration, authSchemaMigration] =
+    await Promise.all([
+      readMigration(RUNTIME_ROLE_MIGRATION),
+      readMigration(TENANT_SCHEMA_MIGRATION),
+      readMigration(AUTH_SCHEMA_MIGRATION),
+    ]);
+  const productSchema = `${tenantSchemaMigration}\n${authSchemaMigration}`;
 
   assert.match(runtimeRoleMigration, /height_safety_runtime/);
   assert.match(runtimeRoleMigration, /NOBYPASSRLS/);
@@ -111,15 +120,17 @@ test('3A-02 migrations define one tenant-scoped product schema', async () => {
   assert.match(tenantSchemaMigration, /report_revisions_snapshot_fk/);
   assert.match(tenantSchemaMigration, /inspection_snapshots_immutable/);
   assert.match(tenantSchemaMigration, /disposition = 'removed_from_service'/);
+  assert.match(authSchemaMigration, /user_invitations_token_hash_ck/);
+  assert.match(authSchemaMigration, /user_sessions_token_hash_ck/);
 
   for (const table of TENANT_TABLES) {
     assert.match(
-      tenantSchemaMigration,
+      productSchema,
       new RegExp(`CREATE TABLE ${table} \\(`),
       `missing tenant table ${table}`,
     );
     assert.match(
-      tenantSchemaMigration,
+      productSchema,
       new RegExp(`${table}_tenant_policy`),
       `missing tenant policy ${table}`,
     );
@@ -128,10 +139,15 @@ test('3A-02 migrations define one tenant-scoped product schema', async () => {
   const migrationFiles = [
     new URL('000_runtime_role.sql', MIGRATION_DIRECTORY),
     new URL('001_initial_tenant_schema.sql', MIGRATION_DIRECTORY),
+    new URL('002_identity_auth_schema.sql', MIGRATION_DIRECTORY),
   ];
   assert.deepEqual(
     migrationFiles.map((url) => url.pathname.split('/').at(-1)),
-    ['000_runtime_role.sql', '001_initial_tenant_schema.sql'],
+    [
+      '000_runtime_role.sql',
+      '001_initial_tenant_schema.sql',
+      '002_identity_auth_schema.sql',
+    ],
   );
 });
 
@@ -156,6 +172,7 @@ test(
       for (const migrationUrl of [
         RUNTIME_ROLE_MIGRATION,
         TENANT_SCHEMA_MIGRATION,
+        new URL('../migrations/002_identity_auth_schema.sql', import.meta.url),
       ]) {
         const migration = await readMigration(migrationUrl);
         runPsql(migration, { schema });
@@ -178,8 +195,20 @@ test(
           INSERT INTO users
             (company_id, user_id, identity_subject, email, role)
           VALUES
+            ('company-a', 'administrator-a', 'subject-admin-a', 'admin-a@example.test', 'administrator'),
             ('company-a', 'inspector-a', 'subject-a', 'a@example.test', 'inspector'),
+            ('company-b', 'administrator-b', 'subject-admin-b', 'admin-b@example.test', 'administrator'),
             ('company-b', 'inspector-b', 'subject-b', 'b@example.test', 'inspector');
+          INSERT INTO user_invitations
+            (company_id, invitation_id, email, role, token_hash, invited_by_user_id, expires_at)
+          VALUES
+            ('company-a', 'invitation-a', 'new-a@example.test', 'inspector', repeat('a', 64), 'administrator-a', '2099-01-01T00:00:00Z'),
+            ('company-b', 'invitation-b', 'new-b@example.test', 'office_reviewer', repeat('b', 64), 'administrator-b', '2099-01-01T00:00:00Z');
+          INSERT INTO user_sessions
+            (company_id, session_id, user_id, identity_subject, token_hash, mfa_satisfied, issued_at, expires_at, last_seen_at)
+          VALUES
+            ('company-a', 'session-a', 'inspector-a', 'subject-a', repeat('c', 64), FALSE, '2026-08-25T00:00:00Z', '2026-08-25T01:00:00Z', '2026-08-25T00:00:00Z'),
+            ('company-b', 'session-b', 'inspector-b', 'subject-b', repeat('d', 64), FALSE, '2026-08-25T00:00:00Z', '2026-08-25T01:00:00Z', '2026-08-25T00:00:00Z');
           INSERT INTO anchors (company_id, anchor_id, site_id) VALUES
             ('company-a', 'anchor-a', 'site-a'),
             ('company-a', 'anchor-a-other', 'site-a-other'),
@@ -293,6 +322,9 @@ test(
             WHEN (SELECT count(*) FROM sites) = 2
               AND (SELECT count(*) FROM sites WHERE site_id = 'site-b') = 0
               AND (SELECT count(*) FROM clients WHERE client_id = 'client-b') = 0
+              AND (SELECT count(*) FROM user_invitations) = 1
+              AND (SELECT count(*) FROM user_sessions) = 1
+              AND (SELECT count(*) FROM user_sessions WHERE session_id = 'session-b') = 0
             THEN 'tenant-read-isolation-passed'
             ELSE 'tenant-read-isolation-failed'
           END;
@@ -330,11 +362,28 @@ test(
             END;
           END
           $$;
+          DO $$
+          BEGIN
+            BEGIN
+              INSERT INTO user_sessions
+                (company_id, session_id, user_id, identity_subject, token_hash, mfa_satisfied, issued_at, expires_at, last_seen_at)
+              VALUES
+                ('company-b', 'session-cross-tenant', 'inspector-b', 'subject-b', repeat('e', 64), FALSE, '2026-08-25T00:00:00Z', '2026-08-25T01:00:00Z', '2026-08-25T00:00:00Z');
+              RAISE EXCEPTION 'cross-tenant session insert unexpectedly succeeded';
+            EXCEPTION WHEN insufficient_privilege THEN
+              NULL;
+            END;
+          END
+          $$;
           UPDATE sites SET name = 'must not change' WHERE site_id = 'site-b';
+          UPDATE user_sessions
+          SET revoked_at = '2026-08-25T00:30:00Z'
+          WHERE session_id = 'session-b';
           DELETE FROM clients WHERE client_id = 'client-b';
           SELECT CASE
             WHEN (SELECT count(*) FROM sites WHERE site_id = 'site-b') = 0
               AND (SELECT count(*) FROM clients WHERE client_id = 'client-b') = 0
+              AND (SELECT count(*) FROM user_sessions WHERE session_id = 'session-b') = 0
             THEN 'tenant-write-isolation-passed'
             ELSE 'tenant-write-isolation-failed'
           END;
