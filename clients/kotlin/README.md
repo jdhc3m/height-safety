@@ -50,6 +50,18 @@ All URIs are relative to */api/v1*
 | *IdentityApi* | [**createSession**](docs/IdentityApi.md#createsession) | **POST** auth/sessions | Create an application session from a provider access token |
 | *IdentityApi* | [**getCurrentAuth**](docs/IdentityApi.md#getcurrentauth) | **GET** auth/me | Read current session membership and role |
 | *IdentityApi* | [**revokeCurrentSession**](docs/IdentityApi.md#revokecurrentsession) | **POST** auth/sessions/revoke | Revoke the current application session |
+| *SiteRegisterApi* | [**createAnchor**](docs/SiteRegisterApi.md#createanchor) | **POST** sites/{siteId}/anchors | Add a single-point anchor to a site register |
+| *SiteRegisterApi* | [**createClient**](docs/SiteRegisterApi.md#createclient) | **POST** clients | Create a company client |
+| *SiteRegisterApi* | [**createSite**](docs/SiteRegisterApi.md#createsite) | **POST** sites | Create a site with supported jurisdiction context |
+| *SiteRegisterApi* | [**getAnchor**](docs/SiteRegisterApi.md#getanchor) | **GET** sites/{siteId}/anchors/{anchorId} | Read a registered anchor |
+| *SiteRegisterApi* | [**getClient**](docs/SiteRegisterApi.md#getclient) | **GET** clients/{clientId} | Read a company client |
+| *SiteRegisterApi* | [**getSite**](docs/SiteRegisterApi.md#getsite) | **GET** sites/{siteId} | Read a company site |
+| *SiteRegisterApi* | [**listAnchors**](docs/SiteRegisterApi.md#listanchors) | **GET** sites/{siteId}/anchors | List a site anchor register |
+| *SiteRegisterApi* | [**listClients**](docs/SiteRegisterApi.md#listclients) | **GET** clients | List company clients |
+| *SiteRegisterApi* | [**listSites**](docs/SiteRegisterApi.md#listsites) | **GET** sites | List company sites |
+| *SiteRegisterApi* | [**updateAnchor**](docs/SiteRegisterApi.md#updateanchor) | **PATCH** sites/{siteId}/anchors/{anchorId} | Update a registered anchor |
+| *SiteRegisterApi* | [**updateClient**](docs/SiteRegisterApi.md#updateclient) | **PATCH** clients/{clientId} | Update a company client |
+| *SiteRegisterApi* | [**updateSite**](docs/SiteRegisterApi.md#updatesite) | **PATCH** sites/{siteId} | Update a company site |
 | *SystemApi* | [**getHealth**](docs/SystemApi.md#gethealth) | **GET** health | Check API health |
 
 
@@ -57,14 +69,23 @@ All URIs are relative to */api/v1*
 ## Documentation for Models
 
  - [au.com.heightsafety.api.models.AcceptInvitationDto](docs/AcceptInvitationDto.md)
+ - [au.com.heightsafety.api.models.AnchorResponseDto](docs/AnchorResponseDto.md)
  - [au.com.heightsafety.api.models.AuthMeResponseDto](docs/AuthMeResponseDto.md)
  - [au.com.heightsafety.api.models.AuthUserResponseDto](docs/AuthUserResponseDto.md)
+ - [au.com.heightsafety.api.models.ClientResponseDto](docs/ClientResponseDto.md)
+ - [au.com.heightsafety.api.models.CreateAnchorDto](docs/CreateAnchorDto.md)
+ - [au.com.heightsafety.api.models.CreateClientDto](docs/CreateClientDto.md)
  - [au.com.heightsafety.api.models.CreateInvitationDto](docs/CreateInvitationDto.md)
+ - [au.com.heightsafety.api.models.CreateSiteDto](docs/CreateSiteDto.md)
  - [au.com.heightsafety.api.models.HealthResponseDto](docs/HealthResponseDto.md)
  - [au.com.heightsafety.api.models.InvitationResponseDto](docs/InvitationResponseDto.md)
  - [au.com.heightsafety.api.models.ProviderAccessTokenDto](docs/ProviderAccessTokenDto.md)
  - [au.com.heightsafety.api.models.SessionResponseDto](docs/SessionResponseDto.md)
  - [au.com.heightsafety.api.models.SessionRevokedResponseDto](docs/SessionRevokedResponseDto.md)
+ - [au.com.heightsafety.api.models.SiteResponseDto](docs/SiteResponseDto.md)
+ - [au.com.heightsafety.api.models.UpdateAnchorDto](docs/UpdateAnchorDto.md)
+ - [au.com.heightsafety.api.models.UpdateClientDto](docs/UpdateClientDto.md)
+ - [au.com.heightsafety.api.models.UpdateSiteDto](docs/UpdateSiteDto.md)
 
 
 <a id="documentation-for-authorization"></a>

@@ -20,6 +20,79 @@
         ],
         "type": "object"
       },
+      "AnchorResponseDto": {
+        "properties": {
+          "anchorId": {
+            "type": "string"
+          },
+          "anchorType": {
+            "enum": [
+              "single_point"
+            ],
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "installContext": {
+            "nullable": true,
+            "type": "string"
+          },
+          "label": {
+            "nullable": true,
+            "type": "string"
+          },
+          "location": {
+            "nullable": true,
+            "type": "string"
+          },
+          "manufacturer": {
+            "nullable": true,
+            "type": "string"
+          },
+          "model": {
+            "nullable": true,
+            "type": "string"
+          },
+          "notes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "registerId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "registerStatus": {
+            "enum": [
+              "active",
+              "inactive",
+              "archived"
+            ],
+            "type": "string"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "anchorId",
+          "siteId",
+          "anchorType",
+          "registerStatus",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
       "AuthMeResponseDto": {
         "properties": {
           "companyId": {
@@ -85,6 +158,122 @@
         ],
         "type": "object"
       },
+      "ClientResponseDto": {
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "contactDetails": {
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "externalReference": {
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "clientId",
+          "name",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "CreateAnchorDto": {
+        "properties": {
+          "anchorType": {
+            "default": "single_point",
+            "enum": [
+              "single_point"
+            ],
+            "type": "string"
+          },
+          "installContext": {
+            "maxLength": 2000,
+            "nullable": true,
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "location": {
+            "maxLength": 2000,
+            "nullable": true,
+            "type": "string"
+          },
+          "manufacturer": {
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "model": {
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "notes": {
+            "maxLength": 2000,
+            "nullable": true,
+            "type": "string"
+          },
+          "registerId": {
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "registerStatus": {
+            "default": "active",
+            "enum": [
+              "active",
+              "inactive",
+              "archived"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreateClientDto": {
+        "properties": {
+          "contactDetails": {
+            "maxLength": 2000,
+            "nullable": true,
+            "type": "string"
+          },
+          "externalReference": {
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "example": "Fictional Facilities Pty Ltd",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
       "CreateInvitationDto": {
         "properties": {
           "email": {
@@ -111,6 +300,49 @@
           "email",
           "role",
           "expiresAt"
+        ],
+        "type": "object"
+      },
+      "CreateSiteDto": {
+        "properties": {
+          "accessNotes": {
+            "maxLength": 2000,
+            "nullable": true,
+            "type": "string"
+          },
+          "address": {
+            "maxLength": 2000,
+            "nullable": true,
+            "type": "string"
+          },
+          "clientId": {
+            "example": "client-id",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "jurisdiction": {
+            "enum": [
+              "NSW",
+              "QLD"
+            ],
+            "example": "NSW",
+            "type": "string"
+          },
+          "name": {
+            "example": "Warehouse One",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "siteReference": {
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "clientId",
+          "name",
+          "jurisdiction"
         ],
         "type": "object"
       },
@@ -221,6 +453,172 @@
         "required": [
           "revoked"
         ],
+        "type": "object"
+      },
+      "SiteResponseDto": {
+        "properties": {
+          "accessNotes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "address": {
+            "nullable": true,
+            "type": "string"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "jurisdiction": {
+            "enum": [
+              "NSW",
+              "QLD"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "siteReference": {
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "siteId",
+          "clientId",
+          "name",
+          "jurisdiction",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "UpdateAnchorDto": {
+        "properties": {
+          "anchorType": {
+            "default": "single_point",
+            "enum": [
+              "single_point"
+            ],
+            "type": "string"
+          },
+          "installContext": {
+            "maxLength": 2000,
+            "nullable": true,
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "location": {
+            "maxLength": 2000,
+            "nullable": true,
+            "type": "string"
+          },
+          "manufacturer": {
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "model": {
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "notes": {
+            "maxLength": 2000,
+            "nullable": true,
+            "type": "string"
+          },
+          "registerId": {
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "registerStatus": {
+            "default": "active",
+            "enum": [
+              "active",
+              "inactive",
+              "archived"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateClientDto": {
+        "properties": {
+          "contactDetails": {
+            "maxLength": 2000,
+            "nullable": true,
+            "type": "string"
+          },
+          "externalReference": {
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "example": "Updated Facilities Pty Ltd",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateSiteDto": {
+        "properties": {
+          "accessNotes": {
+            "maxLength": 2000,
+            "nullable": true,
+            "type": "string"
+          },
+          "address": {
+            "maxLength": 2000,
+            "nullable": true,
+            "type": "string"
+          },
+          "clientId": {
+            "example": "client-id",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "jurisdiction": {
+            "enum": [
+              "NSW",
+              "QLD"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "example": "Updated Warehouse One",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "siteReference": {
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          }
+        },
         "type": "object"
       }
     },
@@ -443,6 +841,185 @@
         ]
       }
     },
+    "/clients": {
+      "get": {
+        "operationId": "listClients",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClientResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List company clients",
+        "tags": [
+          "site-register"
+        ]
+      },
+      "post": {
+        "operationId": "createClient",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClientDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Create a company client",
+        "tags": [
+          "site-register"
+        ]
+      }
+    },
+    "/clients/{clientId}": {
+      "get": {
+        "operationId": "getClient",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "clientId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Read a company client",
+        "tags": [
+          "site-register"
+        ]
+      },
+      "patch": {
+        "operationId": "updateClient",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "clientId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateClientDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Update a company client",
+        "tags": [
+          "site-register"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "getHealth",
@@ -462,6 +1039,396 @@
         "summary": "Check API health",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/sites": {
+      "get": {
+        "operationId": "listSites",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SiteResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List company sites",
+        "tags": [
+          "site-register"
+        ]
+      },
+      "post": {
+        "operationId": "createSite",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSiteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Create a site with supported jurisdiction context",
+        "tags": [
+          "site-register"
+        ]
+      }
+    },
+    "/sites/{siteId}": {
+      "get": {
+        "operationId": "getSite",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Read a company site",
+        "tags": [
+          "site-register"
+        ]
+      },
+      "patch": {
+        "operationId": "updateSite",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSiteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Update a company site",
+        "tags": [
+          "site-register"
+        ]
+      }
+    },
+    "/sites/{siteId}/anchors": {
+      "get": {
+        "operationId": "listAnchors",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AnchorResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List a site anchor register",
+        "tags": [
+          "site-register"
+        ]
+      },
+      "post": {
+        "operationId": "createAnchor",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAnchorDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnchorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Add a single-point anchor to a site register",
+        "tags": [
+          "site-register"
+        ]
+      }
+    },
+    "/sites/{siteId}/anchors/{anchorId}": {
+      "get": {
+        "operationId": "getAnchor",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "anchorId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnchorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Read a registered anchor",
+        "tags": [
+          "site-register"
+        ]
+      },
+      "patch": {
+        "operationId": "updateAnchor",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "anchorId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAnchorDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnchorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Update a registered anchor",
+        "tags": [
+          "site-register"
         ]
       }
     }

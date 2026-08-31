@@ -1,10 +1,11 @@
 # Current Status
 
-Last update: 2026-08-25
+Last update: 2026-08-31
 
 ## Active stage
 
 Stage 3A — foundation implementation; `3A-01`, `3A-02` and `3A-03` are Done.
+`3A-04` is in Review.
 G-03 is Done as D-027.
 
 ## Completed
@@ -152,15 +153,22 @@ G-03 is Done as D-027.
 
 ## In progress
 
+- `3A-04` site, jurisdiction and anchor-register API boundary is implemented in
+  the current worktree and awaiting independent review. It covers company-
+  scoped client, site and single-point anchor register operations, explicit
+  `NSW`/`QLD` context, manager-role checks, audit-event hooks and fail-closed
+  HTTP handling. The runtime persistence and durable audit adapters remain
+  deliberately unconfigured.
 - Production provider selection, runtime deployment-role configuration and later
   feature APIs remain separate work from the completed `3A-02` boundary.
 - Keep design-partner outreach ready; practitioner validation still open.
 
 ## Next recommended task
 
-Start `3A-04` site, jurisdiction and anchor register APIs. Do not add Kotlin
-Multiplatform, an iOS target or deferred standards candidates. Authentication
-vendor selection and the durable identity/runtime adapters remain deferred.
+Complete independent review of `3A-04`, then start `3A-05` job release, claim and
+assignment. Do not add Kotlin Multiplatform, an iOS target or deferred standards
+candidates. Authentication vendor selection and the durable identity/runtime
+adapters remain deferred.
 Production provider/native backup configuration, retention/RPO/RTO and strict
 backup/log/subprocessor residency remain open. G-05 still needs design-partner
 review before a controlled pilot.
@@ -169,9 +177,9 @@ review before a controlled pilot.
 
 - No design partner, operational corpus or professional validation yet.
 - The `3A-02` product schema and tenant-isolation boundary plus the bounded
-  `3A-03` auth policy/session contract are implemented; site/register feature
-  APIs, durable auth adapters and production runtime-role deployment remain in
-  later work.
+  `3A-03` auth policy/session contract are implemented; `3A-04` has a bounded
+  API contract in Review, while its durable store/audit adapters and production
+  runtime-role deployment remain later work.
 - Offline-authorisation lease duration and recovery of unsynchronised evidence
   after account revocation are owner-approved as D-025. G-05 still requires
   design-partner review before a controlled pilot.
@@ -228,6 +236,13 @@ against disposable PostgreSQL 17 on 2026-08-25. The root test gate requires
 `TEST_POSTGRES_URL` for a disposable PostgreSQL database and explicit
 `TEST_POSTGRES_ALLOW_MIGRATION=1`, plus `HEIGHT_SAFETY_POSTGRES_URL` for the
 live portability schema check; the CI workflow provisions PostgreSQL 17.
+
+On 2026-08-31, the `3A-04` API build and full root gate passed with thirteen
+API tests, including the live PostgreSQL tenant-isolation test. Web tests and
+build, formatting, API type-checking, deterministic OpenAPI/TypeScript/Kotlin
+contract checks, provider portability, PDF, offline-lease, encrypted-storage
+and Android build/lint checks also passed. The PostgreSQL instance used for
+the gate was disposable and has been stopped.
 
 ## Relevant files
 

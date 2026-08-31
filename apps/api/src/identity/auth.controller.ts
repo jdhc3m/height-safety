@@ -1,17 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Controller,
-  ForbiddenException,
-  Get,
-  Headers,
-  HttpException,
-  InternalServerErrorException,
-  Post,
-  ServiceUnavailableException,
-  UnauthorizedException,
-  Body,
-} from '@nestjs/common';
+import { Controller, Get, Headers, Post, Body } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiHeader,
@@ -20,8 +7,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import { createTenantContext } from '../database/tenant-context';
-import { AuthFailure, type AuthPrincipal } from './auth.types';
+import { type AuthPrincipal } from './auth.types';
 import {
   AcceptInvitationDto,
   AuthMeResponseDto,
@@ -33,70 +19,11 @@ import {
   SessionRevokedResponseDto,
 } from './auth.dto';
 import { AuthService } from './auth-service';
-
-function requireBearerToken(authorization: string | undefined): string {
-  if (!authorization?.startsWith('Bearer ')) {
-    throw new UnauthorizedException('Bearer session token is required');
-  }
-
-  const token = authorization.slice('Bearer '.length).trim();
-  if (token.length === 0) {
-    throw new UnauthorizedException('Bearer session token is required');
-  }
-  return token;
-}
-
-function requireCompanyId(companyId: string | undefined): string {
-  if (!companyId) {
-    throw new BadRequestException('x-company-id header is required');
-  }
-
-  try {
-    return createTenantContext(companyId).companyId;
-  } catch {
-    throw new BadRequestException('x-company-id header is invalid');
-  }
-}
-
-function toHttpException(error: unknown): never {
-  if (error instanceof HttpException) {
-    throw error;
-  }
-  if (!(error instanceof AuthFailure)) {
-    throw new InternalServerErrorException();
-  }
-
-  switch (error.code) {
-    case 'INVALID_INPUT':
-    case 'INVITATION_EMAIL_MISMATCH':
-      throw new BadRequestException(error.message);
-    case 'CONFLICT':
-      throw new ConflictException(error.message);
-    case 'FORBIDDEN':
-    case 'MFA_REQUIRED':
-    case 'ROLE_FORBIDDEN':
-      throw new ForbiddenException(error.message);
-    case 'AUTH_PERSISTENCE_UNAVAILABLE':
-    case 'IDENTITY_PROVIDER_UNAVAILABLE':
-    case 'INVITATION_DELIVERY_UNAVAILABLE':
-      throw new ServiceUnavailableException();
-    case 'UNAUTHENTICATED':
-    case 'EMAIL_NOT_VERIFIED':
-    case 'IDENTITY_NOT_MEMBER':
-    case 'IDENTITY_MISMATCH':
-    case 'ACCOUNT_INACTIVE':
-    case 'INVITATION_NOT_FOUND':
-    case 'INVITATION_EXPIRED':
-    case 'INVITATION_ALREADY_USED':
-    case 'INVITATION_REVOKED':
-    case 'SESSION_NOT_FOUND':
-    case 'SESSION_REVOKED':
-    case 'SESSION_EXPIRED':
-    case 'SESSION_INVALID':
-    case 'COMPANY_MISMATCH':
-      throw new UnauthorizedException('authentication is not valid');
-  }
-}
+import {
+  requireBearerToken,
+  requireCompanyId,
+  toAuthHttpException,
+} from './auth-http';
 
 function toInvitationResponse(
   invitation: Awaited<ReturnType<AuthService['createInvitation']>>,
@@ -168,7 +95,7 @@ export class AuthController {
       });
       return toInvitationResponse(invitation);
     } catch (error) {
-      return toHttpException(error);
+      return toAuthHttpException(error);
     }
   }
 
@@ -192,7 +119,7 @@ export class AuthController {
         );
       return toSessionResponse(session);
     } catch (error) {
-      return toHttpException(error);
+      return toAuthHttpException(error);
     }
   }
 
@@ -215,7 +142,7 @@ export class AuthController {
         );
       return toSessionResponse(session);
     } catch (error) {
-      return toHttpException(error);
+      return toAuthHttpException(error);
     }
   }
 
@@ -238,7 +165,7 @@ export class AuthController {
       );
       return toMeResponse(principal);
     } catch (error) {
-      return toHttpException(error);
+      return toAuthHttpException(error);
     }
   }
 
@@ -262,7 +189,7 @@ export class AuthController {
       this.authService.revokeSession(principal);
       return { revoked: true };
     } catch (error) {
-      return toHttpException(error);
+      return toAuthHttpException(error);
     }
   }
 }
