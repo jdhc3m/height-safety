@@ -19,7 +19,7 @@ import type { CreateJobDto } from '@height-safety/api-client'
 const example = {
   "reference": JOB-2026-001,
   "siteId": site-id,
-  "plannedDate": Tue Sep 15 10:00:00 AEST 2026,
+  "plannedDate": Tue Sep 15 00:00:00 UTC 2026,
 } satisfies CreateJobDto
 
 console.log(example)

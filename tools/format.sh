@@ -12,11 +12,11 @@ fi
 git -C "$ROOT" diff --check
 
 while IFS= read -r -d '' markdown_file; do
-  if rg -n '[[:blank:]]+$' "$markdown_file"; then
+  if grep -nE '[[:blank:]]+$' "$markdown_file"; then
     echo "documentation formatting failure: trailing whitespace in $markdown_file"
     exit 1
   fi
-  fence_count="$(rg -c '^[[:space:]]*```' "$markdown_file" || true)"
+  fence_count="$(grep -cE '^[[:space:]]*```' "$markdown_file" || true)"
   if (( fence_count % 2 != 0 )); then
     echo "documentation formatting failure: unclosed code fence in $markdown_file"
     exit 1

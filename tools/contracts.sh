@@ -6,6 +6,10 @@ mode="${1:---check}"
 
 source "$ROOT/tools/java-env.sh"
 
+# OpenAPI Generator formats example dates with the JVM default timezone.
+# Keep generated clients byte-stable across developer machines and CI.
+export TZ=UTC
+
 if [[ "$mode" != "--check" && "$mode" != "--generate" ]]; then
   echo "Usage: tools/contracts.sh [--check|--generate]"
   exit 1

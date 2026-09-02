@@ -82,6 +82,6 @@ run_psql -c "
     THEN 'provider-portability: PostgreSQL schema and tenant-key constraint passed'
     ELSE 'provider-portability: unexpected evidence count'
   END;
-" | rg -F 'provider-portability: PostgreSQL schema and tenant-key constraint passed'
+" | grep -F 'provider-portability: PostgreSQL schema and tenant-key constraint passed'
 
 echo "provider-portability: PostgreSQL check passed ($schema_name)"
