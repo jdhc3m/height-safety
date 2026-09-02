@@ -33,8 +33,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import au.com.heightsafety.domain.JobPackAnchor
 import au.com.heightsafety.domain.InspectorAssignment
 import au.com.heightsafety.domain.InspectorJob
+import au.com.heightsafety.domain.JobPackOpenSource
+import java.text.DateFormat
+import java.util.Date
 
 @Composable
 fun FieldScreen(
@@ -43,6 +47,8 @@ fun FieldScreen(
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
     onSignOut: () -> Unit,
+    onOpenJob: (InspectorJob) -> Unit = {},
+    onCloseJobPack: () -> Unit = {},
 ) {
     MaterialTheme {
         Scaffold { innerPadding ->
@@ -81,16 +87,24 @@ fun FieldScreen(
                                 onRetry = onRetry,
                                 onRefresh = onRefresh,
                                 onSignOut = onSignOut,
+                                onOpenJob = onOpenJob,
                             )
                         }
                         is FieldUiState.LoadingJobs,
                         is FieldUiState.JobsLoaded,
                         is FieldUiState.EmptyJobs,
+                        is FieldUiState.OpeningJobPack,
+                        is FieldUiState.JobPackError,
                         -> JobsContent(
                             state = state,
                             onRetry = onRetry,
                             onRefresh = onRefresh,
                             onSignOut = onSignOut,
+                            onOpenJob = onOpenJob,
+                        )
+                        is FieldUiState.JobPackOpened -> JobPackContent(
+                            state = state,
+                            onClose = onCloseJobPack,
                         )
                     }
                 }
@@ -177,12 +191,15 @@ private fun JobsContent(
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
     onSignOut: () -> Unit,
+    onOpenJob: (InspectorJob) -> Unit,
 ) {
     val account = when (state) {
         is FieldUiState.LoadingJobs -> state.account
         is FieldUiState.JobsLoaded -> state.account
         is FieldUiState.EmptyJobs -> state.account
         is FieldUiState.Error -> state.account
+        is FieldUiState.OpeningJobPack -> state.account
+        is FieldUiState.JobPackError -> state.account
         else -> return
     } ?: return
 
@@ -224,6 +241,7 @@ private fun JobsContent(
                 JobList(
                     modifier = Modifier.weight(1f),
                     jobs = state.jobs,
+                    onOpenJob = onOpenJob,
                 )
             }
             is FieldUiState.EmptyJobs -> {
@@ -241,6 +259,23 @@ private fun JobsContent(
                 }
             }
             is FieldUiState.Error -> {
+                SyncStatusLabel(state.syncState)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = state.message,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                if (state.canRetry) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = onRetry) {
+                        Text(stringResource(R.string.retry))
+                    }
+                }
+            }
+            is FieldUiState.OpeningJobPack -> {
+                SyncingJobPackContent()
+            }
+            is FieldUiState.JobPackError -> {
                 SyncStatusLabel(state.syncState)
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
@@ -272,6 +307,18 @@ private fun SyncingContent() {
 }
 
 @Composable
+private fun SyncingJobPackContent() {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        CircularProgressIndicator()
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(stringResource(R.string.downloading_job_pack))
+    }
+}
+
+@Composable
 private fun SyncStatusLabel(syncState: SyncState) {
     Text(
         text = when (syncState) {
@@ -292,19 +339,23 @@ private fun SyncStatusLabel(syncState: SyncState) {
 private fun JobList(
     modifier: Modifier = Modifier,
     jobs: List<InspectorJob>,
+    onOpenJob: (InspectorJob) -> Unit,
 ) {
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         items(jobs, key = { it.jobId }) { job ->
-            JobCard(job)
+            JobCard(job, onOpenJob)
         }
     }
 }
 
 @Composable
-private fun JobCard(job: InspectorJob) {
+private fun JobCard(
+    job: InspectorJob,
+    onOpenJob: (InspectorJob) -> Unit,
+) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -321,9 +372,118 @@ private fun JobCard(job: InspectorJob) {
             if (plannedDate != null) {
                 Text(stringResource(R.string.planned_date_value, plannedDate))
             }
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = { onOpenJob(job) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    stringResource(
+                        if (job.workflowStatus == "released" && job.assignment == null) {
+                            R.string.claim_and_open_job_pack
+                        } else {
+                            R.string.open_job_pack
+                        },
+                    ),
+                )
+            }
         }
     }
 }
+
+@Composable
+private fun JobPackContent(
+    state: FieldUiState.JobPackOpened,
+    onClose: () -> Unit,
+) {
+    val pack = state.opened.stored.pack
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onClose) {
+                Text(stringResource(R.string.back_to_jobs))
+            }
+            Text(
+                text = stringResource(R.string.job_pack_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = pack.reference,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(stringResource(R.string.jurisdiction_value, pack.jurisdiction.value))
+        Text(stringResource(R.string.job_pack_value, pack.jobPackVersion))
+        Text(stringResource(R.string.site_value, pack.siteName))
+        pack.siteAddress?.let { Text(stringResource(R.string.address_value, it)) }
+        Text(
+            text = when (state.opened.source) {
+                JobPackOpenSource.DOWNLOADED -> stringResource(R.string.job_pack_downloaded)
+                JobPackOpenSource.CACHED -> stringResource(R.string.job_pack_available_offline)
+            },
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.labelLarge,
+        )
+        Text(
+            stringResource(
+                R.string.offline_lease_expiry,
+                displayLeaseExpiry(state.opened.stored.lease.expiresAtEpochMillis),
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            stringResource(R.string.expected_anchor_count, pack.anchors.size),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        if (pack.anchors.isEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(stringResource(R.string.no_expected_anchors))
+        } else {
+            Spacer(modifier = Modifier.height(8.dp))
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(pack.anchors, key = JobPackAnchor::anchorId) { anchor ->
+                    JobPackAnchorRow(anchor)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun JobPackAnchorRow(anchor: JobPackAnchor) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = anchor.label ?: anchor.registerId ?: anchor.anchorId,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            anchor.location?.let {
+                Text(stringResource(R.string.location_value, it))
+            }
+            Text(stringResource(R.string.status_value, displayStatus(anchor.registerStatus)))
+        }
+    }
+}
+
+private fun displayLeaseExpiry(epochMillis: Long): String =
+    DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+        .format(Date(epochMillis))
 
 private fun displayStatus(status: String): String = status
     .split('_')

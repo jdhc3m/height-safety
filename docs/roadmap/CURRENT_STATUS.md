@@ -1,11 +1,11 @@
 # Current Status
 
-Last update: 2026-09-01
+Last update: 2026-09-02
 
 ## Active stage
 
 Stage 3B — anchor vertical slice; `3A-01` through `3A-05` are Done.
-`3B-01` implementation is complete and in Review. G-03 is Done as D-027.
+`3B-01` and `3B-02` are Done. G-03 is Done as D-027.
 
 ## Completed
 
@@ -177,21 +177,30 @@ Stage 3B — anchor vertical slice; `3A-01` through `3A-05` are Done.
   unauthorised-job denial, role/tenant checks, session expiry, sign-out,
   adapter mapping and sync/error/empty states, plus Compose instrumented UI
   coverage and state-restoration coverage.
+- `3B-02` adds an inspector-only versioned job-pack API response containing the
+  authorised release-time job/site/expected-anchor snapshot, generated client
+  mapping, Kotlin/JVM pack/lease validation, and a company-plus-job keyed
+  encrypted Room/SQLCipher Android adapter protected by Keystore key material.
+- `3B-02` adds device-credential confirmation before app access, restart-safe
+  pack replacement, tenant-isolated local keys, wall-clock/elapsed-runtime/
+  rollback lease locks that preserve local evidence, and read-only pack UI
+  states. Independent review passed after the release-time snapshot correction.
+  Anchor evidence capture remains `3B-03`.
 
 ## In progress
 
-- `3B-01` implementation is awaiting independent review. Compose instrumented
-  UI tests pass on the local `Pixel_5_API_30` emulator. Runtime persistence,
-  durable audit, identity membership and production deployment adapters remain
-  deliberately unconfigured and are separate work.
+- `3B-01` and `3B-02` checks pass. Compose UI tests and encrypted job-pack
+  adapter tests pass on the local
+  `Pixel_5_API_30` emulator. Runtime persistence, durable audit, identity
+  membership, pack-update/sync/recovery workflows and production deployment
+  adapters remain deliberately unconfigured and are separate work.
 - Production provider selection, runtime deployment-role configuration and later
   feature APIs remain separate work from the completed `3A-02` boundary.
 - Keep design-partner outreach ready; practitioner validation still open.
 
 ## Next recommended task
 
-Complete independent review of `3B-01`, then start `3B-02` versioned job-pack
-download/open. Do not add Kotlin
+Start `3B-03` anchor evidence capture. Do not add Kotlin
 Multiplatform, an iOS target or deferred standards candidates. Authentication
 vendor selection and the durable identity/runtime adapters remain deferred.
 Production provider/native backup configuration, retention/RPO/RTO and strict
@@ -203,7 +212,7 @@ review before a controlled pilot.
 - No design partner, operational corpus or professional validation yet.
 - The `3A-02` product schema and tenant-isolation boundary, bounded `3A-03`
   auth policy/session contract, `3A-04` register API and `3A-05` job workflow
-  contract are implemented; `3B-01` is in Review; durable store/audit adapters
+  contract are implemented; `3B-01` and `3B-02` are Done; durable store/audit adapters
   and production runtime-role deployment remain later work.
 - Offline-authorisation lease duration and recovery of unsynchronised evidence
   after account revocation are owner-approved as D-025. G-05 still requires
@@ -278,10 +287,18 @@ the corrections; the disposable PostgreSQL container was stopped.
 
 On 2026-09-01, the `3B-01` domain and Android JVM suites passed, generated
 client adapter tests passed, and the Compose instrumented test source compiled.
-The full `tools/verify.sh` root gate passed with generated-contract, web, API,
-PostgreSQL, PDF/provider, offline-lease, encrypted-storage and Android checks.
-Connected UI execution then passed 4/4 tests on the local `Pixel_5_API_30`
-emulator (API 30).
+
+On 2026-09-02, the `3B-02` API suite/build and generated contract checks passed;
+the Kotlin/JVM domain and Android app tests passed; the data adapter compiled;
+the versioned Room schema check passed; three encrypted job-pack adapter tests
+passed on `Pixel_5_API_30` (API 30); and seven Compose instrumented app tests
+passed on the same emulator. The bounded Android job-pack check is available
+through `tools/android-job-pack.sh`.
+Fresh independent re-review after the release-time snapshot correction returned
+no issues. The full `tools/verify.sh` root gate stopped at its required
+`TEST_POSTGRES_URL` prerequisite in this environment; the scoped checks above
+passed. Connected UI execution passed 7/7 tests on the local
+`Pixel_5_API_30` emulator (API 30).
 
 ## Relevant files
 

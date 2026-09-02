@@ -18,4 +18,4 @@ rootProject.name = "height-safety-android"
 
 includeBuild("../../clients/kotlin")
 
-include(":app", ":domain")
+include(":app", ":domain", ":data")

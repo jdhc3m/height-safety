@@ -30,6 +30,7 @@ import {
   AssignJobDto,
   CreateJobDto,
   JobAssignmentResponseDto,
+  JobPackResponseDto,
   JobResponseDto,
 } from './job-workflow.dto';
 import { JobWorkflowFailure } from './job-workflow.types';
@@ -54,7 +55,10 @@ function toAssignmentResponse(
 }
 
 function toJobResponse(
-  bundle: Awaited<ReturnType<JobWorkflowService['claimJob']>>,
+  bundle: Pick<
+    Awaited<ReturnType<JobWorkflowService['claimJob']>>,
+    'job' | 'assignment'
+  >,
 ): JobResponseDto {
   return {
     companyId: bundle.job.companyId,
@@ -70,6 +74,42 @@ function toJobResponse(
     assignment: bundle.assignment
       ? toAssignmentResponse(bundle.assignment)
       : null,
+  };
+}
+
+function toJobPackResponse(
+  pack: Awaited<ReturnType<JobWorkflowService['getJobPack']>>,
+): JobPackResponseDto {
+  return {
+    job: toJobResponse(pack),
+    site: {
+      companyId: pack.site.companyId,
+      siteId: pack.site.siteId,
+      clientId: pack.site.clientId,
+      name: pack.site.name,
+      address: pack.site.address,
+      jurisdiction: pack.site.jurisdiction,
+      accessNotes: pack.site.accessNotes,
+      siteReference: pack.site.siteReference,
+      createdAt: pack.site.createdAt.toISOString(),
+      updatedAt: pack.site.updatedAt.toISOString(),
+    },
+    anchors: pack.anchors.map((anchor) => ({
+      companyId: anchor.companyId,
+      anchorId: anchor.anchorId,
+      siteId: anchor.siteId,
+      label: anchor.label,
+      registerId: anchor.registerId,
+      location: anchor.location,
+      anchorType: anchor.anchorType,
+      manufacturer: anchor.manufacturer,
+      model: anchor.model,
+      installContext: anchor.installContext,
+      registerStatus: anchor.registerStatus,
+      notes: anchor.notes,
+      createdAt: anchor.createdAt.toISOString(),
+      updatedAt: anchor.updatedAt.toISOString(),
+    })),
   };
 }
 
@@ -164,6 +204,31 @@ export class JobWorkflowController {
         companyId,
       );
       return toJobResponse(this.jobWorkflowService.getJob(principal, jobId));
+    } catch (error) {
+      return toJobWorkflowHttpException(error);
+    }
+  }
+
+  @Get('jobs/:jobId/pack')
+  @ApiOperation({
+    operationId: 'downloadJobPack',
+    summary: 'Download an authorised versioned job pack',
+  })
+  @ApiOkResponse({ type: JobPackResponseDto })
+  async downloadJobPack(
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-company-id') companyId: string | undefined,
+    @Param('jobId') jobId: string,
+  ): Promise<JobPackResponseDto> {
+    try {
+      const principal = authenticateSession(
+        this.authService,
+        authorization,
+        companyId,
+      );
+      return toJobPackResponse(
+        this.jobWorkflowService.getJobPack(principal, jobId),
+      );
     } catch (error) {
       return toJobWorkflowHttpException(error);
     }

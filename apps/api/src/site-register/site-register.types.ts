@@ -89,6 +89,15 @@ export interface SiteRegisterStore {
   updateAnchor(anchor: AnchorRecord): void;
 }
 
+/** Read-only register access used when an authorised inspector receives a job pack. */
+export interface FieldRegisterReader {
+  getFieldSite(principal: AuthPrincipal, siteId: string): SiteRecord;
+  listFieldAnchors(
+    principal: AuthPrincipal,
+    siteId: string,
+  ): readonly AnchorRecord[];
+}
+
 export interface SiteRegisterIdGenerator {
   createId(): string;
 }

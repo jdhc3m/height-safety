@@ -21,4 +21,19 @@
     <string name="job_pack_value">Job pack version: %1$d</string>
     <string name="assignment_value">Assignment: %1$s</string>
     <string name="planned_date_value">Planned date: %1$s</string>
+    <string name="open_job_pack">Open job pack</string>
+    <string name="claim_and_open_job_pack">Claim and open job pack</string>
+    <string name="downloading_job_pack">Downloading job pack</string>
+    <string name="job_pack_title">Job pack</string>
+    <string name="back_to_jobs">Back to jobs</string>
+    <string name="site_value">Site: %1$s</string>
+    <string name="address_value">Address: %1$s</string>
+    <string name="job_pack_downloaded">Downloaded and stored securely</string>
+    <string name="job_pack_available_offline">Available offline</string>
+    <string name="offline_lease_expiry">Offline access until: %1$s</string>
+    <string name="expected_anchor_count">Expected anchors: %1$d</string>
+    <string name="no_expected_anchors">No expected anchors are recorded in this job pack.</string>
+    <string name="location_value">Location: %1$s</string>
+    <string name="device_unlock_title">Unlock Height Safety</string>
+    <string name="device_unlock_description">Confirm device access to open this job pack.</string>
 </resources>

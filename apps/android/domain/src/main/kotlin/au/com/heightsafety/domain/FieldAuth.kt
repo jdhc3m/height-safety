@@ -40,6 +40,11 @@ public interface FieldGateway {
 
     public suspend fun listAuthorizedJobs(session: FieldSession): List<InspectorJob>
 
+    public suspend fun claimJob(
+        session: FieldSession,
+        jobId: String,
+    ): InspectorJob
+
     public suspend fun revokeSession(session: FieldSession)
 
     /** Remove the current application token from the adapter without network I/O. */

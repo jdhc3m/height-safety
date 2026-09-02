@@ -2,9 +2,14 @@ import {
   JobWorkflowFailure,
   type JobAssignmentRecord,
   type JobAssignmentResult,
+  type JobPackSnapshot,
   type JobRecord,
   type JobWorkflowStore,
 } from './job-workflow.types';
+import type {
+  AnchorRecord,
+  SiteRecord,
+} from '../site-register/site-register.types';
 
 function key(companyId: string, value: string): string {
   return `${companyId}\u0000${value}`;
@@ -30,10 +35,35 @@ function copyAssignment(assignment: JobAssignmentRecord): JobAssignmentRecord {
   };
 }
 
+function copySite(site: SiteRecord): SiteRecord {
+  return {
+    ...site,
+    createdAt: copyDate(site.createdAt),
+    updatedAt: copyDate(site.updatedAt),
+  };
+}
+
+function copyAnchor(anchor: AnchorRecord): AnchorRecord {
+  return {
+    ...anchor,
+    createdAt: copyDate(anchor.createdAt),
+    updatedAt: copyDate(anchor.updatedAt),
+  };
+}
+
+function copyPackSnapshot(snapshot: JobPackSnapshot): JobPackSnapshot {
+  return {
+    ...snapshot,
+    site: copySite(snapshot.site),
+    anchors: snapshot.anchors.map(copyAnchor),
+  };
+}
+
 export class InMemoryJobWorkflowStore implements JobWorkflowStore {
   private readonly jobs = new Map<string, JobRecord>();
   private readonly assignments = new Map<string, JobAssignmentRecord>();
   private readonly primaryAssignments = new Map<string, JobAssignmentRecord>();
+  private readonly jobPackSnapshots = new Map<string, JobPackSnapshot>();
 
   createJob(job: JobRecord): void {
     const jobKey = key(job.companyId, job.jobId);
@@ -71,7 +101,12 @@ export class InMemoryJobWorkflowStore implements JobWorkflowStore {
     return assignment ? copyAssignment(assignment) : undefined;
   }
 
-  releaseJob(companyId: string, jobId: string, updatedAt: Date): JobRecord {
+  releaseJob(
+    companyId: string,
+    jobId: string,
+    updatedAt: Date,
+    packSnapshot?: JobPackSnapshot,
+  ): JobRecord {
     const jobKey = key(companyId, jobId);
     const existing = this.jobs.get(jobKey);
     if (!existing) {
@@ -87,6 +122,29 @@ export class InMemoryJobWorkflowStore implements JobWorkflowStore {
         this.getPrimaryAssignment(companyId, jobId),
       );
     }
+    if (!packSnapshot) {
+      throw new JobWorkflowFailure(
+        'CONFLICT',
+        'released jobs require a versioned job pack snapshot',
+      );
+    }
+    if (
+      packSnapshot.companyId !== companyId ||
+      packSnapshot.jobId !== jobId ||
+      packSnapshot.jobPackVersion !== existing.jobPackVersion ||
+      packSnapshot.site.companyId !== companyId ||
+      packSnapshot.site.siteId !== existing.siteId ||
+      packSnapshot.site.jurisdiction !== existing.jurisdiction ||
+      packSnapshot.anchors.some(
+        (anchor) =>
+          anchor.companyId !== companyId || anchor.siteId !== existing.siteId,
+      )
+    ) {
+      throw new JobWorkflowFailure(
+        'CONFLICT',
+        'job pack snapshot does not match the job',
+      );
+    }
 
     const released: JobRecord = {
       ...existing,
@@ -94,7 +152,20 @@ export class InMemoryJobWorkflowStore implements JobWorkflowStore {
       updatedAt: copyDate(updatedAt),
     };
     this.jobs.set(jobKey, copyJob(released));
+    this.jobPackSnapshots.set(jobKey, copyPackSnapshot(packSnapshot));
     return copyJob(released);
+  }
+
+  getJobPackSnapshot(
+    companyId: string,
+    jobId: string,
+    jobPackVersion: number,
+  ): JobPackSnapshot | undefined {
+    const snapshot = this.jobPackSnapshots.get(key(companyId, jobId));
+    if (!snapshot || snapshot.jobPackVersion !== jobPackVersion) {
+      return undefined;
+    }
+    return copyPackSnapshot(snapshot);
   }
 
   createPrimaryAssignment(
@@ -194,7 +265,20 @@ export class UnconfiguredJobWorkflowStore implements JobWorkflowStore {
     return this.unavailable();
   }
 
-  releaseJob(_companyId: string, _jobId: string, _updatedAt: Date): JobRecord {
+  releaseJob(
+    _companyId: string,
+    _jobId: string,
+    _updatedAt: Date,
+    _packSnapshot?: JobPackSnapshot,
+  ): JobRecord {
+    return this.unavailable();
+  }
+
+  getJobPackSnapshot(
+    _companyId: string,
+    _jobId: string,
+    _jobPackVersion: number,
+  ): JobPackSnapshot | undefined {
     return this.unavailable();
   }
 

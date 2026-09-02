@@ -1,7 +1,11 @@
 import { randomBytes } from 'node:crypto';
 
 import type { AuthPrincipal, ProductRole } from '../identity/auth.types';
-import type { SiteRecord } from '../site-register/site-register.types';
+import type {
+  AnchorRecord,
+  FieldRegisterReader,
+  SiteRecord,
+} from '../site-register/site-register.types';
 
 export const JOB_WORKFLOW_STATUSES = [
   'draft',
@@ -62,6 +66,14 @@ export interface JobRecord {
   readonly updatedAt: Date;
 }
 
+export interface JobPackSnapshot {
+  readonly companyId: string;
+  readonly jobId: string;
+  readonly jobPackVersion: number;
+  readonly site: SiteRecord;
+  readonly anchors: readonly AnchorRecord[];
+}
+
 export interface JobAssignmentResult {
   readonly job: JobRecord;
   readonly assignment: JobAssignmentRecord;
@@ -76,7 +88,17 @@ export interface JobWorkflowStore {
     companyId: string,
     jobId: string,
   ): JobAssignmentRecord | undefined;
-  releaseJob(companyId: string, jobId: string, updatedAt: Date): JobRecord;
+  releaseJob(
+    companyId: string,
+    jobId: string,
+    updatedAt: Date,
+    packSnapshot?: JobPackSnapshot,
+  ): JobRecord;
+  getJobPackSnapshot(
+    companyId: string,
+    jobId: string,
+    jobPackVersion: number,
+  ): JobPackSnapshot | undefined;
   createPrimaryAssignment(
     companyId: string,
     jobId: string,
@@ -96,8 +118,12 @@ export interface JobWorkflowMemberDirectory {
   getMember(companyId: string, userId: string): JobWorkflowMember | undefined;
 }
 
-export interface JobWorkflowSiteDirectory {
+export interface JobWorkflowSiteDirectory extends FieldRegisterReader {
   getSite(principal: AuthPrincipal, siteId: string): SiteRecord;
+  listAnchors(
+    principal: AuthPrincipal,
+    siteId: string,
+  ): readonly AnchorRecord[];
 }
 
 export interface JobWorkflowClock {

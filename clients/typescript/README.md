@@ -60,6 +60,7 @@ All URIs are relative to */api/v1*
 *JobWorkflowApi* | [**assignJob**](docs/JobWorkflowApi.md#assignjob) | **POST** /jobs/{jobId}/assignment | Assign a released job to an inspector
 *JobWorkflowApi* | [**claimJob**](docs/JobWorkflowApi.md#claimjob) | **POST** /jobs/{jobId}/claim | Claim a released job
 *JobWorkflowApi* | [**createJob**](docs/JobWorkflowApi.md#createjob) | **POST** /jobs | Create a draft job
+*JobWorkflowApi* | [**downloadJobPack**](docs/JobWorkflowApi.md#downloadjobpack) | **GET** /jobs/{jobId}/pack | Download an authorised versioned job pack
 *JobWorkflowApi* | [**getJob**](docs/JobWorkflowApi.md#getjob) | **GET** /jobs/{jobId} | Read an authorised job
 *JobWorkflowApi* | [**listJobs**](docs/JobWorkflowApi.md#listjobs) | **GET** /jobs | List authorised jobs
 *JobWorkflowApi* | [**releaseJob**](docs/JobWorkflowApi.md#releasejob) | **POST** /jobs/{jobId}/release | Release a draft job
@@ -94,6 +95,7 @@ All URIs are relative to */api/v1*
 - [HealthResponseDto](docs/HealthResponseDto.md)
 - [InvitationResponseDto](docs/InvitationResponseDto.md)
 - [JobAssignmentResponseDto](docs/JobAssignmentResponseDto.md)
+- [JobPackResponseDto](docs/JobPackResponseDto.md)
 - [JobResponseDto](docs/JobResponseDto.md)
 - [ProviderAccessTokenDto](docs/ProviderAccessTokenDto.md)
 - [SessionResponseDto](docs/SessionResponseDto.md)

@@ -24,6 +24,11 @@ import {
     CreateJobDtoToJSON,
 } from '../models/CreateJobDto';
 import {
+    type JobPackResponseDto,
+    JobPackResponseDtoFromJSON,
+    JobPackResponseDtoToJSON,
+} from '../models/JobPackResponseDto';
+import {
     type JobResponseDto,
     JobResponseDtoFromJSON,
     JobResponseDtoToJSON,
@@ -43,6 +48,11 @@ export interface ClaimJobRequest {
 export interface CreateJobRequest {
     xCompanyId: string;
     createJobDto: CreateJobDto;
+}
+
+export interface DownloadJobPackRequest {
+    xCompanyId: string;
+    jobId: string;
 }
 
 export interface GetJobRequest {
@@ -265,6 +275,70 @@ export class JobWorkflowApi extends runtime.BaseAPI {
      */
     async createJob(requestParameters: CreateJobRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JobResponseDto> {
         const response = await this.createJobRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for downloadJobPack without sending the request
+     */
+    async downloadJobPackRequestOpts(requestParameters: DownloadJobPackRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['xCompanyId'] == null) {
+            throw new runtime.RequiredError(
+                'xCompanyId',
+                'Required parameter "xCompanyId" was null or undefined when calling downloadJobPack().'
+            );
+        }
+
+        if (requestParameters['jobId'] == null) {
+            throw new runtime.RequiredError(
+                'jobId',
+                'Required parameter "jobId" was null or undefined when calling downloadJobPack().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (requestParameters['xCompanyId'] != null) {
+            headerParameters['x-company-id'] = String(requestParameters['xCompanyId']);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("access-token", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/jobs/{jobId}/pack`;
+        urlPath = urlPath.replace('{jobId}', encodeURIComponent(String(requestParameters['jobId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Download an authorised versioned job pack
+     */
+    async downloadJobPackRaw(requestParameters: DownloadJobPackRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JobPackResponseDto>> {
+        const requestOptions = await this.downloadJobPackRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => JobPackResponseDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Download an authorised versioned job pack
+     */
+    async downloadJobPack(requestParameters: DownloadJobPackRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JobPackResponseDto> {
+        const response = await this.downloadJobPackRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

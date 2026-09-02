@@ -14,6 +14,7 @@ pnpm --filter @height-safety/web lint
 pnpm --filter @height-safety/api-client build
 bash "$ROOT/apps/android/gradlew" -p "$ROOT/apps/android" \
   :domain:compileKotlin \
+  :data:lintDebug \
   :app:lintDebug \
   --no-daemon
 

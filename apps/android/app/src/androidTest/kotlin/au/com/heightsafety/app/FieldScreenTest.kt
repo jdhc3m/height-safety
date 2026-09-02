@@ -10,9 +10,15 @@ import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import au.com.heightsafety.domain.FieldJobPack
 import au.com.heightsafety.domain.InspectorJob
+import au.com.heightsafety.domain.JobPackAnchor
+import au.com.heightsafety.domain.JobPackOpenSource
+import au.com.heightsafety.domain.OfflineAuthorizationLease
 import au.com.heightsafety.domain.ProductRole
+import au.com.heightsafety.domain.OpenedJobPack
 import au.com.heightsafety.domain.SupportedJurisdiction
+import au.com.heightsafety.domain.StoredJobPack
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -108,6 +114,110 @@ class FieldScreenTest {
         composeTestRule.onNodeWithText("Sign in").performClick()
 
         assertEquals("company-a", submittedCompanyId)
+    }
+
+    @Test
+    fun jobCardOpensSelectedJobPack() {
+        var openedJob: InspectorJob? = null
+        composeTestRule.setContent {
+            FieldScreen(
+                state = FieldUiState.JobsLoaded(account(), listOf(job())),
+                onSignIn = {},
+                onRetry = {},
+                onRefresh = {},
+                onSignOut = {},
+                onOpenJob = { openedJob = it },
+            )
+        }
+
+        composeTestRule.onNodeWithText("Open job pack").performClick()
+
+        assertEquals("job-001", openedJob?.jobId)
+    }
+
+    @Test
+    fun releasedJobOffersClaimBeforePackDownload() {
+        composeTestRule.setContent {
+            FieldScreen(
+                state = FieldUiState.JobsLoaded(
+                    account(),
+                    listOf(job().copy(workflowStatus = "released", assignment = null)),
+                ),
+                onSignIn = {},
+                onRetry = {},
+                onRefresh = {},
+                onSignOut = {},
+            )
+        }
+
+        composeTestRule.onNodeWithText("Claim and open job pack").assertIsDisplayed()
+    }
+
+    @Test
+    fun openedJobPackShowsVersionJurisdictionLeaseAndAnchors() {
+        val pack = FieldJobPack(
+            companyId = "company-a",
+            jobId = "job-001",
+            siteId = "site-001",
+            jurisdiction = SupportedJurisdiction.QLD,
+            reference = "JOB-001",
+            plannedDate = "2026-09-15",
+            workflowStatus = "assigned",
+            jobPackVersion = 7L,
+            siteName = "Site A",
+            siteAddress = "1 Example Street",
+            siteReference = "SITE-A",
+            accessNotes = "North access",
+            anchors = listOf(
+                JobPackAnchor(
+                    companyId = "company-a",
+                    anchorId = "anchor-001",
+                    siteId = "site-001",
+                    label = "A-001",
+                    registerId = "REG-001",
+                    location = "North roof",
+                    anchorType = "single_point",
+                    manufacturer = null,
+                    model = null,
+                    installContext = null,
+                    registerStatus = "active",
+                    notes = null,
+                    createdAtEpochMillis = 1L,
+                    updatedAtEpochMillis = 2L,
+                ),
+            ),
+        )
+        val lease = OfflineAuthorizationLease(
+            companyId = "company-a",
+            userId = "inspector-a",
+            jobId = "job-001",
+            issuedAtEpochMillis = 1_000L,
+            expiresAtEpochMillis = 86_401_000L,
+            issuedAtElapsedRealtimeMillis = 500L,
+        )
+        composeTestRule.setContent {
+            FieldScreen(
+                state = FieldUiState.JobPackOpened(
+                    account(),
+                    listOf(job()),
+                    job(),
+                    OpenedJobPack(StoredJobPack(pack, lease), JobPackOpenSource.DOWNLOADED),
+                ),
+                onSignIn = {},
+                onRetry = {},
+                onRefresh = {},
+                onSignOut = {},
+            )
+        }
+
+        composeTestRule.onNodeWithText("Job pack").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Jurisdiction: QLD").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Job pack version: 7").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Site: Site A").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Downloaded and stored securely").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Expected anchors: 1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("A-001").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Location: North roof").assertIsDisplayed()
     }
 
     private fun setContent(state: FieldUiState) {

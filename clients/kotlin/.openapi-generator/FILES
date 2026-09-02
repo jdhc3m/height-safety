@@ -15,6 +15,7 @@ docs/HealthResponseDto.md
 docs/IdentityApi.md
 docs/InvitationResponseDto.md
 docs/JobAssignmentResponseDto.md
+docs/JobPackResponseDto.md
 docs/JobResponseDto.md
 docs/JobWorkflowApi.md
 docs/ProviderAccessTokenDto.md
@@ -63,6 +64,7 @@ src/main/kotlin/au/com/heightsafety/api/models/CreateSiteDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/HealthResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/InvitationResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/JobAssignmentResponseDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/JobPackResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/JobResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/ProviderAccessTokenDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/SessionResponseDto.kt
@@ -89,6 +91,7 @@ src/test/kotlin/au/com/heightsafety/api/models/CreateSiteDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/HealthResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/InvitationResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/JobAssignmentResponseDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/JobPackResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/JobResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/ProviderAccessTokenDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/SessionResponseDtoTest.kt

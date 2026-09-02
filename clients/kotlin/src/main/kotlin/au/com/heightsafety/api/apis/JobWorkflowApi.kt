@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 
 import au.com.heightsafety.api.models.AssignJobDto
 import au.com.heightsafety.api.models.CreateJobDto
+import au.com.heightsafety.api.models.JobPackResponseDto
 import au.com.heightsafety.api.models.JobResponseDto
 
 interface JobWorkflowApi {
@@ -54,6 +55,20 @@ interface JobWorkflowApi {
      */
     @POST("jobs")
     suspend fun createJob(@Header("x-company-id") xCompanyId: kotlin.String, @Body createJobDto: CreateJobDto): Response<JobResponseDto>
+
+    /**
+     * GET jobs/{jobId}/pack
+     * Download an authorised versioned job pack
+     * 
+     * Responses:
+     *  - 200: 
+     *
+     * @param xCompanyId 
+     * @param jobId 
+     * @return [JobPackResponseDto]
+     */
+    @GET("jobs/{jobId}/pack")
+    suspend fun downloadJobPack(@Header("x-company-id") xCompanyId: kotlin.String, @Path("jobId") jobId: kotlin.String): Response<JobPackResponseDto>
 
     /**
      * GET jobs/{jobId}

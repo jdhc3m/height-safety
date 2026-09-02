@@ -14,6 +14,7 @@ export * from './CreateSiteDto';
 export * from './HealthResponseDto';
 export * from './InvitationResponseDto';
 export * from './JobAssignmentResponseDto';
+export * from './JobPackResponseDto';
 export * from './JobResponseDto';
 export * from './ProviderAccessTokenDto';
 export * from './SessionResponseDto';

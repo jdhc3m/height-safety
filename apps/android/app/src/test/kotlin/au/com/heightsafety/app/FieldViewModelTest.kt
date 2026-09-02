@@ -2,12 +2,19 @@ package au.com.heightsafety.app
 
 import au.com.heightsafety.domain.FieldGateway
 import au.com.heightsafety.domain.FieldGatewayException
+import au.com.heightsafety.domain.FieldJobPack
+import au.com.heightsafety.domain.FieldJobPackStore
 import au.com.heightsafety.domain.FieldSession
 import au.com.heightsafety.domain.GatewayFailureReason
 import au.com.heightsafety.domain.InspectorAssignment
 import au.com.heightsafety.domain.InspectorJob
+import au.com.heightsafety.domain.JobPackGateway
+import au.com.heightsafety.domain.JobPackOpenSource
+import au.com.heightsafety.domain.JobPackService
+import au.com.heightsafety.domain.OfflineAuthorizationLease
 import au.com.heightsafety.domain.ProductRole
 import au.com.heightsafety.domain.ProviderAccessTokenSource
+import au.com.heightsafety.domain.StoredJobPack
 import au.com.heightsafety.domain.SupportedJurisdiction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -114,7 +121,11 @@ class FieldViewModelTest {
             jobs = listOf(job("released")),
             sessionExpiresAtEpochMillis = 2_000L,
         )
-        val viewModel = viewModel(gateway, scope = this) { now }
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            nowEpochMillis = { now },
+        )
 
         viewModel.signIn("company-a")
         advanceUntilIdle()
@@ -175,15 +186,82 @@ class FieldViewModelTest {
         assertEquals("Company could not be verified.", state.message)
     }
 
+    @Test
+    fun openingJobPackDownloadsItAndThenUsesCachedVersion() = runTest {
+        val job = job("released")
+        val gateway = FakeGateway(jobs = listOf(job))
+        val store = FakeJobPackStore()
+        val service = JobPackService(
+            gateway = gateway,
+            store = store,
+            nowEpochMillis = { 1_000L },
+            elapsedRealtimeMillis = { 500L },
+        )
+        val viewModel = viewModel(gateway, scope = this, jobPackService = service)
+
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+        viewModel.openJobPack(job)
+        advanceUntilIdle()
+
+        val downloaded = viewModel.uiState.value as FieldUiState.JobPackOpened
+        assertEquals(JobPackOpenSource.DOWNLOADED, downloaded.opened.source)
+        assertEquals(1, gateway.claimJobCallCount)
+        assertEquals(1, gateway.downloadPackCallCount)
+        assertEquals(1, downloaded.opened.stored.pack.anchors.size)
+
+        gateway.packFailure = IllegalStateException("offline")
+        viewModel.closeJobPack()
+        viewModel.openJobPack(job)
+        advanceUntilIdle()
+
+        val cached = viewModel.uiState.value as FieldUiState.JobPackOpened
+        assertEquals(JobPackOpenSource.CACHED, cached.opened.source)
+        assertEquals(1, gateway.downloadPackCallCount)
+    }
+
+    @Test
+    fun openingJobPackStopsWhenDeviceAuthenticationIsDeclined() = runTest {
+        val job = job("released")
+        val gateway = FakeGateway(jobs = listOf(job))
+        val service = JobPackService(
+            gateway = gateway,
+            store = FakeJobPackStore(),
+            nowEpochMillis = { 1_000L },
+            elapsedRealtimeMillis = { 500L },
+        )
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            jobPackService = service,
+            deviceAuthenticationGate = DeviceAuthenticationGate { false },
+        )
+
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+        viewModel.openJobPack(job)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value as FieldUiState.JobPackError
+        assertEquals("Unlock this device to open the job pack.", state.message)
+        assertTrue(state.canRetry)
+        assertEquals(0, gateway.downloadPackCallCount)
+    }
+
     private fun viewModel(
         gateway: FakeGateway,
         scope: CoroutineScope,
+        jobPackService: JobPackService? = null,
         nowEpochMillis: () -> Long = { 1_000L },
+        deviceAuthenticationGate: DeviceAuthenticationGate =
+            DeviceAuthenticationGate { true },
     ) = FieldViewModel(
         gateway = gateway,
         providerAccessTokenSource = ProviderAccessTokenSource { "provider-token" },
         scope = scope,
         nowEpochMillis = nowEpochMillis,
+        jobPackService = jobPackService,
+        deviceAuthenticationGate = deviceAuthenticationGate,
     )
 
     private class FakeGateway(
@@ -192,9 +270,13 @@ class FieldViewModelTest {
         private val sessionCompanyId: String = "company-a",
         private val sessionRole: ProductRole = ProductRole.INSPECTOR,
         private val sessionExpiresAtEpochMillis: Long = 10_000L,
-    ) : FieldGateway {
+    ) : FieldGateway, JobPackGateway {
         var listJobsCalled = false
         var listJobsCallCount = 0
+        var packFailure: Throwable? = null
+        var claimJobCallCount = 0
+        var downloadPackCallCount = 0
+        private val claimedJobIds = mutableSetOf<String>()
         var revokeCalled = false
         var clearSessionCallCount = 0
 
@@ -219,12 +301,96 @@ class FieldViewModelTest {
             return jobs
         }
 
+        override suspend fun claimJob(
+            session: FieldSession,
+            jobId: String,
+        ): InspectorJob {
+            claimJobCallCount += 1
+            val selectedJob = jobs.single { it.jobId == jobId }
+            claimedJobIds += jobId
+            return selectedJob.copy(
+                workflowStatus = "assigned",
+                assignment = InspectorAssignment(
+                    companyId = session.companyId,
+                    assignmentId = "assignment-$jobId",
+                    jobId = jobId,
+                    inspectorUserId = session.userId,
+                    assignedByUserId = null,
+                    assignmentType = "claimed",
+                    isPrimary = true,
+                    assignedAtEpochMillis = 1L,
+                    claimedAtEpochMillis = 1L,
+                ),
+            )
+        }
+
+        override suspend fun downloadJobPack(
+            session: FieldSession,
+            jobId: String,
+        ): FieldJobPack {
+            downloadPackCallCount += 1
+            packFailure?.let { throw it }
+            val selectedJob = jobs.single { it.jobId == jobId }
+            val workflowStatus = if (jobId in claimedJobIds) "assigned" else selectedJob.workflowStatus
+            return FieldJobPack(
+                companyId = selectedJob.companyId,
+                jobId = selectedJob.jobId,
+                siteId = selectedJob.siteId,
+                jurisdiction = selectedJob.jurisdiction,
+                reference = selectedJob.reference,
+                plannedDate = selectedJob.plannedDate,
+                workflowStatus = workflowStatus,
+                jobPackVersion = selectedJob.jobPackVersion,
+                siteName = "Site ${selectedJob.siteId}",
+                siteAddress = "1 Example Street",
+                siteReference = null,
+                accessNotes = null,
+                anchors = listOf(
+                    au.com.heightsafety.domain.JobPackAnchor(
+                        companyId = selectedJob.companyId,
+                        anchorId = "anchor-${selectedJob.jobId}",
+                        siteId = selectedJob.siteId,
+                        label = "A-001",
+                        registerId = "REG-001",
+                        location = "North roof",
+                        anchorType = "single_point",
+                        manufacturer = null,
+                        model = null,
+                        installContext = null,
+                        registerStatus = "active",
+                        notes = null,
+                        createdAtEpochMillis = 1L,
+                        updatedAtEpochMillis = 2L,
+                    ),
+                ),
+            )
+        }
+
         override suspend fun revokeSession(session: FieldSession) {
             revokeCalled = true
         }
 
         override fun clearSession() {
             clearSessionCallCount += 1
+        }
+    }
+
+    private class FakeJobPackStore : FieldJobPackStore {
+        var stored: StoredJobPack? = null
+
+        override suspend fun save(
+            pack: FieldJobPack,
+            lease: OfflineAuthorizationLease,
+            downloadedAtEpochMillis: Long,
+        ) {
+            stored = StoredJobPack(pack, lease)
+        }
+
+        override suspend fun load(companyId: String, jobId: String): StoredJobPack? =
+            stored?.takeIf { it.pack.companyId == companyId && it.pack.jobId == jobId }
+
+        override suspend fun updateLease(lease: OfflineAuthorizationLease) {
+            stored = stored!!.copy(lease = lease)
         }
     }
 

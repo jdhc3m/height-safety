@@ -29,6 +29,7 @@ import io.kotlintest.specs.ShouldSpec
 import au.com.heightsafety.api.apis.JobWorkflowApi
 import au.com.heightsafety.api.models.AssignJobDto
 import au.com.heightsafety.api.models.CreateJobDto
+import au.com.heightsafety.api.models.JobPackResponseDto
 import au.com.heightsafety.api.models.JobResponseDto
 
 class JobWorkflowApiTest : ShouldSpec() {
@@ -61,6 +62,15 @@ class JobWorkflowApiTest : ShouldSpec() {
             //val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
             //val createJobDto : CreateJobDto =  // CreateJobDto | 
             //val result : JobResponseDto = apiInstance.createJob(xCompanyId, createJobDto)
+            //result shouldBe ("TODO")
+        }
+
+        // to test downloadJobPack
+        should("test downloadJobPack") {
+            // uncomment below to test downloadJobPack
+            //val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
+            //val jobId : kotlin.String = jobId_example // kotlin.String | 
+            //val result : JobPackResponseDto = apiInstance.downloadJobPack(xCompanyId, jobId)
             //result shouldBe ("TODO")
         }
 

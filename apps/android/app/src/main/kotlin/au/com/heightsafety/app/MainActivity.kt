@@ -1,16 +1,36 @@
 package au.com.heightsafety.app
 
+import android.app.Activity
+import android.app.KeyguardManager
+import android.content.ActivityNotFoundException
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.collectAsState
+import au.com.heightsafety.data.EncryptedJobPackStore
 import au.com.heightsafety.api.infrastructure.ApiClient
+import au.com.heightsafety.domain.JobPackService
+import kotlin.coroutines.resume
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 class MainActivity : ComponentActivity() {
+    private var deviceAuthenticationContinuation: CancellableContinuation<Boolean>? = null
+
+    private val deviceAuthenticationLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        val continuation = deviceAuthenticationContinuation ?: return@registerForActivityResult
+        deviceAuthenticationContinuation = null
+        continuation.resume(result.resultCode == Activity.RESULT_OK)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -21,10 +41,20 @@ class MainActivity : ComponentActivity() {
                     baseUrl = getString(R.string.api_base_url),
                     authNames = arrayOf("access-token"),
                 )
+                val gateway = OpenApiFieldGateway(apiClient)
                 FieldViewModel(
-                    gateway = OpenApiFieldGateway(apiClient),
+                    gateway = gateway,
                     providerAccessTokenSource = UnconfiguredProviderAccessTokenSource(),
                     scope = scope,
+                    jobPackService = JobPackService(
+                        gateway = gateway,
+                        store = EncryptedJobPackStore(applicationContext),
+                        nowEpochMillis = { System.currentTimeMillis() },
+                        elapsedRealtimeMillis = { SystemClock.elapsedRealtime() },
+                    ),
+                    deviceAuthenticationGate = DeviceAuthenticationGate {
+                        authenticateWithDeviceCredential()
+                    },
                 )
             }
             val state by viewModel.uiState.collectAsState()
@@ -34,7 +64,45 @@ class MainActivity : ComponentActivity() {
                 onRetry = viewModel::retry,
                 onRefresh = viewModel::refreshJobs,
                 onSignOut = viewModel::signOut,
+                onOpenJob = viewModel::openJobPack,
+                onCloseJobPack = viewModel::closeJobPack,
             )
+        }
+    }
+
+    override fun onDestroy() {
+        deviceAuthenticationContinuation?.cancel()
+        deviceAuthenticationContinuation = null
+        super.onDestroy()
+    }
+
+    private suspend fun authenticateWithDeviceCredential(): Boolean {
+        val keyguardManager = getSystemService(KeyguardManager::class.java)
+        if (keyguardManager == null || !keyguardManager.isDeviceSecure) {
+            return false
+        }
+        val intent = keyguardManager.createConfirmDeviceCredentialIntent(
+            getString(R.string.device_unlock_title),
+            getString(R.string.device_unlock_description),
+        ) ?: return false
+
+        return suspendCancellableCoroutine { continuation ->
+            if (deviceAuthenticationContinuation != null) {
+                continuation.resume(false)
+                return@suspendCancellableCoroutine
+            }
+            deviceAuthenticationContinuation = continuation
+            continuation.invokeOnCancellation {
+                if (deviceAuthenticationContinuation === continuation) {
+                    deviceAuthenticationContinuation = null
+                }
+            }
+            try {
+                deviceAuthenticationLauncher.launch(intent)
+            } catch (_: ActivityNotFoundException) {
+                deviceAuthenticationContinuation = null
+                continuation.resume(false)
+            }
         }
     }
 }

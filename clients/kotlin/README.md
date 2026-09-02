@@ -53,6 +53,7 @@ All URIs are relative to */api/v1*
 | *JobWorkflowApi* | [**assignJob**](docs/JobWorkflowApi.md#assignjob) | **POST** jobs/{jobId}/assignment | Assign a released job to an inspector |
 | *JobWorkflowApi* | [**claimJob**](docs/JobWorkflowApi.md#claimjob) | **POST** jobs/{jobId}/claim | Claim a released job |
 | *JobWorkflowApi* | [**createJob**](docs/JobWorkflowApi.md#createjob) | **POST** jobs | Create a draft job |
+| *JobWorkflowApi* | [**downloadJobPack**](docs/JobWorkflowApi.md#downloadjobpack) | **GET** jobs/{jobId}/pack | Download an authorised versioned job pack |
 | *JobWorkflowApi* | [**getJob**](docs/JobWorkflowApi.md#getjob) | **GET** jobs/{jobId} | Read an authorised job |
 | *JobWorkflowApi* | [**listJobs**](docs/JobWorkflowApi.md#listjobs) | **GET** jobs | List authorised jobs |
 | *JobWorkflowApi* | [**releaseJob**](docs/JobWorkflowApi.md#releasejob) | **POST** jobs/{jobId}/release | Release a draft job |
@@ -88,6 +89,7 @@ All URIs are relative to */api/v1*
  - [au.com.heightsafety.api.models.HealthResponseDto](docs/HealthResponseDto.md)
  - [au.com.heightsafety.api.models.InvitationResponseDto](docs/InvitationResponseDto.md)
  - [au.com.heightsafety.api.models.JobAssignmentResponseDto](docs/JobAssignmentResponseDto.md)
+ - [au.com.heightsafety.api.models.JobPackResponseDto](docs/JobPackResponseDto.md)
  - [au.com.heightsafety.api.models.JobResponseDto](docs/JobResponseDto.md)
  - [au.com.heightsafety.api.models.ProviderAccessTokenDto](docs/ProviderAccessTokenDto.md)
  - [au.com.heightsafety.api.models.SessionResponseDto](docs/SessionResponseDto.md)

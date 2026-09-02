@@ -7,6 +7,10 @@ import au.com.heightsafety.domain.FieldSession
 import au.com.heightsafety.domain.FieldSessionExpiredException
 import au.com.heightsafety.domain.GatewayFailureReason
 import au.com.heightsafety.domain.InspectorJob
+import au.com.heightsafety.domain.JobPackAccessException
+import au.com.heightsafety.domain.JobPackAccessFailure
+import au.com.heightsafety.domain.JobPackService
+import au.com.heightsafety.domain.OpenedJobPack
 import au.com.heightsafety.domain.ProductRole
 import au.com.heightsafety.domain.ProviderAccessTokenException
 import au.com.heightsafety.domain.ProviderAccessTokenSource
@@ -54,6 +58,29 @@ sealed interface FieldUiState {
         val syncState: SyncState = SyncState.SYNCHRONISED,
     ) : FieldUiState
 
+    data class OpeningJobPack(
+        val account: AccountSummary,
+        val jobs: List<InspectorJob>,
+        val job: InspectorJob,
+        val syncState: SyncState = SyncState.SYNCHRONISING,
+    ) : FieldUiState
+
+    data class JobPackOpened(
+        val account: AccountSummary,
+        val jobs: List<InspectorJob>,
+        val job: InspectorJob,
+        val opened: OpenedJobPack,
+    ) : FieldUiState
+
+    data class JobPackError(
+        val account: AccountSummary,
+        val jobs: List<InspectorJob>,
+        val job: InspectorJob,
+        val message: String,
+        val canRetry: Boolean,
+        val syncState: SyncState = SyncState.FAILED,
+    ) : FieldUiState
+
     data class Error(
         val message: String,
         val canRetry: Boolean,
@@ -70,13 +97,17 @@ class FieldViewModel(
     private val gateway: FieldGateway,
     private val providerAccessTokenSource: ProviderAccessTokenSource,
     private val scope: CoroutineScope,
+    private val jobPackService: JobPackService? = null,
     private val nowEpochMillis: () -> Long = { System.currentTimeMillis() },
+    private val deviceAuthenticationGate: DeviceAuthenticationGate =
+        DeviceAuthenticationGate { true },
 ) {
     private val _uiState = MutableStateFlow<FieldUiState>(FieldUiState.SignedOut)
     val uiState: StateFlow<FieldUiState> = _uiState.asStateFlow()
 
     private var session: FieldSession? = null
     private var lastCompanyId: String = ""
+    private var lastJobs: List<InspectorJob> = emptyList()
     private var activeRequest: Job? = null
 
     fun signIn(companyId: String) {
@@ -129,6 +160,12 @@ class FieldViewModel(
     }
 
     fun retry() {
+        val packError = _uiState.value as? FieldUiState.JobPackError
+        if (packError != null) {
+            openJobPack(packError.job)
+            return
+        }
+
         val currentSession = session
         if (currentSession != null && _uiState.value is FieldUiState.Error) {
             activeRequest?.cancel()
@@ -150,6 +187,79 @@ class FieldViewModel(
 
         activeRequest?.cancel()
         activeRequest = scope.launch { loadJobs(currentSession) }
+    }
+
+    fun openJobPack(job: InspectorJob) {
+        val currentSession = session
+        if (currentSession == null) {
+            _uiState.value = FieldUiState.SignedOut
+            return
+        }
+        val account = currentSession.toAccountSummary()
+        val service = jobPackService
+        if (service == null) {
+            _uiState.value = FieldUiState.JobPackError(
+                account = account,
+                jobs = lastJobs,
+                job = job,
+                message = "Job-pack storage is not configured for this build.",
+                canRetry = false,
+            )
+            return
+        }
+
+        val selectedJob = lastJobs.firstOrNull { it.jobId == job.jobId } ?: job
+        activeRequest?.cancel()
+        _uiState.value = FieldUiState.OpeningJobPack(account, lastJobs, selectedJob)
+        activeRequest = scope.launch {
+            var authorisedJob = selectedJob
+            try {
+                if (!deviceAuthenticationGate.authenticate()) {
+                    throw DeviceAuthenticationRequiredException()
+                }
+                if (
+                    selectedJob.workflowStatus == "released" &&
+                    selectedJob.assignment == null
+                ) {
+                    authorisedJob = claimJob(currentSession, selectedJob)
+                }
+                val opened = service.openOrDownload(currentSession, authorisedJob)
+                _uiState.value = FieldUiState.JobPackOpened(
+                    account = account,
+                    jobs = lastJobs,
+                    job = authorisedJob,
+                    opened = opened,
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                if (error.isSessionExpired()) {
+                    expireSession()
+                } else {
+                    _uiState.value = FieldUiState.JobPackError(
+                        account = account,
+                        jobs = lastJobs,
+                        job = authorisedJob,
+                        message = jobPackMessage(error),
+                        canRetry = canRetryJobPack(error),
+                    )
+                }
+            }
+        }
+    }
+
+    fun closeJobPack() {
+        val currentSession = session ?: run {
+            _uiState.value = FieldUiState.SignedOut
+            return
+        }
+        activeRequest?.cancel()
+        val account = currentSession.toAccountSummary()
+        _uiState.value = if (lastJobs.isEmpty()) {
+            FieldUiState.EmptyJobs(account)
+        } else {
+            FieldUiState.JobsLoaded(account, lastJobs)
+        }
     }
 
     fun signOut() {
@@ -186,6 +296,7 @@ class FieldViewModel(
                 currentSession,
                 gateway.listAuthorizedJobs(currentSession),
             )
+            lastJobs = jobs
             _uiState.value = if (jobs.isEmpty()) {
                 FieldUiState.EmptyJobs(account)
             } else {
@@ -210,6 +321,31 @@ class FieldViewModel(
         session = null
         gateway.clearSession()
         _uiState.value = FieldUiState.SessionExpired()
+    }
+
+    private suspend fun claimJob(
+        currentSession: FieldSession,
+        job: InspectorJob,
+    ): InspectorJob {
+        val claimed = gateway.claimJob(currentSession, job.jobId)
+        if (
+            claimed.companyId != currentSession.companyId ||
+            claimed.jobId != job.jobId ||
+            claimed.siteId != job.siteId ||
+            claimed.jurisdiction != job.jurisdiction ||
+            claimed.reference != job.reference ||
+            claimed.jobPackVersion != job.jobPackVersion ||
+            claimed.assignment?.inspectorUserId != currentSession.userId
+        ) {
+            throw FieldGatewayException(
+                GatewayFailureReason.INVALID_RESPONSE,
+                "claimed job does not match the selected job",
+            )
+        }
+        lastJobs = lastJobs.map { existing ->
+            if (existing.jobId == claimed.jobId) claimed else existing
+        }
+        return claimed
     }
 
     private fun signInError(error: Throwable): FieldUiState.Error = FieldUiState.Error(
@@ -248,6 +384,49 @@ class FieldViewModel(
             else -> "Unable to sync jobs. Try again."
         }
         else -> "Unable to sync jobs. Try again."
+    }
+
+    private fun jobPackMessage(error: Throwable): String = when (error) {
+        is DeviceAuthenticationRequiredException ->
+            "Unlock this device to open the job pack."
+        is FieldAuthorizationException -> "Current account cannot open this job pack."
+        is JobPackAccessException -> when (error.reason) {
+            JobPackAccessFailure.NOT_FOUND -> "Job pack is not available on this device. Try again."
+            JobPackAccessFailure.JOB_NOT_CLAIMED ->
+                "Claim the job before opening its pack."
+            JobPackAccessFailure.LOCAL_PACK_IDENTITY_MISMATCH,
+            JobPackAccessFailure.INVALID_REMOTE_PACK,
+            -> "Job pack could not be verified. Try again."
+            JobPackAccessFailure.PACK_VERSION_CONFLICT ->
+                "A newer job pack is required. Refresh jobs and try again."
+            JobPackAccessFailure.LEASE_EXPIRED,
+            JobPackAccessFailure.ELAPSED_RUNTIME_EXPIRED,
+            JobPackAccessFailure.CLOCK_ROLLBACK,
+            -> "Offline access is locked. Local evidence is preserved."
+        }
+        is FieldGatewayException -> when (error.reason) {
+            GatewayFailureReason.NETWORK,
+            GatewayFailureReason.UNAVAILABLE,
+            -> "Unable to download job pack. Check connection and try again."
+            GatewayFailureReason.FORBIDDEN -> "Current account cannot download this job pack."
+            GatewayFailureReason.UNAUTHENTICATED -> "Session expired. Sign in again."
+            else -> "Unable to download job pack. Try again."
+        }
+        else -> "Unable to open job pack. Try again."
+    }
+
+    private fun canRetryJobPack(error: Throwable): Boolean = when (error) {
+        is DeviceAuthenticationRequiredException -> true
+        is FieldAuthorizationException -> false
+        is JobPackAccessException -> error.reason !in setOf(
+            JobPackAccessFailure.LOCAL_PACK_IDENTITY_MISMATCH,
+            JobPackAccessFailure.CLOCK_ROLLBACK,
+        )
+        is FieldGatewayException -> error.reason in setOf(
+            GatewayFailureReason.NETWORK,
+            GatewayFailureReason.UNAVAILABLE,
+        )
+        else -> true
     }
 
     private fun Throwable.isSessionExpired(): Boolean =

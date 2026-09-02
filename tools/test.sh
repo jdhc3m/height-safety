@@ -20,7 +20,9 @@ pnpm --filter @height-safety/web build
 pnpm --filter @height-safety/api-client build
 bash "$ROOT/apps/android/gradlew" -p "$ROOT/apps/android" \
   :domain:test \
+  :data:testDebugUnitTest \
   :app:testDebugUnitTest \
+  :data:compileDebugAndroidTestKotlin \
   :app:compileDebugAndroidTestKotlin \
   --no-daemon
 

@@ -5,6 +5,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  NotFoundException,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -102,11 +103,16 @@ function prepareSite(fixture) {
   const client = fixture.siteRegisterService.createClient(office, {
     name: 'Client A',
   });
-  return fixture.siteRegisterService.createSite(office, {
+  const site = fixture.siteRegisterService.createSite(office, {
     clientId: client.clientId,
     name: 'Site A',
     jurisdiction: 'QLD',
   });
+  fixture.siteRegisterService.createAnchor(office, site.siteId, {
+    registerId: 'A-001',
+    location: 'North roof',
+  });
+  return site;
 }
 
 const AUTHORIZATION = 'Bearer access-token';
@@ -140,6 +146,42 @@ test('controller authenticates and serializes create, release and assignment rou
   );
   assert.equal(assigned.workflowStatus, 'assigned');
   assert.equal(assigned.assignment.inspectorUserId, 'inspector-a');
+  const inspectorController = makeController(
+    fixture,
+    'inspector',
+    'inspector-a',
+  );
+  const pack = await inspectorController.downloadJobPack(
+    AUTHORIZATION,
+    'company-a',
+    draft.jobId,
+  );
+  assert.equal(pack.job.jobPackVersion, 1);
+  assert.equal(pack.site.jurisdiction, 'QLD');
+  assert.equal(pack.anchors.length, 1);
+  assert.equal(pack.anchors[0].registerId, 'A-001');
+  fixture.siteRegisterService.updateSite(
+    principal('company-a', 'office_reviewer', 'office-a'),
+    site.siteId,
+    { name: 'Changed after release' },
+  );
+  const anchor = fixture.siteRegisterService.listAnchors(
+    principal('company-a', 'office_reviewer', 'office-a'),
+    site.siteId,
+  )[0];
+  fixture.siteRegisterService.updateAnchor(
+    principal('company-a', 'office_reviewer', 'office-a'),
+    site.siteId,
+    anchor.anchorId,
+    { location: 'Changed after release' },
+  );
+  const unchangedPack = await inspectorController.downloadJobPack(
+    AUTHORIZATION,
+    'company-a',
+    draft.jobId,
+  );
+  assert.equal(unchangedPack.site.name, 'Site A');
+  assert.equal(unchangedPack.anchors[0].location, 'North roof');
   assert.equal(
     (await controller.getJob(AUTHORIZATION, 'company-a', draft.jobId)).jobId,
     draft.jobId,
@@ -169,11 +211,38 @@ test('controller maps auth, role, conflict and persistence failures', async () =
   );
   await assert.rejects(
     () =>
+      inspectorController.downloadJobPack(
+        AUTHORIZATION,
+        'company-a',
+        draft.jobId,
+      ),
+    (error) => error instanceof NotFoundException && error.getStatus() === 404,
+  );
+  await assert.rejects(
+    () =>
       inspectorController.createJob(AUTHORIZATION, 'company-a', {
         siteId: site.siteId,
         reference: 'JOB-003',
       }),
     (error) => error instanceof ForbiddenException && error.getStatus() === 403,
+  );
+  await assert.rejects(
+    () => controller.downloadJobPack(AUTHORIZATION, 'company-a', draft.jobId),
+    (error) => error instanceof ForbiddenException && error.getStatus() === 403,
+  );
+  const otherCompanyInspector = makeController(
+    fixture,
+    'inspector',
+    'inspector-a',
+  );
+  await assert.rejects(
+    () =>
+      otherCompanyInspector.downloadJobPack(
+        AUTHORIZATION,
+        'company-b',
+        draft.jobId,
+      ),
+    (error) => error instanceof NotFoundException && error.getStatus() === 404,
   );
 
   await controller.assignJob(AUTHORIZATION, 'company-a', draft.jobId, {

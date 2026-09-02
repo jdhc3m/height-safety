@@ -15,11 +15,11 @@ Product Android code uses three layers. The bounded `apps/android/storage-spike/
 proof is not a fourth product layer and must not be copied as the application
 shape.
 
-| Layer            | Gradle module (`3A-01`)                                             | Allowed to know                                                           |
-| ---------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Field domain     | `:domain` under `apps/android/domain`                               | Kotlin types, invariants, state machines, ports                           |
-| Android adapters | `:app` and, when persistence starts, a later Android `:data` module | Room, SQLCipher, Keystore, WorkManager, CameraX, generated OpenAPI client |
-| UI               | `:app`                                                              | Jetpack Compose, navigation, Android resources                            |
+| Layer            | Gradle module (`3A-01`)                 | Allowed to know                                                           |
+| ---------------- | --------------------------------------- | ------------------------------------------------------------------------- |
+| Field domain     | `:domain` under `apps/android/domain`   | Kotlin types, invariants, state machines, ports                           |
+| Android adapters | `:app` and `:data` under `apps/android` | Room, SQLCipher, Keystore, WorkManager, CameraX, generated OpenAPI client |
+| UI               | `:app`                                  | Jetpack Compose, navigation, Android resources                            |
 
 `:domain` must not depend on `:app`, `:data`, `clients/kotlin`, Room, or any
 Android library. Adapters depend on domain and map in both directions.

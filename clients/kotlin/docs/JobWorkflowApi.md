@@ -7,6 +7,7 @@ All URIs are relative to */api/v1*
 | [**assignJob**](JobWorkflowApi.md#assignJob) | **POST** jobs/{jobId}/assignment | Assign a released job to an inspector |
 | [**claimJob**](JobWorkflowApi.md#claimJob) | **POST** jobs/{jobId}/claim | Claim a released job |
 | [**createJob**](JobWorkflowApi.md#createJob) | **POST** jobs | Create a draft job |
+| [**downloadJobPack**](JobWorkflowApi.md#downloadJobPack) | **GET** jobs/{jobId}/pack | Download an authorised versioned job pack |
 | [**getJob**](JobWorkflowApi.md#getJob) | **GET** jobs/{jobId} | Read an authorised job |
 | [**listJobs**](JobWorkflowApi.md#listJobs) | **GET** jobs | List authorised jobs |
 | [**releaseJob**](JobWorkflowApi.md#releaseJob) | **POST** jobs/{jobId}/release | Release a draft job |
@@ -138,6 +139,48 @@ Configure access-token:
 ### HTTP request headers
 
  - **Content-Type**: application/json
+ - **Accept**: application/json
+
+
+Download an authorised versioned job pack
+
+### Example
+```kotlin
+// Import classes:
+//import au.com.heightsafety.api.*
+//import au.com.heightsafety.api.infrastructure.*
+//import au.com.heightsafety.api.models.*
+
+val apiClient = ApiClient()
+apiClient.setBearerToken("TOKEN")
+val webService = apiClient.createWebservice(JobWorkflowApi::class.java)
+val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
+val jobId : kotlin.String = jobId_example // kotlin.String | 
+
+launch(Dispatchers.IO) {
+    val result : JobPackResponseDto = webService.downloadJobPack(xCompanyId, jobId)
+}
+```
+
+### Parameters
+| **xCompanyId** | **kotlin.String**|  | |
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **jobId** | **kotlin.String**|  | |
+
+### Return type
+
+[**JobPackResponseDto**](JobPackResponseDto.md)
+
+### Authorization
+
+
+Configure access-token:
+    ApiClient().setBearerToken("TOKEN")
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: application/json
 
 

@@ -14,6 +14,10 @@ import {
   type AssignmentType,
   type JobWorkflowStatus,
 } from './job-workflow.types';
+import {
+  AnchorResponseDto,
+  SiteResponseDto,
+} from '../site-register/site-register.dto';
 
 export class CreateJobDto {
   @ApiProperty({ example: 'site-id' })
@@ -112,4 +116,15 @@ export class JobResponseDto {
     type: JobAssignmentResponseDto,
   })
   assignment!: JobAssignmentResponseDto | null;
+}
+
+export class JobPackResponseDto {
+  @ApiProperty({ type: JobResponseDto })
+  job!: JobResponseDto;
+
+  @ApiProperty({ type: SiteResponseDto })
+  site!: SiteResponseDto;
+
+  @ApiProperty({ type: [AnchorResponseDto] })
+  anchors!: readonly AnchorResponseDto[];
 }

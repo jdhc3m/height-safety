@@ -71,7 +71,7 @@ the reviewer or owner closes the applicable gate.
 | ID | Ticket | Depends on | Acceptance boundary |
 | --- | --- | --- | --- |
 | 3B-01 | Build Android sign-in and eligible-job list | 3A-03, 3A-05 | Inspector sees only authorised company jobs and explicit sync state |
-| 3B-02 | Download and open a versioned job pack | 3B-01, G-04 | Encrypted local pack is usable offline and records its authorisation lease; Room/SQLCipher stay in an Android adapter, not `:domain` |
+| 3B-02 | Download and open a versioned job pack | 3B-01, G-04 | Only a claimed/assigned inspector downloads the explicit job/site/anchor context; the encrypted local pack is restart-safe, usable offline behind device authentication and records its expiring lease; Room/SQLCipher stay in an Android adapter, not `:domain` |
 | 3B-03 | Capture anchor evidence, notes and photos | 3B-02 | Required fields, outcomes, exceptions and inspector input follow Stage 2B; local saves survive restart; capture rules live in `:domain` |
 | 3B-04 | Review and queue submission | 3B-03 | Blockers/warnings are distinct; submission creates durable outbox work rather than claiming server success |
 

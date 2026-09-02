@@ -17,6 +17,7 @@ docs/HealthResponseDto.md
 docs/IdentityApi.md
 docs/InvitationResponseDto.md
 docs/JobAssignmentResponseDto.md
+docs/JobPackResponseDto.md
 docs/JobResponseDto.md
 docs/JobWorkflowApi.md
 docs/ProviderAccessTokenDto.md
@@ -49,6 +50,7 @@ src/models/CreateSiteDto.ts
 src/models/HealthResponseDto.ts
 src/models/InvitationResponseDto.ts
 src/models/JobAssignmentResponseDto.ts
+src/models/JobPackResponseDto.ts
 src/models/JobResponseDto.ts
 src/models/ProviderAccessTokenDto.ts
 src/models/SessionResponseDto.ts

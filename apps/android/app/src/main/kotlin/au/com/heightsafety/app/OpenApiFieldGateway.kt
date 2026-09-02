@@ -6,10 +6,14 @@ import au.com.heightsafety.api.infrastructure.ApiClient
 import au.com.heightsafety.api.models.AuthMeResponseDto
 import au.com.heightsafety.api.models.AuthUserResponseDto
 import au.com.heightsafety.api.models.JobAssignmentResponseDto
+import au.com.heightsafety.api.models.JobPackResponseDto
 import au.com.heightsafety.api.models.JobResponseDto
 import au.com.heightsafety.api.models.ProviderAccessTokenDto
 import au.com.heightsafety.api.models.SessionResponseDto
 import au.com.heightsafety.domain.FieldGateway
+import au.com.heightsafety.domain.FieldJobPack
+import au.com.heightsafety.domain.JobPackAnchor
+import au.com.heightsafety.domain.JobPackGateway
 import au.com.heightsafety.domain.FieldAuthorizationException
 import au.com.heightsafety.domain.FieldGatewayException
 import au.com.heightsafety.domain.FieldSession
@@ -30,7 +34,7 @@ class OpenApiFieldGateway(
     private val identityApi: IdentityApi,
     private val jobWorkflowApi: JobWorkflowApi,
     private val bearerTokenSink: (String) -> Unit,
-) : FieldGateway {
+) : FieldGateway, JobPackGateway {
     private val apiMutex = Mutex()
 
     constructor(apiClient: ApiClient) : this(
@@ -106,6 +110,45 @@ class OpenApiFieldGateway(
                 ).map(JobResponseDto::toDomainJob)
             }
         }
+
+    override suspend fun claimJob(
+        session: FieldSession,
+        jobId: String,
+    ): InspectorJob = apiMutex.withLock {
+        guardedCall("claim job") {
+            requireInspectorSession(session)
+            bearerTokenSink(session.accessToken)
+            val claimed = requireBody(
+                jobWorkflowApi.claimJob(session.companyId, jobId),
+                "claim job",
+            ).toDomainJob()
+            if (
+                claimed.companyId != session.companyId ||
+                claimed.jobId != jobId ||
+                claimed.assignment?.inspectorUserId != session.userId
+            ) {
+                throw FieldGatewayException(
+                    GatewayFailureReason.INVALID_RESPONSE,
+                    "claimed job does not match the signed-in inspector",
+                )
+            }
+            claimed
+        }
+    }
+
+    override suspend fun downloadJobPack(
+        session: FieldSession,
+        jobId: String,
+    ): FieldJobPack = apiMutex.withLock {
+        guardedCall("download job pack") {
+            requireInspectorSession(session)
+            bearerTokenSink(session.accessToken)
+            requireBody(
+                jobWorkflowApi.downloadJobPack(session.companyId, jobId),
+                "download job pack",
+            ).toDomainJobPack()
+        }
+    }
 
     override suspend fun revokeSession(session: FieldSession) {
         apiMutex.withLock {
@@ -193,6 +236,42 @@ private fun JobResponseDto.toDomainJob(): InspectorJob = InspectorJob(
     updatedAtEpochMillis = updatedAt.toInstant().toEpochMilli(),
     assignment = assignment?.toDomainAssignment(),
 )
+
+private fun JobPackResponseDto.toDomainJobPack(): FieldJobPack {
+    val domainJob = job.toDomainJob()
+    return FieldJobPack(
+        companyId = domainJob.companyId,
+        jobId = domainJob.jobId,
+        siteId = domainJob.siteId,
+        jurisdiction = domainJob.jurisdiction,
+        reference = domainJob.reference,
+        plannedDate = domainJob.plannedDate,
+        workflowStatus = domainJob.workflowStatus,
+        jobPackVersion = domainJob.jobPackVersion,
+        siteName = site.name,
+        siteAddress = site.address,
+        siteReference = site.siteReference,
+        accessNotes = site.accessNotes,
+        anchors = anchors.map { anchor ->
+            JobPackAnchor(
+                companyId = anchor.companyId,
+                anchorId = anchor.anchorId,
+                siteId = anchor.siteId,
+                label = anchor.label,
+                registerId = anchor.registerId,
+                location = anchor.location,
+                anchorType = anchor.anchorType.value,
+                manufacturer = anchor.manufacturer,
+                model = anchor.model,
+                installContext = anchor.installContext,
+                registerStatus = anchor.registerStatus.value,
+                notes = anchor.notes,
+                createdAtEpochMillis = anchor.createdAt.toInstant().toEpochMilli(),
+                updatedAtEpochMillis = anchor.updatedAt.toInstant().toEpochMilli(),
+            )
+        },
+    )
+}
 
 private fun JobResponseDto.Jurisdiction.toDomainJurisdiction(): SupportedJurisdiction = when (this) {
     JobResponseDto.Jurisdiction.NSW -> SupportedJurisdiction.NSW

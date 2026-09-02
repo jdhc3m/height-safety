@@ -494,6 +494,28 @@
         ],
         "type": "object"
       },
+      "JobPackResponseDto": {
+        "properties": {
+          "anchors": {
+            "items": {
+              "$ref": "#/components/schemas/AnchorResponseDto"
+            },
+            "type": "array"
+          },
+          "job": {
+            "$ref": "#/components/schemas/JobResponseDto"
+          },
+          "site": {
+            "$ref": "#/components/schemas/SiteResponseDto"
+          }
+        },
+        "required": [
+          "job",
+          "site",
+          "anchors"
+        ],
+        "type": "object"
+      },
       "JobResponseDto": {
         "properties": {
           "assignment": {
@@ -1424,6 +1446,50 @@
           }
         ],
         "summary": "Claim a released job",
+        "tags": [
+          "job-workflow"
+        ]
+      }
+    },
+    "/jobs/{jobId}/pack": {
+      "get": {
+        "operationId": "downloadJobPack",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobPackResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Download an authorised versioned job pack",
         "tags": [
           "job-workflow"
         ]

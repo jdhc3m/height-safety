@@ -7,6 +7,7 @@ All URIs are relative to */api/v1*
 | [**assignJob**](JobWorkflowApi.md#assignjob) | **POST** /jobs/{jobId}/assignment | Assign a released job to an inspector |
 | [**claimJob**](JobWorkflowApi.md#claimjob) | **POST** /jobs/{jobId}/claim | Claim a released job |
 | [**createJob**](JobWorkflowApi.md#createjob) | **POST** /jobs | Create a draft job |
+| [**downloadJobPack**](JobWorkflowApi.md#downloadjobpack) | **GET** /jobs/{jobId}/pack | Download an authorised versioned job pack |
 | [**getJob**](JobWorkflowApi.md#getjob) | **GET** /jobs/{jobId} | Read an authorised job |
 | [**listJobs**](JobWorkflowApi.md#listjobs) | **GET** /jobs | List authorised jobs |
 | [**releaseJob**](JobWorkflowApi.md#releasejob) | **POST** /jobs/{jobId}/release | Release a draft job |
@@ -228,6 +229,78 @@ example().catch(console.error);
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## downloadJobPack
+
+> JobPackResponseDto downloadJobPack(xCompanyId, jobId)
+
+Download an authorised versioned job pack
+
+### Example
+
+```ts
+import {
+  Configuration,
+  JobWorkflowApi,
+} from '@height-safety/api-client';
+import type { DownloadJobPackRequest } from '@height-safety/api-client';
+
+async function example() {
+  console.log("🚀 Testing @height-safety/api-client SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: access-token
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new JobWorkflowApi(config);
+
+  const body = {
+    // string
+    xCompanyId: xCompanyId_example,
+    // string
+    jobId: jobId_example,
+  } satisfies DownloadJobPackRequest;
+
+  try {
+    const data = await api.downloadJobPack(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **xCompanyId** | `string` |  | [Defaults to `undefined`] |
+| **jobId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**JobPackResponseDto**](JobPackResponseDto.md)
+
+### Authorization
+
+[access-token](../README.md#access-token)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

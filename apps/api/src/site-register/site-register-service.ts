@@ -497,6 +497,33 @@ export class SiteRegisterService {
       .map(copyAnchor);
   }
 
+  getFieldSite(principal: AuthPrincipal, siteId: string): SiteRecord {
+    this.assertFieldReader(principal);
+    const normalizedSiteId = requiredId(siteId, 'siteId');
+    const site = this.options.store.getSite(
+      principal.companyId,
+      normalizedSiteId,
+    );
+    if (!site) {
+      throw new SiteRegisterFailure('NOT_FOUND', 'site was not found');
+    }
+    return copySite(site);
+  }
+
+  listFieldAnchors(
+    principal: AuthPrincipal,
+    siteId: string,
+  ): readonly AnchorRecord[] {
+    this.assertFieldReader(principal);
+    const normalizedSiteId = requiredId(siteId, 'siteId');
+    if (!this.options.store.getSite(principal.companyId, normalizedSiteId)) {
+      throw new SiteRegisterFailure('NOT_FOUND', 'site was not found');
+    }
+    return this.options.store
+      .listAnchors(principal.companyId, normalizedSiteId)
+      .map(copyAnchor);
+  }
+
   getAnchor(
     principal: AuthPrincipal,
     siteId: string,
@@ -612,6 +639,15 @@ export class SiteRegisterService {
 
   private assertManager(principal: AuthPrincipal): void {
     assertCanManageSiteRegister(principal);
+  }
+
+  private assertFieldReader(principal: AuthPrincipal): void {
+    if (principal.role !== 'inspector') {
+      throw new SiteRegisterFailure(
+        'ROLE_FORBIDDEN',
+        'Inspector role is required',
+      );
+    }
   }
 
   private requireClient(companyId: string, clientId: string): ClientRecord {

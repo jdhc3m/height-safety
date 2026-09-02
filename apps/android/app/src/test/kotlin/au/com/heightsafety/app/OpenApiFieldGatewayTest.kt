@@ -6,14 +6,17 @@ import au.com.heightsafety.api.models.AcceptInvitationDto
 import au.com.heightsafety.api.models.AssignJobDto
 import au.com.heightsafety.api.models.AuthMeResponseDto
 import au.com.heightsafety.api.models.AuthUserResponseDto
+import au.com.heightsafety.api.models.AnchorResponseDto
 import au.com.heightsafety.api.models.CreateInvitationDto
 import au.com.heightsafety.api.models.CreateJobDto
 import au.com.heightsafety.api.models.JobAssignmentResponseDto
 import au.com.heightsafety.api.models.JobResponseDto
 import au.com.heightsafety.api.models.InvitationResponseDto
+import au.com.heightsafety.api.models.JobPackResponseDto
 import au.com.heightsafety.api.models.ProviderAccessTokenDto
 import au.com.heightsafety.api.models.SessionResponseDto
 import au.com.heightsafety.api.models.SessionRevokedResponseDto
+import au.com.heightsafety.api.models.SiteResponseDto
 import au.com.heightsafety.domain.FieldGatewayException
 import au.com.heightsafety.domain.FieldSession
 import au.com.heightsafety.domain.GatewayFailureReason
@@ -76,6 +79,52 @@ class OpenApiFieldGatewayTest {
         assertEquals("2026-09-15", job.plannedDate)
         assertEquals("inspector-a", job.assignment?.inspectorUserId)
         assertEquals("claimed", job.assignment?.assignmentType)
+    }
+
+    @Test
+    fun downloadJobPackMapsSiteAndAnchorRegister() = runTest {
+        val gateway = OpenApiFieldGateway(
+            identityApi = FakeIdentityApi(
+                sessionResponse = Response.success(sessionResponse()),
+                currentResponse = Response.success(currentAuthResponse()),
+            ),
+            jobWorkflowApi = FakeJobWorkflowApi(
+                listResponse = Response.success(emptyList()),
+                packResponse = Response.success(jobPackResponse()),
+            ),
+            bearerTokenSink = {},
+        )
+
+        val pack = gateway.downloadJobPack(fieldSession(), "job-a")
+
+        assertEquals("company-a", pack.companyId)
+        assertEquals("job-a", pack.jobId)
+        assertEquals("QLD", pack.jurisdiction.value)
+        assertEquals(7L, pack.jobPackVersion)
+        assertEquals("Site A", pack.siteName)
+        assertEquals("A-001", pack.anchors.single().registerId)
+        assertEquals("single_point", pack.anchors.single().anchorType)
+    }
+
+    @Test
+    fun claimJobMapsTheServerAssignment() = runTest {
+        val gateway = OpenApiFieldGateway(
+            identityApi = FakeIdentityApi(
+                sessionResponse = Response.success(sessionResponse()),
+                currentResponse = Response.success(currentAuthResponse()),
+            ),
+            jobWorkflowApi = FakeJobWorkflowApi(
+                listResponse = Response.success(emptyList()),
+                claimResponse = Response.success(jobResponse()),
+            ),
+            bearerTokenSink = {},
+        )
+
+        val claimed = gateway.claimJob(fieldSession(), "job-a")
+
+        assertEquals("job-a", claimed.jobId)
+        assertEquals("inspector-a", claimed.assignment?.inspectorUserId)
+        assertEquals("claimed", claimed.assignment?.assignmentType)
     }
 
     @Test
@@ -149,6 +198,8 @@ class OpenApiFieldGatewayTest {
 
     private class FakeJobWorkflowApi(
         private val listResponse: Response<List<JobResponseDto>>,
+        private val packResponse: Response<JobPackResponseDto>? = null,
+        private val claimResponse: Response<JobResponseDto>? = null,
     ) : JobWorkflowApi {
         override suspend fun assignJob(
             xCompanyId: String,
@@ -159,12 +210,17 @@ class OpenApiFieldGatewayTest {
         override suspend fun claimJob(
             xCompanyId: String,
             jobId: String,
-        ): Response<JobResponseDto> = error("unused")
+        ): Response<JobResponseDto> = claimResponse ?: error("unused")
 
         override suspend fun createJob(
             xCompanyId: String,
             createJobDto: CreateJobDto,
         ): Response<JobResponseDto> = error("unused")
+
+        override suspend fun downloadJobPack(
+            xCompanyId: String,
+            jobId: String,
+        ): Response<JobPackResponseDto> = packResponse ?: error("unused")
 
         override suspend fun getJob(
             xCompanyId: String,
@@ -222,6 +278,36 @@ class OpenApiFieldGatewayTest {
             claimedAt = timestamp(1_200L),
         ),
         plannedDate = LocalDate.parse("2026-09-15"),
+    )
+
+    private fun jobPackResponse() = JobPackResponseDto(
+        anchors = listOf(
+            AnchorResponseDto(
+                anchorId = "anchor-a",
+                anchorType = AnchorResponseDto.AnchorType.single_point,
+                companyId = "company-a",
+                createdAt = timestamp(1_000L),
+                registerStatus = AnchorResponseDto.RegisterStatus.active,
+                siteId = "site-a",
+                updatedAt = timestamp(1_500L),
+                label = "A-001",
+                location = "North roof",
+                registerId = "A-001",
+            ),
+        ),
+        job = jobResponse(),
+        site = SiteResponseDto(
+            clientId = "client-a",
+            companyId = "company-a",
+            createdAt = timestamp(1_000L),
+            jurisdiction = SiteResponseDto.Jurisdiction.QLD,
+            name = "Site A",
+            siteId = "site-a",
+            updatedAt = timestamp(1_500L),
+            accessNotes = "North access",
+            address = "1 Example Street",
+            siteReference = "SITE-A",
+        ),
     )
 
     private fun fieldSession() = FieldSession(

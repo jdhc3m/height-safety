@@ -146,6 +146,9 @@ test('creates, releases and claims tenant-scoped jobs with explicit site jurisdi
   assert.equal(job.jobPackVersion, 1);
   assert.equal(job.plannedDate, '2026-09-15');
 
+  const released = harness.service.releaseJob(office, job.jobId);
+  assert.equal(released.job.workflowStatus, 'released');
+  assert.equal(released.assignment, null);
   harness.siteRegisterService.updateSite(office, site.siteId, {
     jurisdiction: 'QLD',
   });
@@ -153,10 +156,6 @@ test('creates, releases and claims tenant-scoped jobs with explicit site jurisdi
     harness.service.getJob(office, job.jobId).job.jurisdiction,
     'NSW',
   );
-
-  const released = harness.service.releaseJob(office, job.jobId);
-  assert.equal(released.job.workflowStatus, 'released');
-  assert.equal(released.assignment, null);
   assert.deepEqual(
     harness.service.listJobs(inspector).map((item) => item.job.jobId),
     [job.jobId],
@@ -212,6 +211,20 @@ test('office assignment validates active inspectors and keeps one primary assign
       assert.equal(error.currentAssignment.inspectorUserId, 'inspector-a');
       return true;
     },
+  );
+});
+
+test('release rejects a job when the site context changed after job creation', () => {
+  const harness = makeHarness();
+  const { job, office, site } = prepareJob(harness);
+
+  harness.siteRegisterService.updateSite(office, site.siteId, {
+    jurisdiction: 'QLD',
+  });
+
+  expectFailure(
+    () => harness.service.releaseJob(office, job.jobId),
+    'CONFLICT',
   );
 });
 

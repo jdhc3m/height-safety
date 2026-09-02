@@ -1,11 +1,16 @@
 import type { AuthPrincipal } from '../identity/auth.types';
-import { SiteRegisterFailure } from '../site-register/site-register.types';
+import {
+  SiteRegisterFailure,
+  type AnchorRecord,
+  type SiteRecord,
+} from '../site-register/site-register.types';
 import {
   assertCanManageJobs,
   assertInspector,
   JobWorkflowFailure,
   type JobAssignmentRecord,
   type JobRecord,
+  type JobPackSnapshot,
   type JobWorkflowAuditSink,
   type JobWorkflowClock,
   type JobWorkflowIdGenerator,
@@ -42,6 +47,11 @@ export interface JobBundle {
   readonly assignment: JobAssignmentRecord | null;
 }
 
+export interface JobPackBundle extends JobBundle {
+  readonly site: SiteRecord;
+  readonly anchors: readonly AnchorRecord[];
+}
+
 function copyDate(value: Date): Date {
   return new Date(value.getTime());
 }
@@ -64,6 +74,30 @@ function copyAssignment(
     ...assignment,
     assignedAt: copyDate(assignment.assignedAt),
     claimedAt: assignment.claimedAt ? copyDate(assignment.claimedAt) : null,
+  };
+}
+
+function copySite(site: SiteRecord): SiteRecord {
+  return {
+    ...site,
+    createdAt: copyDate(site.createdAt),
+    updatedAt: copyDate(site.updatedAt),
+  };
+}
+
+function copyAnchor(anchor: AnchorRecord): AnchorRecord {
+  return {
+    ...anchor,
+    createdAt: copyDate(anchor.createdAt),
+    updatedAt: copyDate(anchor.updatedAt),
+  };
+}
+
+function copyPackSnapshot(snapshot: JobPackSnapshot): JobPackSnapshot {
+  return {
+    ...snapshot,
+    site: copySite(snapshot.site),
+    anchors: snapshot.anchors.map(copyAnchor),
   };
 }
 
@@ -221,14 +255,77 @@ export class JobWorkflowService {
     return { job: copyJob(job), assignment: copyAssignment(assignment) };
   }
 
+  getJobPack(principal: AuthPrincipal, jobId: string): JobPackBundle {
+    assertInspector(principal);
+    const bundle = this.getJob(principal, jobId);
+    if (bundle.assignment?.inspectorUserId !== principal.userId) {
+      throw new JobWorkflowFailure('NOT_FOUND', 'job was not found');
+    }
+    const snapshot = this.options.store.getJobPackSnapshot(
+      principal.companyId,
+      bundle.job.jobId,
+      bundle.job.jobPackVersion,
+    );
+    if (!snapshot) {
+      throw new JobWorkflowFailure(
+        'CONFLICT',
+        'versioned job pack snapshot is unavailable',
+      );
+    }
+    if (
+      snapshot.companyId !== principal.companyId ||
+      snapshot.jobId !== bundle.job.jobId ||
+      snapshot.jobPackVersion !== bundle.job.jobPackVersion ||
+      snapshot.site.companyId !== principal.companyId ||
+      snapshot.site.siteId !== bundle.job.siteId ||
+      snapshot.site.jurisdiction !== bundle.job.jurisdiction
+    ) {
+      throw new JobWorkflowFailure(
+        'CONFLICT',
+        'job pack snapshot does not match the released job',
+      );
+    }
+    if (
+      snapshot.anchors.some(
+        (anchor) =>
+          anchor.companyId !== principal.companyId ||
+          anchor.siteId !== bundle.job.siteId,
+      )
+    ) {
+      throw new JobWorkflowFailure(
+        'CONFLICT',
+        'job pack contains an anchor from another site',
+      );
+    }
+
+    return {
+      ...bundle,
+      site: copySite(snapshot.site),
+      anchors: snapshot.anchors.map(copyAnchor),
+    };
+  }
+
   releaseJob(principal: AuthPrincipal, jobId: string): JobBundle {
     assertCanManageJobs(principal);
     const normalizedJobId = requiredId(jobId, 'jobId');
-    const job = this.options.store.releaseJob(
+    const existing = this.options.store.getJob(
       principal.companyId,
       normalizedJobId,
-      this.now(),
     );
+    const updatedAt = this.now();
+    const job =
+      existing?.workflowStatus === 'draft'
+        ? this.options.store.releaseJob(
+            principal.companyId,
+            normalizedJobId,
+            updatedAt,
+            this.captureJobPackSnapshot(principal, existing),
+          )
+        : this.options.store.releaseJob(
+            principal.companyId,
+            normalizedJobId,
+            updatedAt,
+          );
     this.recordAudit(principal, 'job.released', job.jobId, {
       jurisdiction: job.jurisdiction,
       jobPackVersion: job.jobPackVersion,
@@ -323,6 +420,54 @@ export class JobWorkflowService {
       assignment:
         this.options.store.getPrimaryAssignment(job.companyId, job.jobId) ??
         null,
+    });
+  }
+
+  private captureJobPackSnapshot(
+    principal: AuthPrincipal,
+    job: JobRecord,
+  ): JobPackSnapshot {
+    let site: SiteRecord;
+    let anchors: readonly AnchorRecord[];
+    try {
+      site = this.options.siteDirectory.getSite(principal, job.siteId);
+      anchors = this.options.siteDirectory.listAnchors(principal, job.siteId);
+    } catch (error) {
+      if (error instanceof SiteRegisterFailure) {
+        throw new JobWorkflowFailure(error.code, error.message);
+      }
+      throw error;
+    }
+
+    if (
+      site.companyId !== principal.companyId ||
+      site.siteId !== job.siteId ||
+      site.jurisdiction !== job.jurisdiction
+    ) {
+      throw new JobWorkflowFailure(
+        'CONFLICT',
+        'job pack site context does not match the job',
+      );
+    }
+    if (
+      anchors.some(
+        (anchor) =>
+          anchor.companyId !== principal.companyId ||
+          anchor.siteId !== job.siteId,
+      )
+    ) {
+      throw new JobWorkflowFailure(
+        'CONFLICT',
+        'job pack contains an anchor from another site',
+      );
+    }
+
+    return copyPackSnapshot({
+      companyId: principal.companyId,
+      jobId: job.jobId,
+      jobPackVersion: job.jobPackVersion,
+      site,
+      anchors,
     });
   }
 
