@@ -21,6 +21,7 @@ pnpm --filter @height-safety/api-client build
 bash "$ROOT/apps/android/gradlew" -p "$ROOT/apps/android" \
   :domain:test \
   :app:testDebugUnitTest \
+  :app:compileDebugAndroidTestKotlin \
   --no-daemon
 
 echo "test passed"

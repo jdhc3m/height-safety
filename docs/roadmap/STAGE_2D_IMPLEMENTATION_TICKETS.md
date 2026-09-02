@@ -63,8 +63,8 @@ the reviewer or owner closes the applicable gate.
 | 3A-01 | Done | Scaffold Android, NestJS and Next.js workspaces | 2D-01, 2D-02 | Reproducible build/lint/test commands run locally and in CI; Android includes a Kotlin/JVM `:domain` module with no Android/Room/Retrofit APIs (D-026); no KMP plugin or iOS target; root gate passed and independent review found no actionable issues |
 | 3A-02 | Done | Add database migrations and tenant isolation | 3A-01, G-03 | Company-scoped PostgreSQL schema; composite tenant keys, runtime context/RLS boundary, relationship and immutability constraints, live PostgreSQL cross-tenant read/write and portability checks pass; independent review found and fixed actionable issues |
 | 3A-03 | Done | Add invitation auth, roles and sessions | 3A-02, 2D-04 | Provider-neutral invitation/session boundary; Administrator MFA enforced; inspector/reviewer MFA optional; current membership, revocation and claims tested; PostgreSQL RLS and generated contract checks pass |
-| 3A-04 | Review | Add site, jurisdiction and anchor register APIs | 3A-02, G-01 | NSW/QLD recorded as context; no legal-rule engine or future-asset domain model; bounded API and controller tests plus generated client contract are present |
-| 3A-05 | Backlog | Add job release, claim and assignment | 3A-03, 3A-04 | Atomic single-primary-inspector claim; office assignment and race tests; independent review retained |
+| 3A-04 | Done | Add site, jurisdiction and anchor register APIs | 3A-02, G-01 | NSW/QLD recorded as context; no legal-rule engine or future-asset domain model; bounded API/controller tests, generated clients, runtime `/api/v1` smoke test and independent review pass |
+| 3A-05 | Done | Add job release, claim and assignment | 3A-03, 3A-04 | Atomic single-primary-inspector claim; active same-company inspector eligibility; office assignment, claim-race/current-state tests and independent review pass |
 
 ### Stage 3B anchor vertical-slice backlog
 

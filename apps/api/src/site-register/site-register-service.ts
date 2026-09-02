@@ -163,6 +163,29 @@ function patchTextOrExisting(
   return value === undefined ? existing : optionalText(value, field, maxLength);
 }
 
+function assertObjectInput(
+  input: unknown,
+  resource: string,
+): asserts input is Record<string, unknown> {
+  if (input === null || typeof input !== 'object' || Array.isArray(input)) {
+    throw new SiteRegisterFailure(
+      'INVALID_INPUT',
+      `${resource} request body is required`,
+    );
+  }
+}
+
+function changedFields<T extends object>(
+  existing: T,
+  updated: T,
+  fields: readonly (keyof T)[],
+): string {
+  return fields
+    .filter((field) => existing[field] !== updated[field])
+    .map(String)
+    .join(',');
+}
+
 function requiredId(value: unknown, field: string): string {
   return requiredText(value, field, REFERENCE_MAX_LENGTH);
 }
@@ -205,6 +228,7 @@ export class SiteRegisterService {
     input: CreateClientInput,
   ): ClientRecord {
     this.assertManager(principal);
+    assertObjectInput(input, 'client');
     const now = this.now();
     const client: ClientRecord = {
       companyId: principal.companyId,
@@ -252,6 +276,7 @@ export class SiteRegisterService {
     input: UpdateClientInput,
   ): ClientRecord {
     this.assertManager(principal);
+    assertObjectInput(input, 'client');
     const normalizedClientId = requiredId(clientId, 'clientId');
     const existing = this.options.store.getClient(
       principal.companyId,
@@ -287,12 +312,19 @@ export class SiteRegisterService {
     };
 
     this.options.store.updateClient(client);
-    this.recordAudit(principal, 'client.updated', 'client', client.clientId);
+    this.recordAudit(principal, 'client.updated', 'client', client.clientId, {
+      changedFields: changedFields(existing, client, [
+        'name',
+        'contactDetails',
+        'externalReference',
+      ]),
+    });
     return copyClient(client);
   }
 
   createSite(principal: AuthPrincipal, input: CreateSiteInput): SiteRecord {
     this.assertManager(principal);
+    assertObjectInput(input, 'site');
     const clientId = requiredId(input.clientId, 'clientId');
     this.requireClient(principal.companyId, clientId);
     const now = this.now();
@@ -347,6 +379,7 @@ export class SiteRegisterService {
     input: UpdateSiteInput,
   ): SiteRecord {
     this.assertManager(principal);
+    assertObjectInput(input, 'site');
     const normalizedSiteId = requiredId(siteId, 'siteId');
     const existing = this.options.store.getSite(
       principal.companyId,
@@ -394,6 +427,14 @@ export class SiteRegisterService {
     this.options.store.updateSite(site);
     this.recordAudit(principal, 'site.updated', 'site', site.siteId, {
       jurisdiction: site.jurisdiction,
+      changedFields: changedFields(existing, site, [
+        'clientId',
+        'name',
+        'address',
+        'jurisdiction',
+        'accessNotes',
+        'siteReference',
+      ]),
     });
     return copySite(site);
   }
@@ -404,6 +445,7 @@ export class SiteRegisterService {
     input: CreateAnchorInput,
   ): AnchorRecord {
     this.assertManager(principal);
+    assertObjectInput(input, 'anchor');
     const normalizedSiteId = requiredId(siteId, 'siteId');
     this.requireSite(principal.companyId, normalizedSiteId);
     const now = this.now();
@@ -482,6 +524,7 @@ export class SiteRegisterService {
     input: UpdateAnchorInput,
   ): AnchorRecord {
     this.assertManager(principal);
+    assertObjectInput(input, 'anchor');
     const normalizedSiteId = requiredId(siteId, 'siteId');
     const normalizedAnchorId = requiredId(anchorId, 'anchorId');
     this.requireSite(principal.companyId, normalizedSiteId);
@@ -552,6 +595,17 @@ export class SiteRegisterService {
     this.options.store.updateAnchor(anchor);
     this.recordAudit(principal, 'anchor.updated', 'anchor', anchor.anchorId, {
       registerStatus: anchor.registerStatus,
+      changedFields: changedFields(existing, anchor, [
+        'label',
+        'registerId',
+        'location',
+        'anchorType',
+        'manufacturer',
+        'model',
+        'installContext',
+        'registerStatus',
+        'notes',
+      ]),
     });
     return copyAnchor(anchor);
   }

@@ -1,12 +1,11 @@
 # Current Status
 
-Last update: 2026-08-31
+Last update: 2026-09-01
 
 ## Active stage
 
-Stage 3A — foundation implementation; `3A-01`, `3A-02` and `3A-03` are Done.
-`3A-04` is in Review.
-G-03 is Done as D-027.
+Stage 3B — anchor vertical slice; `3A-01` through `3A-05` are Done.
+`3B-01` implementation is complete and in Review. G-03 is Done as D-027.
 
 ## Completed
 
@@ -150,25 +149,51 @@ G-03 is Done as D-027.
   the live PostgreSQL cross-company checks pass. The identity-provider and
   durable application persistence adapters remain deliberately unconfigured
   while vendor selection is deferred.
+- `3A-04` adds the company-scoped site, supported-jurisdiction and
+  single-point anchor-register API boundary. It preserves explicit `NSW` or
+  `QLD` context, manager-only writes, audit metadata, fail-closed HTTP errors,
+  versioned runtime mounting and generated Kotlin/TypeScript clients. Durable
+  store and audit adapters remain deliberately unconfigured.
+- `3A-04` passed independent review after malformed-body handling, unknown
+  failure fallbacks, update DTO optionality and changed-field audit metadata
+  were corrected. Runtime smoke coverage confirms `/api/v1` matches the
+  generated contract.
+- `3A-05` adds the bounded job workflow boundary: draft creation from a
+  company-scoped site, release, active same-company inspector assignment or
+  claim, explicit job-pack version and jurisdiction retention, role checks,
+  current-assignment conflict visibility and one-primary assignment semantics.
+  The store and audit ports remain deliberately unconfigured for runtime use;
+  the in-memory proof exercises the atomic operation and race behavior.
+- `3A-05` passed fresh independent review. Service and controller tests cover
+  tenant isolation, role boundaries, valid dates, malformed input, claim
+  replay, competing claims, assignment eligibility and HTTP error mapping.
+- `3B-01` adds a provider-neutral Android sign-in/session boundary, generated
+  OpenAPI session and authorised-job adapters, inspector-only tenant filtering,
+  explicit jurisdiction/status/assignment/job-pack-version display, and
+  loading, synchronising, synchronised, failed and empty states. Opaque
+  application sessions remain memory-only in this bounded slice; authentication
+  vendor selection and durable session storage remain open.
+- `3B-01` adds JVM tests for authorised visibility, cross-company hiding,
+  unauthorised-job denial, role/tenant checks, session expiry, sign-out,
+  adapter mapping and sync/error/empty states, plus Compose instrumented UI
+  coverage and state-restoration coverage.
 
 ## In progress
 
-- `3A-04` site, jurisdiction and anchor-register API boundary is implemented in
-  the current worktree and awaiting independent review. It covers company-
-  scoped client, site and single-point anchor register operations, explicit
-  `NSW`/`QLD` context, manager-role checks, audit-event hooks and fail-closed
-  HTTP handling. The runtime persistence and durable audit adapters remain
-  deliberately unconfigured.
+- `3B-01` implementation is awaiting independent review. Compose instrumented
+  UI tests pass on the local `Pixel_5_API_30` emulator. Runtime persistence,
+  durable audit, identity membership and production deployment adapters remain
+  deliberately unconfigured and are separate work.
 - Production provider selection, runtime deployment-role configuration and later
   feature APIs remain separate work from the completed `3A-02` boundary.
 - Keep design-partner outreach ready; practitioner validation still open.
 
 ## Next recommended task
 
-Complete independent review of `3A-04`, then start `3A-05` job release, claim and
-assignment. Do not add Kotlin Multiplatform, an iOS target or deferred standards
-candidates. Authentication vendor selection and the durable identity/runtime
-adapters remain deferred.
+Complete independent review of `3B-01`, then start `3B-02` versioned job-pack
+download/open. Do not add Kotlin
+Multiplatform, an iOS target or deferred standards candidates. Authentication
+vendor selection and the durable identity/runtime adapters remain deferred.
 Production provider/native backup configuration, retention/RPO/RTO and strict
 backup/log/subprocessor residency remain open. G-05 still needs design-partner
 review before a controlled pilot.
@@ -176,10 +201,10 @@ review before a controlled pilot.
 ## Blockers and decisions awaiting confirmation
 
 - No design partner, operational corpus or professional validation yet.
-- The `3A-02` product schema and tenant-isolation boundary plus the bounded
-  `3A-03` auth policy/session contract are implemented; `3A-04` has a bounded
-  API contract in Review, while its durable store/audit adapters and production
-  runtime-role deployment remain later work.
+- The `3A-02` product schema and tenant-isolation boundary, bounded `3A-03`
+  auth policy/session contract, `3A-04` register API and `3A-05` job workflow
+  contract are implemented; `3B-01` is in Review; durable store/audit adapters
+  and production runtime-role deployment remain later work.
 - Offline-authorisation lease duration and recovery of unsynchronised evidence
   after account revocation are owner-approved as D-025. G-05 still requires
   design-partner review before a controlled pilot.
@@ -243,6 +268,20 @@ build, formatting, API type-checking, deterministic OpenAPI/TypeScript/Kotlin
 contract checks, provider portability, PDF, offline-lease, encrypted-storage
 and Android build/lint checks also passed. The PostgreSQL instance used for
 the gate was disposable and has been stopped.
+
+On 2026-09-01, the corrected `3A-04`/`3A-05` API suite passed 22 tests,
+including runtime `/api/v1` smoke coverage and the live PostgreSQL
+tenant-isolation test. The full `tools/verify.sh` gate passed with disposable
+PostgreSQL 17, generated contract checks, web build, PDF/provider/offline
+checks and Android build/lint checks. Fresh independent review passed after
+the corrections; the disposable PostgreSQL container was stopped.
+
+On 2026-09-01, the `3B-01` domain and Android JVM suites passed, generated
+client adapter tests passed, and the Compose instrumented test source compiled.
+The full `tools/verify.sh` root gate passed with generated-contract, web, API,
+PostgreSQL, PDF/provider, offline-lease, encrypted-storage and Android checks.
+Connected UI execution then passed 4/4 tests on the local `Pixel_5_API_30`
+emulator (API 30).
 
 ## Relevant files
 

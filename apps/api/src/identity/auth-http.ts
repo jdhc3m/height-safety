@@ -85,4 +85,6 @@ export function toAuthHttpException(error: unknown): never {
     case 'COMPANY_MISMATCH':
       throw new UnauthorizedException('authentication is not valid');
   }
+
+  throw new InternalServerErrorException();
 }

@@ -93,6 +93,19 @@
         ],
         "type": "object"
       },
+      "AssignJobDto": {
+        "properties": {
+          "inspectorUserId": {
+            "example": "inspector-user-id",
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "inspectorUserId"
+        ],
+        "type": "object"
+      },
       "AuthMeResponseDto": {
         "properties": {
           "companyId": {
@@ -303,6 +316,32 @@
         ],
         "type": "object"
       },
+      "CreateJobDto": {
+        "properties": {
+          "plannedDate": {
+            "example": "2026-09-15",
+            "format": "date",
+            "nullable": true,
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": "string"
+          },
+          "reference": {
+            "example": "JOB-2026-001",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "siteId": {
+            "example": "site-id",
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "siteId",
+          "reference"
+        ],
+        "type": "object"
+      },
       "CreateSiteDto": {
         "properties": {
           "accessNotes": {
@@ -402,6 +441,131 @@
           "email",
           "role",
           "expiresAt"
+        ],
+        "type": "object"
+      },
+      "JobAssignmentResponseDto": {
+        "properties": {
+          "assignedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "assignedByUserId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "assignmentId": {
+            "type": "string"
+          },
+          "assignmentType": {
+            "enum": [
+              "assigned",
+              "claimed"
+            ],
+            "type": "string"
+          },
+          "claimedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "inspectorUserId": {
+            "type": "string"
+          },
+          "isPrimary": {
+            "example": true,
+            "type": "boolean"
+          },
+          "jobId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "assignmentId",
+          "jobId",
+          "inspectorUserId",
+          "assignmentType",
+          "isPrimary",
+          "assignedAt"
+        ],
+        "type": "object"
+      },
+      "JobResponseDto": {
+        "properties": {
+          "assignment": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/JobAssignmentResponseDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "jobPackVersion": {
+            "example": 1,
+            "type": "number"
+          },
+          "jurisdiction": {
+            "enum": [
+              "NSW",
+              "QLD"
+            ],
+            "type": "string"
+          },
+          "plannedDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "workflowStatus": {
+            "enum": [
+              "draft",
+              "released",
+              "assigned",
+              "in_progress",
+              "submitted",
+              "under_review",
+              "changes_requested",
+              "approved_for_report_generation",
+              "report_generated"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "jobId",
+          "siteId",
+          "jurisdiction",
+          "reference",
+          "workflowStatus",
+          "jobPackVersion",
+          "createdAt",
+          "updatedAt"
         ],
         "type": "object"
       },
@@ -511,7 +675,6 @@
       "UpdateAnchorDto": {
         "properties": {
           "anchorType": {
-            "default": "single_point",
             "enum": [
               "single_point"
             ],
@@ -553,7 +716,6 @@
             "type": "string"
           },
           "registerStatus": {
-            "default": "active",
             "enum": [
               "active",
               "inactive",
@@ -1039,6 +1201,275 @@
         "summary": "Check API health",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/jobs": {
+      "get": {
+        "operationId": "listJobs",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List authorised jobs",
+        "tags": [
+          "job-workflow"
+        ]
+      },
+      "post": {
+        "operationId": "createJob",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJobDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Create a draft job",
+        "tags": [
+          "job-workflow"
+        ]
+      }
+    },
+    "/jobs/{jobId}": {
+      "get": {
+        "operationId": "getJob",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Read an authorised job",
+        "tags": [
+          "job-workflow"
+        ]
+      }
+    },
+    "/jobs/{jobId}/assignment": {
+      "post": {
+        "operationId": "assignJob",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignJobDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Assign a released job to an inspector",
+        "tags": [
+          "job-workflow"
+        ]
+      }
+    },
+    "/jobs/{jobId}/claim": {
+      "post": {
+        "operationId": "claimJob",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Claim a released job",
+        "tags": [
+          "job-workflow"
+        ]
+      }
+    },
+    "/jobs/{jobId}/release": {
+      "post": {
+        "operationId": "releaseJob",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Release a draft job",
+        "tags": [
+          "job-workflow"
         ]
       }
     },

@@ -93,6 +93,11 @@ test('controller authenticates and serializes client, site and anchor routes', a
     updatedAt: '2026-08-26T00:00:00.000Z',
   });
   assert.equal(site.jurisdiction, 'NSW');
+  await assert.rejects(
+    () => controller.updateSite(AUTHORIZATION, 'company-a', site.siteId, null),
+    (error) =>
+      error instanceof BadRequestException && error.getStatus() === 400,
+  );
   assert.equal(anchor.anchorType, 'single_point');
   assert.equal(
     (await controller.listAnchors(AUTHORIZATION, 'company-a', site.siteId))[0]
@@ -110,6 +115,18 @@ test('controller authenticates and serializes client, site and anchor routes', a
       )
     ).registerStatus,
     'inactive',
+  );
+  await assert.rejects(
+    () =>
+      controller.updateAnchor(
+        AUTHORIZATION,
+        'company-a',
+        site.siteId,
+        anchor.anchorId,
+        null,
+      ),
+    (error) =>
+      error instanceof BadRequestException && error.getStatus() === 400,
   );
 });
 
@@ -143,5 +160,11 @@ test('controller maps authentication, role and persistence failures to HTTP erro
     () => unconfiguredController.listClients(AUTHORIZATION, 'company-a'),
     (error) =>
       error instanceof ServiceUnavailableException && error.getStatus() === 503,
+  );
+
+  await assert.rejects(
+    () => controller.createClient(AUTHORIZATION, 'company-a', null),
+    (error) =>
+      error instanceof BadRequestException && error.getStatus() === 400,
   );
 });

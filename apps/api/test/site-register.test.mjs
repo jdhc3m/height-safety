@@ -207,3 +207,37 @@ test('updates site context and anchor register status without changing IDs', () 
   assert.equal(updatedAnchor.registerStatus, 'inactive');
   assert.equal(updatedAnchor.notes, 'Further assessment required');
 });
+
+test('rejects malformed mutation bodies and records changed fields in audit metadata', () => {
+  const { service, audit } = makeHarness();
+  const office = principal('company-a');
+
+  expectFailure(() => service.createClient(office, null), 'INVALID_INPUT');
+
+  const client = service.createClient(office, { name: 'Client A' });
+  const site = service.createSite(office, {
+    clientId: client.clientId,
+    name: 'Site A',
+    jurisdiction: 'NSW',
+  });
+  const anchor = service.createAnchor(office, site.siteId, {});
+  expectFailure(
+    () => service.updateSite(office, site.siteId, null),
+    'INVALID_INPUT',
+  );
+  expectFailure(
+    () => service.updateAnchor(office, site.siteId, anchor.anchorId, null),
+    'INVALID_INPUT',
+  );
+
+  service.updateClient(office, client.clientId, {
+    name: 'Updated Client A',
+    contactDetails: 'office@example.test',
+  });
+
+  const updateEvent = audit.events.find(
+    (event) => event.action === 'client.updated',
+  );
+  assert.ok(updateEvent);
+  assert.equal(updateEvent.metadata.changedFields, 'name,contactDetails');
+});

@@ -16,4 +16,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "height-safety-android"
 
+includeBuild("../../clients/kotlin")
+
 include(":app", ":domain")

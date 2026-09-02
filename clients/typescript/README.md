@@ -57,6 +57,12 @@ All URIs are relative to */api/v1*
 *IdentityApi* | [**createSession**](docs/IdentityApi.md#createsession) | **POST** /auth/sessions | Create an application session from a provider access token
 *IdentityApi* | [**getCurrentAuth**](docs/IdentityApi.md#getcurrentauth) | **GET** /auth/me | Read current session membership and role
 *IdentityApi* | [**revokeCurrentSession**](docs/IdentityApi.md#revokecurrentsession) | **POST** /auth/sessions/revoke | Revoke the current application session
+*JobWorkflowApi* | [**assignJob**](docs/JobWorkflowApi.md#assignjob) | **POST** /jobs/{jobId}/assignment | Assign a released job to an inspector
+*JobWorkflowApi* | [**claimJob**](docs/JobWorkflowApi.md#claimjob) | **POST** /jobs/{jobId}/claim | Claim a released job
+*JobWorkflowApi* | [**createJob**](docs/JobWorkflowApi.md#createjob) | **POST** /jobs | Create a draft job
+*JobWorkflowApi* | [**getJob**](docs/JobWorkflowApi.md#getjob) | **GET** /jobs/{jobId} | Read an authorised job
+*JobWorkflowApi* | [**listJobs**](docs/JobWorkflowApi.md#listjobs) | **GET** /jobs | List authorised jobs
+*JobWorkflowApi* | [**releaseJob**](docs/JobWorkflowApi.md#releasejob) | **POST** /jobs/{jobId}/release | Release a draft job
 *SiteRegisterApi* | [**createAnchor**](docs/SiteRegisterApi.md#createanchor) | **POST** /sites/{siteId}/anchors | Add a single-point anchor to a site register
 *SiteRegisterApi* | [**createClient**](docs/SiteRegisterApi.md#createclient) | **POST** /clients | Create a company client
 *SiteRegisterApi* | [**createSite**](docs/SiteRegisterApi.md#createsite) | **POST** /sites | Create a site with supported jurisdiction context
@@ -76,15 +82,19 @@ All URIs are relative to */api/v1*
 
 - [AcceptInvitationDto](docs/AcceptInvitationDto.md)
 - [AnchorResponseDto](docs/AnchorResponseDto.md)
+- [AssignJobDto](docs/AssignJobDto.md)
 - [AuthMeResponseDto](docs/AuthMeResponseDto.md)
 - [AuthUserResponseDto](docs/AuthUserResponseDto.md)
 - [ClientResponseDto](docs/ClientResponseDto.md)
 - [CreateAnchorDto](docs/CreateAnchorDto.md)
 - [CreateClientDto](docs/CreateClientDto.md)
 - [CreateInvitationDto](docs/CreateInvitationDto.md)
+- [CreateJobDto](docs/CreateJobDto.md)
 - [CreateSiteDto](docs/CreateSiteDto.md)
 - [HealthResponseDto](docs/HealthResponseDto.md)
 - [InvitationResponseDto](docs/InvitationResponseDto.md)
+- [JobAssignmentResponseDto](docs/JobAssignmentResponseDto.md)
+- [JobResponseDto](docs/JobResponseDto.md)
 - [ProviderAccessTokenDto](docs/ProviderAccessTokenDto.md)
 - [SessionResponseDto](docs/SessionResponseDto.md)
 - [SessionRevokedResponseDto](docs/SessionRevokedResponseDto.md)

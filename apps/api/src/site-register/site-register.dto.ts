@@ -186,7 +186,59 @@ export class CreateAnchorDto {
   notes?: string | null;
 }
 
-export class UpdateAnchorDto extends CreateAnchorDto {}
+export class UpdateAnchorDto {
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  label?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  registerId?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  location?: string | null;
+
+  @ApiPropertyOptional({ enum: ANCHOR_TYPES })
+  @IsOptional()
+  @IsIn(ANCHOR_TYPES)
+  anchorType?: AnchorType;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  manufacturer?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  model?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  installContext?: string | null;
+
+  @ApiPropertyOptional({ enum: REGISTER_STATUSES })
+  @IsOptional()
+  @IsIn(REGISTER_STATUSES)
+  registerStatus?: RegisterStatus;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  notes?: string | null;
+}
 
 export class ClientResponseDto {
   @ApiProperty()

@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { InternalServerErrorException } from '@nestjs/common';
 
 import {
   AuthFailure,
   hashSecret,
   secureAuthTokenGenerator,
 } from '../dist/identity/auth.types.js';
+import { toAuthHttpException } from '../dist/identity/auth-http.js';
 import { AuthService } from '../dist/identity/auth-service.js';
 import { InMemoryAuthStore as Store } from '../dist/identity/auth-store.js';
 
@@ -303,4 +305,13 @@ test('provider access tokens are verified before application sessions are issued
   );
   assert.equal(session.user.userId, 'inspector-a');
   assert.notEqual(session.accessToken, 'provider-token');
+});
+
+test('unknown authentication failures fail closed as HTTP 500', () => {
+  assert.throws(
+    () => toAuthHttpException(new AuthFailure('unexpected', 'unexpected')),
+    (error) =>
+      error instanceof InternalServerErrorException &&
+      error.getStatus() === 500,
+  );
 });

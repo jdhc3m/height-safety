@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">Height Safety</string>
+    <string name="api_base_url">https://api.invalid/api/v1/</string>
+    <string name="inspector_sign_in">Inspector sign-in</string>
+    <string name="company_id">Company ID</string>
+    <string name="sign_in">Sign in</string>
+    <string name="signing_in">Signing in</string>
+    <string name="sign_out">Sign out</string>
+    <string name="provider_neutral_sign_in_note">Sign-in uses the configured identity provider. Provider selection remains outside this build.</string>
+    <string name="inspector_jobs">Inspector jobs</string>
+    <string name="company_value">Company: %1$s</string>
+    <string name="syncing_jobs">Syncing jobs</string>
+    <string name="jobs_updated">Jobs updated</string>
+    <string name="sync_failed">Job sync failed</string>
+    <string name="no_eligible_jobs">No eligible jobs</string>
+    <string name="no_eligible_jobs_detail">Released jobs and jobs assigned to this inspector appear here.</string>
+    <string name="refresh_jobs">Refresh jobs</string>
+    <string name="retry">Retry</string>
+    <string name="jurisdiction_value">Jurisdiction: %1$s</string>
+    <string name="status_value">Status: %1$s</string>
+    <string name="job_pack_value">Job pack version: %1$d</string>
+    <string name="assignment_value">Assignment: %1$s</string>
+    <string name="planned_date_value">Planned date: %1$s</string>
+</resources>

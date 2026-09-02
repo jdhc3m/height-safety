@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
+import { configureApiApp } from './api-bootstrap';
 import { AppModule } from './app.module';
 
 function sortForStableJson(value: unknown): unknown {
@@ -32,6 +33,7 @@ async function generate(): Promise<void> {
 
   const outputPath = resolve(outputArgument);
   const app = await NestFactory.create(AppModule, { logger: false });
+  configureApiApp(app);
 
   try {
     await app.init();

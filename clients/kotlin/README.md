@@ -50,6 +50,12 @@ All URIs are relative to */api/v1*
 | *IdentityApi* | [**createSession**](docs/IdentityApi.md#createsession) | **POST** auth/sessions | Create an application session from a provider access token |
 | *IdentityApi* | [**getCurrentAuth**](docs/IdentityApi.md#getcurrentauth) | **GET** auth/me | Read current session membership and role |
 | *IdentityApi* | [**revokeCurrentSession**](docs/IdentityApi.md#revokecurrentsession) | **POST** auth/sessions/revoke | Revoke the current application session |
+| *JobWorkflowApi* | [**assignJob**](docs/JobWorkflowApi.md#assignjob) | **POST** jobs/{jobId}/assignment | Assign a released job to an inspector |
+| *JobWorkflowApi* | [**claimJob**](docs/JobWorkflowApi.md#claimjob) | **POST** jobs/{jobId}/claim | Claim a released job |
+| *JobWorkflowApi* | [**createJob**](docs/JobWorkflowApi.md#createjob) | **POST** jobs | Create a draft job |
+| *JobWorkflowApi* | [**getJob**](docs/JobWorkflowApi.md#getjob) | **GET** jobs/{jobId} | Read an authorised job |
+| *JobWorkflowApi* | [**listJobs**](docs/JobWorkflowApi.md#listjobs) | **GET** jobs | List authorised jobs |
+| *JobWorkflowApi* | [**releaseJob**](docs/JobWorkflowApi.md#releasejob) | **POST** jobs/{jobId}/release | Release a draft job |
 | *SiteRegisterApi* | [**createAnchor**](docs/SiteRegisterApi.md#createanchor) | **POST** sites/{siteId}/anchors | Add a single-point anchor to a site register |
 | *SiteRegisterApi* | [**createClient**](docs/SiteRegisterApi.md#createclient) | **POST** clients | Create a company client |
 | *SiteRegisterApi* | [**createSite**](docs/SiteRegisterApi.md#createsite) | **POST** sites | Create a site with supported jurisdiction context |
@@ -70,15 +76,19 @@ All URIs are relative to */api/v1*
 
  - [au.com.heightsafety.api.models.AcceptInvitationDto](docs/AcceptInvitationDto.md)
  - [au.com.heightsafety.api.models.AnchorResponseDto](docs/AnchorResponseDto.md)
+ - [au.com.heightsafety.api.models.AssignJobDto](docs/AssignJobDto.md)
  - [au.com.heightsafety.api.models.AuthMeResponseDto](docs/AuthMeResponseDto.md)
  - [au.com.heightsafety.api.models.AuthUserResponseDto](docs/AuthUserResponseDto.md)
  - [au.com.heightsafety.api.models.ClientResponseDto](docs/ClientResponseDto.md)
  - [au.com.heightsafety.api.models.CreateAnchorDto](docs/CreateAnchorDto.md)
  - [au.com.heightsafety.api.models.CreateClientDto](docs/CreateClientDto.md)
  - [au.com.heightsafety.api.models.CreateInvitationDto](docs/CreateInvitationDto.md)
+ - [au.com.heightsafety.api.models.CreateJobDto](docs/CreateJobDto.md)
  - [au.com.heightsafety.api.models.CreateSiteDto](docs/CreateSiteDto.md)
  - [au.com.heightsafety.api.models.HealthResponseDto](docs/HealthResponseDto.md)
  - [au.com.heightsafety.api.models.InvitationResponseDto](docs/InvitationResponseDto.md)
+ - [au.com.heightsafety.api.models.JobAssignmentResponseDto](docs/JobAssignmentResponseDto.md)
+ - [au.com.heightsafety.api.models.JobResponseDto](docs/JobResponseDto.md)
  - [au.com.heightsafety.api.models.ProviderAccessTokenDto](docs/ProviderAccessTokenDto.md)
  - [au.com.heightsafety.api.models.SessionResponseDto](docs/SessionResponseDto.md)
  - [au.com.heightsafety.api.models.SessionRevokedResponseDto](docs/SessionRevokedResponseDto.md)

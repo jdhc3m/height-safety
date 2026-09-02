@@ -46,7 +46,7 @@ import kotlinx.serialization.Contextual
 data class UpdateAnchorDto (
 
     @SerialName(value = "anchorType")
-    val anchorType: UpdateAnchorDto.AnchorType? = AnchorType.single_point,
+    val anchorType: UpdateAnchorDto.AnchorType? = null,
 
     @SerialName(value = "installContext")
     val installContext: kotlin.String? = null,
@@ -70,7 +70,7 @@ data class UpdateAnchorDto (
     val registerId: kotlin.String? = null,
 
     @SerialName(value = "registerStatus")
-    val registerStatus: UpdateAnchorDto.RegisterStatus? = RegisterStatus.active
+    val registerStatus: UpdateAnchorDto.RegisterStatus? = null
 
 ) {
 

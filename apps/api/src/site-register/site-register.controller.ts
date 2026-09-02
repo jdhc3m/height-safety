@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Get,
   Headers,
+  InternalServerErrorException,
   NotFoundException,
   Param,
   Patch,
@@ -109,6 +110,8 @@ function toSiteRegisterHttpException(error: unknown): never {
     case 'PERSISTENCE_UNAVAILABLE':
       throw new ServiceUnavailableException();
   }
+
+  throw new InternalServerErrorException();
 }
 
 @ApiTags('site-register')
