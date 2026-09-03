@@ -58,7 +58,7 @@ internal class DebugDemoGateway : FieldGateway, JobPackGateway {
     }
 
     internal companion object {
-        const val DEMO_COMPANY_ID = "debug-demo-company"
+        const val DEMO_COMPANY_ID = "aaa"
         const val DEMO_PROVIDER_ACCESS_TOKEN = "debug-demo-provider-token"
         const val DEMO_DIRECTORY_NAME = "debug-demo-job-pack"
         const val DEMO_KEY_ALIAS = "height-safety-debug-demo-v1"

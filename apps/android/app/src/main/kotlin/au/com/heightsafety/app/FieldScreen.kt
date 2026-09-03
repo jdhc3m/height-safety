@@ -40,7 +40,10 @@ import au.com.heightsafety.domain.InspectorAssignment
 import au.com.heightsafety.domain.InspectorJob
 import au.com.heightsafety.domain.JobPackAnchor
 import au.com.heightsafety.domain.JobPackOpenSource
+import au.com.heightsafety.domain.RecordedDisposition
 import au.com.heightsafety.domain.RecordedOutcome
+import au.com.heightsafety.domain.RecordedProofTest
+import au.com.heightsafety.domain.ReconciliationProposal
 import java.text.DateFormat
 import java.util.Date
 
@@ -57,6 +60,7 @@ fun FieldScreen(
     onCloseAnchor: () -> Unit = {},
     onUpdateAnchorDraft: (AnchorInspectionDraft) -> Unit = {},
     onSaveAnchorDraft: () -> Unit = {},
+    onCapturePhoto: () -> Unit = {},
 ) {
     MaterialTheme {
         Scaffold { innerPadding ->
@@ -120,6 +124,7 @@ fun FieldScreen(
                             onClose = onCloseAnchor,
                             onUpdateDraft = onUpdateAnchorDraft,
                             onSave = onSaveAnchorDraft,
+                            onCapturePhoto = onCapturePhoto,
                         )
                     }
                 }
@@ -530,6 +535,7 @@ private fun AnchorCaptureContent(
     onClose: () -> Unit,
     onUpdateDraft: (AnchorInspectionDraft) -> Unit,
     onSave: () -> Unit,
+    onCapturePhoto: () -> Unit,
 ) {
     val draft = state.draft
     Column(
@@ -571,11 +577,89 @@ private fun AnchorCaptureContent(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
-                state.anchor.location?.let {
+                (if (draft.reconciliationProposal == null) {
+                    state.anchor.location
+                } else {
+                    draft.location
+                })?.let {
                     Text(stringResource(R.string.location_value, it))
                 }
                 Text(stringResource(R.string.anchor_evidence_scope))
             }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.anchor_record_label),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        ReconciliationChoices(
+            expectedSelected = draft.reconciliationProposal == null &&
+                draft.expectedAnchorId == state.anchor.anchorId,
+            selected = draft.reconciliationProposal,
+            onSelected = { proposal ->
+                onUpdateDraft(
+                    when (proposal) {
+                        null -> draft.copy(
+                            expectedAnchorId = state.anchor.anchorId,
+                            provisionalAnchorId = null,
+                            reconciliationProposal = null,
+                            reconciliationReferenceId = null,
+                            location = state.anchor.location,
+                        )
+                        ReconciliationProposal.NEWLY_DISCOVERED -> draft.copy(
+                            expectedAnchorId = null,
+                            reconciliationProposal = proposal,
+                            reconciliationReferenceId = null,
+                            location = null,
+                        )
+                        ReconciliationProposal.REPLACEMENT -> draft.copy(
+                            expectedAnchorId = state.anchor.anchorId,
+                            reconciliationProposal = proposal,
+                            reconciliationReferenceId = null,
+                            location = null,
+                        )
+                        ReconciliationProposal.DUPLICATE -> draft.copy(
+                            expectedAnchorId = state.anchor.anchorId,
+                            provisionalAnchorId = null,
+                            reconciliationProposal = proposal,
+                            location = state.anchor.location,
+                        )
+                    },
+                )
+            },
+        )
+        when (draft.reconciliationProposal) {
+            ReconciliationProposal.NEWLY_DISCOVERED,
+            ReconciliationProposal.REPLACEMENT,
+            -> {
+                EvidenceTextField(
+                    label = stringResource(R.string.provisional_anchor_id_label),
+                    value = draft.provisionalAnchorId,
+                    onValueChange = {
+                        onUpdateDraft(draft.copy(provisionalAnchorId = it))
+                    },
+                    minLines = 1,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                EvidenceTextField(
+                    label = stringResource(R.string.location_context_label),
+                    value = draft.location,
+                    onValueChange = { onUpdateDraft(draft.copy(location = it)) },
+                    minLines = 2,
+                )
+            }
+            ReconciliationProposal.DUPLICATE -> {
+                EvidenceTextField(
+                    label = stringResource(R.string.reconciliation_reference_label),
+                    value = draft.reconciliationReferenceId,
+                    onValueChange = {
+                        onUpdateDraft(draft.copy(reconciliationReferenceId = it))
+                    },
+                    minLines = 1,
+                )
+            }
+            null -> Unit
         }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
@@ -627,8 +711,38 @@ private fun AnchorCaptureContent(
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.disposition_label),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        ConfirmationRow(
+            label = stringResource(R.string.removed_from_service),
+            checked = draft.disposition == RecordedDisposition.REMOVED_FROM_SERVICE,
+            onCheckedChange = {
+                onUpdateDraft(
+                    draft.copy(
+                        disposition = if (it) {
+                            RecordedDisposition.REMOVED_FROM_SERVICE
+                        } else {
+                            null
+                        },
+                    ),
+                )
+            },
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         EvidenceTextField(
-            label = stringResource(R.string.observations_label),
+            label = stringResource(
+                if (
+                    draft.recordedOutcome == RecordedOutcome.NOT_INSPECTED &&
+                    draft.exceptionReason == InspectionExceptionReason.UNABLE_TO_LOCATE
+                ) {
+                    R.string.search_context_label
+                } else {
+                    R.string.observations_label
+                },
+            ),
             value = draft.observations,
             onValueChange = { onUpdateDraft(draft.copy(observations = it)) },
             minLines = 3,
@@ -659,6 +773,11 @@ private fun AnchorCaptureContent(
             minLines = 2,
         )
         Spacer(modifier = Modifier.height(16.dp))
+        ProofTestFields(
+            proofTest = draft.proofTest,
+            onChanged = { onUpdateDraft(draft.copy(proofTest = it)) },
+        )
+        Spacer(modifier = Modifier.height(16.dp))
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
@@ -672,6 +791,13 @@ private fun AnchorCaptureContent(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onCapturePhoto,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.capture_photo))
+                }
             }
         }
         if (state.validationIssues.isNotEmpty()) {
@@ -716,6 +842,36 @@ private fun AnchorCaptureContent(
 }
 
 @Composable
+private fun ReconciliationChoices(
+    expectedSelected: Boolean,
+    selected: ReconciliationProposal?,
+    onSelected: (ReconciliationProposal?) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ChoiceButton(
+            selected = expectedSelected,
+            label = R.string.expected_anchor_record,
+            onClick = { onSelected(null) },
+        )
+        ChoiceButton(
+            selected = selected == ReconciliationProposal.NEWLY_DISCOVERED,
+            label = R.string.newly_discovered_record,
+            onClick = { onSelected(ReconciliationProposal.NEWLY_DISCOVERED) },
+        )
+        ChoiceButton(
+            selected = selected == ReconciliationProposal.REPLACEMENT,
+            label = R.string.replacement_record,
+            onClick = { onSelected(ReconciliationProposal.REPLACEMENT) },
+        )
+        ChoiceButton(
+            selected = selected == ReconciliationProposal.DUPLICATE,
+            label = R.string.duplicate_record,
+            onClick = { onSelected(ReconciliationProposal.DUPLICATE) },
+        )
+    }
+}
+
+@Composable
 private fun OutcomeChoices(
     selected: RecordedOutcome?,
     onSelected: (RecordedOutcome) -> Unit,
@@ -729,21 +885,11 @@ private fun OutcomeChoices(
                 RecordedOutcome.FURTHER_ASSESSMENT_REQUIRED ->
                     R.string.outcome_further_assessment
             }
-            if (selected == outcome) {
-                Button(
-                    onClick = { onSelected(outcome) },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(label))
-                }
-            } else {
-                TextButton(
-                    onClick = { onSelected(outcome) },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(label))
-                }
-            }
+            ChoiceButton(
+                selected = selected == outcome,
+                label = label,
+                onClick = { onSelected(outcome) },
+            )
         }
     }
 }
@@ -758,23 +904,81 @@ private fun ExceptionChoices(
             InspectionExceptionReason.INACCESSIBLE to R.string.exception_inaccessible,
             InspectionExceptionReason.UNABLE_TO_LOCATE to R.string.exception_unable_to_locate,
         ).forEach { (reason, label) ->
-            if (selected == reason) {
-                Button(
-                    onClick = { onSelected(reason) },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(label))
-                }
-            } else {
-                TextButton(
-                    onClick = { onSelected(reason) },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(label))
-                }
-            }
+            ChoiceButton(
+                selected = selected == reason,
+                label = label,
+                onClick = { onSelected(reason) },
+            )
         }
     }
+}
+
+@Composable
+private fun ChoiceButton(
+    selected: Boolean,
+    @androidx.annotation.StringRes label: Int,
+    onClick: () -> Unit,
+) {
+    if (selected) {
+        Button(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(label))
+        }
+    } else {
+        TextButton(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(label))
+        }
+    }
+}
+
+@Composable
+private fun ProofTestFields(
+    proofTest: RecordedProofTest?,
+    onChanged: (RecordedProofTest?) -> Unit,
+) {
+    val current = proofTest ?: RecordedProofTest()
+    fun update(updated: RecordedProofTest) {
+        onChanged(updated.takeIf { it.hasEnteredValue })
+    }
+
+    Text(
+        text = stringResource(R.string.proof_test_label),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    EvidenceTextField(
+        label = stringResource(R.string.proof_test_load_label),
+        value = current.load,
+        onValueChange = { update(current.copy(load = it)) },
+        minLines = 1,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    EvidenceTextField(
+        label = stringResource(R.string.proof_test_hold_label),
+        value = current.hold,
+        onValueChange = { update(current.copy(hold = it)) },
+        minLines = 1,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    EvidenceTextField(
+        label = stringResource(R.string.proof_test_result_label),
+        value = current.result,
+        onValueChange = { update(current.copy(result = it)) },
+        minLines = 1,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    EvidenceTextField(
+        label = stringResource(R.string.proof_test_equipment_label),
+        value = current.equipmentReference,
+        onValueChange = { update(current.copy(equipmentReference = it)) },
+        minLines = 1,
+    )
 }
 
 @Composable

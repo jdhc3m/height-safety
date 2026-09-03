@@ -17,6 +17,7 @@ import java.io.File
 import java.security.KeyStore
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
+import net.zetetic.database.sqlcipher.SQLiteDatabase as CipherDatabase
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -65,6 +66,233 @@ class EncryptedJobPackStoreInstrumentedTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun roomV2MigrationPreservesVersionedEvidenceAndPhotos() = runBlocking<Unit> {
+        val passphraseStore = JobPackKeystorePassphraseStore(fixture.files, fixture.alias)
+        val passphrase = passphraseStore.loadOrCreate()
+        try {
+            System.loadLibrary("sqlcipher")
+            val database = CipherDatabase.openDatabase(
+                fixture.files.database.absolutePath,
+                passphrase,
+                null,
+                CipherDatabase.OPEN_READWRITE or CipherDatabase.CREATE_IF_NECESSARY,
+                null,
+            )
+            try {
+                database.setForeignKeyConstraintsEnabled(true)
+                database.execSQL(
+                    """
+                    CREATE TABLE job_pack (
+                        companyId TEXT NOT NULL,
+                        jobId TEXT NOT NULL,
+                        siteId TEXT NOT NULL,
+                        jurisdiction TEXT NOT NULL,
+                        reference TEXT NOT NULL,
+                        plannedDate TEXT,
+                        workflowStatus TEXT NOT NULL,
+                        jobPackVersion INTEGER NOT NULL,
+                        siteName TEXT NOT NULL,
+                        siteAddress TEXT,
+                        siteReference TEXT,
+                        accessNotes TEXT,
+                        downloadedAtEpochMillis INTEGER NOT NULL,
+                        PRIMARY KEY(companyId, jobId)
+                    )
+                    """.trimIndent(),
+                )
+                database.execSQL(
+                    """
+                    CREATE TABLE job_pack_anchor (
+                        jobPackId TEXT NOT NULL,
+                        anchorId TEXT NOT NULL,
+                        companyId TEXT NOT NULL,
+                        siteId TEXT NOT NULL,
+                        label TEXT,
+                        registerId TEXT,
+                        location TEXT,
+                        anchorType TEXT NOT NULL,
+                        manufacturer TEXT,
+                        model TEXT,
+                        installContext TEXT,
+                        registerStatus TEXT NOT NULL,
+                        notes TEXT,
+                        createdAtEpochMillis INTEGER NOT NULL,
+                        updatedAtEpochMillis INTEGER NOT NULL,
+                        PRIMARY KEY(companyId, jobPackId, anchorId),
+                        FOREIGN KEY(companyId, jobPackId)
+                            REFERENCES job_pack(companyId, jobId)
+                            ON UPDATE NO ACTION ON DELETE RESTRICT
+                    )
+                    """.trimIndent(),
+                )
+                database.execSQL(
+                    """
+                    CREATE TABLE offline_authorization_lease (
+                        jobPackId TEXT NOT NULL,
+                        companyId TEXT NOT NULL,
+                        userId TEXT NOT NULL,
+                        issuedAtEpochMillis INTEGER NOT NULL,
+                        expiresAtEpochMillis INTEGER NOT NULL,
+                        issuedAtElapsedRealtimeMillis INTEGER NOT NULL,
+                        lastObservedEpochMillis INTEGER NOT NULL,
+                        PRIMARY KEY(companyId, jobPackId),
+                        FOREIGN KEY(companyId, jobPackId)
+                            REFERENCES job_pack(companyId, jobId)
+                            ON UPDATE NO ACTION ON DELETE RESTRICT
+                    )
+                    """.trimIndent(),
+                )
+                database.execSQL(
+                    """
+                    CREATE TABLE anchor_inspection (
+                        companyId TEXT NOT NULL,
+                        jobId TEXT NOT NULL,
+                        inspectionId TEXT NOT NULL,
+                        jobPackVersion INTEGER NOT NULL,
+                        expectedAnchorId TEXT,
+                        provisionalAnchorId TEXT,
+                        identityConfirmed INTEGER NOT NULL,
+                        locationConfirmed INTEGER NOT NULL,
+                        location TEXT,
+                        observations TEXT,
+                        recordedOutcome TEXT,
+                        exceptionReason TEXT,
+                        reconciliationProposal TEXT,
+                        reconciliationReferenceId TEXT,
+                        disposition TEXT,
+                        notes TEXT,
+                        defectDescription TEXT,
+                        recommendation TEXT,
+                        proofTestLoad TEXT,
+                        proofTestHold TEXT,
+                        proofTestResult TEXT,
+                        proofTestEquipmentReference TEXT,
+                        syncState TEXT NOT NULL,
+                        createdAtEpochMillis INTEGER NOT NULL,
+                        updatedAtEpochMillis INTEGER NOT NULL,
+                        PRIMARY KEY(companyId, jobId, inspectionId),
+                        FOREIGN KEY(companyId, jobId)
+                            REFERENCES job_pack(companyId, jobId)
+                            ON UPDATE NO ACTION ON DELETE RESTRICT
+                    )
+                    """.trimIndent(),
+                )
+                database.execSQL(
+                    """
+                    CREATE TABLE anchor_evidence_photo (
+                        companyId TEXT NOT NULL,
+                        jobId TEXT NOT NULL,
+                        inspectionId TEXT NOT NULL,
+                        localId TEXT NOT NULL,
+                        storageReference TEXT NOT NULL,
+                        capturedAtEpochMillis INTEGER NOT NULL,
+                        checksum TEXT NOT NULL,
+                        uploadState TEXT NOT NULL,
+                        contentType TEXT,
+                        PRIMARY KEY(companyId, jobId, inspectionId, localId),
+                        FOREIGN KEY(companyId, jobId, inspectionId)
+                            REFERENCES anchor_inspection(companyId, jobId, inspectionId)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                database.execSQL(
+                    "CREATE INDEX index_job_pack_anchor_companyId_jobPackId " +
+                        "ON job_pack_anchor(companyId, jobPackId)",
+                )
+                database.execSQL(
+                    "CREATE INDEX index_anchor_inspection_companyId_jobId " +
+                        "ON anchor_inspection(companyId, jobId)",
+                )
+                database.execSQL(
+                    "CREATE INDEX index_anchor_evidence_photo_companyId_jobId_inspectionId " +
+                        "ON anchor_evidence_photo(companyId, jobId, inspectionId)",
+                )
+                database.execSQL(
+                    "CREATE TABLE room_master_table (id INTEGER PRIMARY KEY, identity_hash TEXT)",
+                )
+                database.execSQL(
+                    "INSERT INTO room_master_table (id, identity_hash) VALUES (42, ?)",
+                    arrayOf<Any?>("0eca3ec77ba706c2ae73483d327de00b"),
+                )
+                database.execSQL(
+                    "INSERT INTO job_pack VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    arrayOf<Any?>(
+                        "company-a",
+                        "job-001",
+                        "site-company-a",
+                        "NSW",
+                        "JOB-001-company-a",
+                        "2026-09-15",
+                        "released",
+                        1L,
+                        "Site company-a",
+                        "1 Example Street",
+                        "SITE-company-a",
+                        SENSITIVE_NOTE,
+                        1_000L,
+                    ),
+                )
+                database.execSQL(
+                    "INSERT INTO anchor_inspection VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    arrayOf<Any?>(
+                        "company-a",
+                        "job-001",
+                        "inspection-v2",
+                        1L,
+                        "anchor-company-a",
+                        null,
+                        0,
+                        0,
+                        "North roof",
+                        "Migrated observation",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "local",
+                        1_000L,
+                        1_000L,
+                    ),
+                )
+                database.execSQL(
+                    "INSERT INTO anchor_evidence_photo VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    arrayOf<Any?>(
+                        "company-a",
+                        "job-001",
+                        "inspection-v2",
+                        "photo-v2",
+                        "anchor-photos/photo-v2.jpg",
+                        1_000L,
+                        "checksum-v2",
+                        "pending_upload",
+                        "image/jpeg",
+                    ),
+                )
+                database.version = 2
+            } finally {
+                database.close()
+            }
+        } finally {
+            passphrase.fill(0)
+        }
+
+        val migrated = fixture.store().loadEvidence("company-a", "job-001", 1L)
+
+        assertEquals("inspection-v2", migrated.single().inspectionId)
+        assertEquals("Migrated observation", migrated.single().observations)
+        assertEquals("photo-v2", migrated.single().photos.single().localId)
     }
 
     @Test
@@ -120,6 +348,35 @@ class EncryptedJobPackStoreInstrumentedTest {
                 .inspectionId,
         )
         assertTrue(store.loadEvidence("company-a", second.jobId, second.jobPackVersion).isEmpty())
+    }
+
+    @Test
+    fun sameInspectionAndPhotoIdsRemainIsolatedByPackVersion() = runBlocking<Unit> {
+        val store = fixture.store()
+        val first = pack("company-a", version = 1L, anchorId = "anchor-old")
+        val second = pack("company-a", version = 2L, anchorId = "anchor-new")
+        store.save(first, lease("company-a", "inspector-a", first.jobId), 1_000L)
+        val firstDraft = evidenceDraft(
+            pack = first,
+            observations = "Recorded against pack version one.",
+        )
+        store.saveEvidence(firstDraft)
+
+        store.save(second, lease("company-a", "inspector-a", second.jobId, 2_000L), 2_000L)
+        val secondDraft = evidenceDraft(
+            pack = second,
+            observations = "Recorded against pack version two.",
+        )
+        store.saveEvidence(secondDraft)
+
+        assertEquals(
+            listOf(firstDraft),
+            store.loadEvidence("company-a", first.jobId, first.jobPackVersion),
+        )
+        assertEquals(
+            listOf(secondDraft),
+            store.loadEvidence("company-a", second.jobId, second.jobPackVersion),
+        )
     }
 
     @Test
@@ -184,6 +441,41 @@ class EncryptedJobPackStoreInstrumentedTest {
         assertEquals(1, store.loadEvidence("company-a", packA.jobId, 1L).size)
         assertTrue(store.loadEvidence("company-a", packA.jobId, 2L).isEmpty())
         assertTrue(store.loadEvidence("company-b", packB.jobId, 1L).isEmpty())
+    }
+
+    @Test
+    fun localPhotoStorageReturnsPrivateReferenceAndChecksum() {
+        val storage = LocalAnchorPhotoStorage(
+            fixture.context,
+            "height-safety-photo-test-${UUID.randomUUID()}",
+        )
+        try {
+            storage.photoFile("photo-001").writeBytes(byteArrayOf(0x01, 0x02, 0x03))
+
+            val metadata = storage.describe("photo-001", 1_500L)
+
+            assertEquals("photo-001", metadata.localId)
+            assertEquals("anchor-photos/photo-001.jpg", metadata.storageReference)
+            assertEquals(
+                "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81",
+                metadata.checksum,
+            )
+            assertEquals("image/jpeg", metadata.contentType)
+        } finally {
+            storage.delete("photo-001")
+        }
+    }
+
+    @Test
+    fun localPhotoStorageRejectsPathTraversal() {
+        val storage = LocalAnchorPhotoStorage(
+            fixture.context,
+            "height-safety-photo-test-${UUID.randomUUID()}",
+        )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            storage.photoFile("../outside")
+        }
     }
 
     private class Fixture : AutoCloseable {
@@ -264,6 +556,30 @@ class EncryptedJobPackStoreInstrumentedTest {
                 notes = SENSITIVE_NOTE,
                 createdAtEpochMillis = 1L,
                 updatedAtEpochMillis = 2L,
+            ),
+        ),
+    )
+
+    private fun evidenceDraft(
+        pack: FieldJobPack,
+        observations: String,
+    ) = AnchorInspectionDraft(
+        companyId = pack.companyId,
+        jobId = pack.jobId,
+        jobPackVersion = pack.jobPackVersion,
+        inspectionId = "inspection-shared",
+        expectedAnchorId = pack.anchors.single().anchorId,
+        observations = observations,
+        createdAtEpochMillis = 1_000L,
+        photos = listOf(
+            AnchorEvidencePhoto(
+                companyId = pack.companyId,
+                jobId = pack.jobId,
+                anchorInspectionId = "inspection-shared",
+                localId = "photo-shared",
+                storageReference = "anchor-photos/photo-shared.jpg",
+                capturedAtEpochMillis = 1_500L,
+                checksum = "checksum-${pack.jobPackVersion}",
             ),
         ),
     )

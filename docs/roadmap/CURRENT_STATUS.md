@@ -193,6 +193,14 @@ Stage 3B — anchor vertical slice; `3A-01` through `3A-05` are Done.
   encrypted local draft/photo-reference boundary. Camera hardware capture,
   submission and synchronisation remain bounded follow-on slices in this
   ticket.
+- `3B-03` camera slice now uses CameraX to capture JPEG bytes into app-private
+  no-backup storage, verifies a SHA-256 checksum and automatically persists the
+  anchor-scoped photo reference in the encrypted local draft. Upload, retry and
+  synchronisation remain open.
+- The `3B-03` correction closes review gaps around lease enforcement, canonical
+  anchor binding, draft retargeting, pack-version-safe evidence keys, unable-to-
+  locate search context, and reconciliation/disposition/proof-test capture
+  controls. The debug demo now also requires device credentials.
 - `3B-01` and `3B-02` checks pass. Compose UI tests and encrypted job-pack
   adapter tests pass on the local
   `Pixel_5_API_30` emulator. Runtime persistence, durable audit, identity

@@ -8,6 +8,7 @@ import au.com.heightsafety.domain.FieldSessionExpiredException
 import au.com.heightsafety.domain.GatewayFailureReason
 import au.com.heightsafety.domain.AnchorEvidenceService
 import au.com.heightsafety.domain.AnchorInspectionDraft
+import au.com.heightsafety.domain.AnchorEvidencePhoto
 import au.com.heightsafety.domain.CaptureValidationIssue
 import au.com.heightsafety.domain.InspectorJob
 import au.com.heightsafety.domain.JobPackAnchor
@@ -18,6 +19,7 @@ import au.com.heightsafety.domain.OpenedJobPack
 import au.com.heightsafety.domain.ProductRole
 import au.com.heightsafety.domain.ProviderAccessTokenException
 import au.com.heightsafety.domain.ProviderAccessTokenSource
+import au.com.heightsafety.domain.ReconciliationProposal
 import au.com.heightsafety.domain.requireInspectorSession
 import au.com.heightsafety.domain.visibleJobsForInspector
 import kotlinx.coroutines.CancellationException
@@ -126,8 +128,7 @@ class FieldViewModel(
     private val jobPackService: JobPackService? = null,
     private val anchorEvidenceService: AnchorEvidenceService? = null,
     private val nowEpochMillis: () -> Long = { System.currentTimeMillis() },
-    private val deviceAuthenticationGate: DeviceAuthenticationGate =
-        DeviceAuthenticationGate { true },
+    private val deviceAuthenticationGate: DeviceAuthenticationGate,
     private val inspectionIdGenerator: () -> String = { UUID.randomUUID().toString() },
 ) {
     private val _uiState = MutableStateFlow<FieldUiState>(FieldUiState.SignedOut)
@@ -297,12 +298,17 @@ class FieldViewModel(
         }
 
         try {
+            val canonicalAnchor = current.opened.stored.pack.anchors.singleOrNull {
+                it.anchorId == anchor.anchorId
+            } ?: throw IllegalArgumentException(
+                "anchor is not in the opened job-pack snapshot",
+            )
             val draft = current.evidence.firstOrNull {
-                it.expectedAnchorId == anchor.anchorId
+                it.expectedAnchorId == canonicalAnchor.anchorId
             } ?: service.newExpectedDraft(
                 session = currentSession,
                 opened = current.opened,
-                anchor = anchor,
+                anchor = canonicalAnchor,
                 inspectionId = inspectionIdGenerator(),
             )
             _uiState.value = FieldUiState.AnchorCapture(
@@ -310,13 +316,21 @@ class FieldViewModel(
                 jobs = current.jobs,
                 job = current.job,
                 opened = current.opened,
-                anchor = anchor,
+                anchor = canonicalAnchor,
                 draft = draft,
                 evidence = current.evidence,
             )
         } catch (error: Throwable) {
             if (error.isSessionExpired()) {
                 expireSession()
+            } else if (error is JobPackAccessException) {
+                _uiState.value = FieldUiState.JobPackError(
+                    account = current.account,
+                    jobs = current.jobs,
+                    job = current.job,
+                    message = jobPackMessage(error),
+                    canRetry = canRetryJobPack(error),
+                )
             } else {
                 _uiState.value = FieldUiState.JobPackError(
                     account = current.account,
@@ -331,6 +345,13 @@ class FieldViewModel(
 
     fun updateAnchorDraft(draft: AnchorInspectionDraft) {
         val current = _uiState.value as? FieldUiState.AnchorCapture ?: return
+        if (!draft.isBoundTo(current)) {
+            _uiState.value = current.copy(
+                saveState = EvidenceSaveState.FAILED,
+                saveError = "Evidence must remain associated with the opened anchor.",
+            )
+            return
+        }
         _uiState.value = current.copy(
             draft = draft,
             saveState = EvidenceSaveState.EDITING,
@@ -370,7 +391,11 @@ class FieldViewModel(
                     draft = saved,
                     evidence = evidence,
                     saveState = EvidenceSaveState.SAVED_LOCALLY,
-                    validationIssues = service.validateForCompletion(current.opened, saved),
+                    validationIssues = service.validateForCompletion(
+                        session = currentSession,
+                        opened = current.opened,
+                        draft = saved,
+                    ),
                     saveError = null,
                 )
             } catch (error: CancellationException) {
@@ -378,6 +403,14 @@ class FieldViewModel(
             } catch (error: Throwable) {
                 if (error.isSessionExpired()) {
                     expireSession()
+                } else if (error is JobPackAccessException) {
+                    _uiState.value = FieldUiState.JobPackError(
+                        account = current.account,
+                        jobs = current.jobs,
+                        job = current.job,
+                        message = jobPackMessage(error),
+                        canRetry = canRetryJobPack(error),
+                    )
                 } else {
                     _uiState.value = current.copy(
                         saveState = EvidenceSaveState.FAILED,
@@ -386,6 +419,38 @@ class FieldViewModel(
                 }
             }
         }
+    }
+
+    fun attachCapturedPhoto(photo: CapturedAnchorPhoto) {
+        val current = _uiState.value as? FieldUiState.AnchorCapture ?: return
+        val draft = current.draft
+        if (
+            photo.companyId != draft.companyId ||
+            photo.jobId != draft.jobId ||
+            photo.inspectionId != draft.inspectionId
+        ) {
+            _uiState.value = current.copy(
+                saveState = EvidenceSaveState.FAILED,
+                saveError = "Photo could not be associated with this anchor evidence.",
+            )
+            return
+        }
+        if (draft.photos.any { it.localId == photo.localId }) return
+        updateAnchorDraft(
+            draft.copy(
+                photos = draft.photos + AnchorEvidencePhoto(
+                    companyId = photo.companyId,
+                    jobId = photo.jobId,
+                    anchorInspectionId = photo.inspectionId,
+                    localId = photo.localId,
+                    storageReference = photo.storageReference,
+                    capturedAtEpochMillis = photo.capturedAtEpochMillis,
+                    checksum = photo.checksum,
+                    contentType = photo.contentType,
+                ),
+            ),
+        )
+        saveAnchorDraft()
     }
 
     fun closeAnchor() {
@@ -599,3 +664,21 @@ private fun List<AnchorInspectionDraft>.replaceDraft(
 ): List<AnchorInspectionDraft> = filterNot { existing ->
     existing.inspectionId == draft.inspectionId
 } + draft
+
+private fun AnchorInspectionDraft.isBoundTo(
+    capture: FieldUiState.AnchorCapture,
+): Boolean {
+    val pack = capture.opened.stored.pack
+    if (
+        companyId != pack.companyId ||
+        jobId != pack.jobId ||
+        jobPackVersion != pack.jobPackVersion ||
+        inspectionId != capture.draft.inspectionId
+    ) {
+        return false
+    }
+    return when (reconciliationProposal) {
+        ReconciliationProposal.NEWLY_DISCOVERED -> expectedAnchorId == null
+        else -> expectedAnchorId == capture.anchor.anchorId
+    }
+}

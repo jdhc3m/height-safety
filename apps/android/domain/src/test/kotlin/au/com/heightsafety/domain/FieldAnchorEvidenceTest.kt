@@ -53,6 +53,12 @@ class FieldAnchorEvidenceTest {
         ).validationIssues(pack())
         assertTrue(missing.has(CaptureValidationCode.MISSING_EXCEPTION_REASON))
 
+        val missingSearchContext = draft().copy(
+            recordedOutcome = RecordedOutcome.NOT_INSPECTED,
+            exceptionReason = InspectionExceptionReason.UNABLE_TO_LOCATE,
+        ).validationIssues(pack())
+        assertTrue(missingSearchContext.has(CaptureValidationCode.MISSING_SEARCH_CONTEXT))
+
         val invalid = draft().copy(
             recordedOutcome = RecordedOutcome.SERVICEABLE,
             identityConfirmed = true,
@@ -65,6 +71,7 @@ class FieldAnchorEvidenceTest {
         val complete = draft().copy(
             recordedOutcome = RecordedOutcome.NOT_INSPECTED,
             exceptionReason = InspectionExceptionReason.UNABLE_TO_LOCATE,
+            observations = "Searched the north roof access path; anchor not located.",
         )
         assertTrue(complete.validationIssues(pack()).isEmpty())
     }
@@ -123,7 +130,11 @@ class FieldAnchorEvidenceTest {
     @Test
     fun serviceSavesLocalDraftAndPreservesPackIdentity() = runTest {
         val store = FakeEvidenceStore()
-        val service = AnchorEvidenceService(store) { 2_000L }
+        val service = AnchorEvidenceService(
+            store = store,
+            nowEpochMillis = { 2_000L },
+            elapsedRealtimeMillis = { 2_000L },
+        )
         val opened = opened()
         val created = service.newExpectedDraft(
             session = session(),
@@ -140,7 +151,11 @@ class FieldAnchorEvidenceTest {
 
     @Test
     fun serviceRejectsDraftFromAnotherPackVersion() = runTest {
-        val service = AnchorEvidenceService(FakeEvidenceStore()) { 2_000L }
+        val service = AnchorEvidenceService(
+            store = FakeEvidenceStore(),
+            nowEpochMillis = { 2_000L },
+            elapsedRealtimeMillis = { 2_000L },
+        )
         val error = try {
             service.saveDraft(
                 session(),
@@ -154,6 +169,94 @@ class FieldAnchorEvidenceTest {
 
         assertTrue(error != null)
         assertTrue(error!!.issues.has(CaptureValidationCode.PACK_IDENTITY_MISMATCH))
+    }
+
+    @Test
+    fun evidenceAccessRejectsExpiredOfflineLease() {
+        val service = AnchorEvidenceService(
+            store = FakeEvidenceStore(),
+            nowEpochMillis = { 2_000L },
+            elapsedRealtimeMillis = { 2_000L },
+        )
+        val expired = opened().copy(
+            stored = opened().stored.copy(
+                lease = opened().stored.lease.copy(expiresAtEpochMillis = 2_000L),
+            ),
+        )
+
+        val error = try {
+            service.newExpectedDraft(session(), expired, pack().anchors.single(), "inspection-002")
+            null
+        } catch (exception: JobPackAccessException) {
+            exception
+        }
+
+        assertEquals(JobPackAccessFailure.LEASE_EXPIRED, error?.reason)
+    }
+
+    @Test
+    fun evidenceAccessRejectsElapsedLeaseExpiryAndClockRollback() {
+        val elapsedService = AnchorEvidenceService(
+            store = FakeEvidenceStore(),
+            nowEpochMillis = { 2_000L },
+            elapsedRealtimeMillis = {
+                1L + OFFLINE_AUTHORIZATION_LEASE_DURATION_MILLIS
+            },
+        )
+        val elapsedError = try {
+            elapsedService.newExpectedDraft(
+                session(),
+                opened(),
+                pack().anchors.single(),
+                "inspection-003",
+            )
+            null
+        } catch (exception: JobPackAccessException) {
+            exception
+        }
+        assertEquals(JobPackAccessFailure.ELAPSED_RUNTIME_EXPIRED, elapsedError?.reason)
+
+        val rollbackService = AnchorEvidenceService(
+            store = FakeEvidenceStore(),
+            nowEpochMillis = { 2_000L },
+            elapsedRealtimeMillis = { 2_000L },
+        )
+        val rollbackOpened = opened().copy(
+            stored = opened().stored.copy(
+                lease = opened().stored.lease.copy(lastObservedEpochMillis = 3_000L),
+            ),
+        )
+        val rollbackError = try {
+            rollbackService.newExpectedDraft(
+                session(),
+                rollbackOpened,
+                pack().anchors.single(),
+                "inspection-004",
+            )
+            null
+        } catch (exception: JobPackAccessException) {
+            exception
+        }
+        assertEquals(JobPackAccessFailure.CLOCK_ROLLBACK, rollbackError?.reason)
+    }
+
+    @Test
+    fun newDraftUsesCanonicalAnchorMetadataFromOpenedPack() {
+        val service = AnchorEvidenceService(
+            store = FakeEvidenceStore(),
+            nowEpochMillis = { 2_000L },
+            elapsedRealtimeMillis = { 2_000L },
+        )
+        val spoofedAnchor = pack().anchors.single().copy(location = "Spoofed location")
+
+        val created = service.newExpectedDraft(
+            session = session(),
+            opened = opened(),
+            anchor = spoofedAnchor,
+            inspectionId = "inspection-005",
+        )
+
+        assertEquals("North roof", created.location)
     }
 
     private class FakeEvidenceStore : AnchorEvidenceStore {
@@ -170,7 +273,12 @@ class FieldAnchorEvidenceTest {
         }
 
         override suspend fun saveEvidence(draft: AnchorInspectionDraft) {
-            drafts.removeIf { it.inspectionId == draft.inspectionId }
+            drafts.removeIf {
+                it.companyId == draft.companyId &&
+                    it.jobId == draft.jobId &&
+                    it.jobPackVersion == draft.jobPackVersion &&
+                    it.inspectionId == draft.inspectionId
+            }
             drafts += draft
         }
     }

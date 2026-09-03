@@ -87,7 +87,7 @@ public class EncryptedJobPackStore(
             opener.open().use { handle ->
                 handle.database.jobPackDao().replaceEvidence(
                     inspection = draft.toEntity(),
-                    photos = draft.photos.map { it.toEntity() },
+                    photos = draft.photos.map { it.toEntity(draft.jobPackVersion) },
                 )
             }
         }
@@ -206,8 +206,8 @@ private fun AnchorInspectionDraft.toEntity(): AnchorInspectionEntity =
     AnchorInspectionEntity(
         companyId = companyId,
         jobId = jobId,
-        inspectionId = inspectionId,
         jobPackVersion = jobPackVersion,
+        inspectionId = inspectionId,
         expectedAnchorId = expectedAnchorId,
         provisionalAnchorId = provisionalAnchorId,
         identityConfirmed = identityConfirmed,
@@ -231,10 +231,11 @@ private fun AnchorInspectionDraft.toEntity(): AnchorInspectionEntity =
         updatedAtEpochMillis = updatedAtEpochMillis,
     )
 
-private fun AnchorEvidencePhoto.toEntity(): AnchorEvidencePhotoEntity =
+private fun AnchorEvidencePhoto.toEntity(jobPackVersion: Long): AnchorEvidencePhotoEntity =
     AnchorEvidencePhotoEntity(
         companyId = companyId,
         jobId = jobId,
+        jobPackVersion = jobPackVersion,
         inspectionId = anchorInspectionId,
         localId = localId,
         storageReference = storageReference,
@@ -301,25 +302,25 @@ private fun AnchorEvidencePhotoEntity.toDomain(): AnchorEvidencePhoto =
     )
 
 private fun String.toRecordedOutcome(): RecordedOutcome =
-    RecordedOutcome.entries.singleOrNull { it.value == this }
-        ?: throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED)
+    toStoredEnum(RecordedOutcome.entries, RecordedOutcome::value)
 
 private fun String.toInspectionExceptionReason(): InspectionExceptionReason =
-    InspectionExceptionReason.entries.singleOrNull { it.value == this }
-        ?: throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED)
+    toStoredEnum(InspectionExceptionReason.entries, InspectionExceptionReason::value)
 
 private fun String.toReconciliationProposal(): ReconciliationProposal =
-    ReconciliationProposal.entries.singleOrNull { it.value == this }
-        ?: throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED)
+    toStoredEnum(ReconciliationProposal.entries, ReconciliationProposal::value)
 
 private fun String.toRecordedDisposition(): RecordedDisposition =
-    RecordedDisposition.entries.singleOrNull { it.value == this }
-        ?: throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED)
+    toStoredEnum(RecordedDisposition.entries, RecordedDisposition::value)
 
 private fun String.toEvidenceSyncState(): EvidenceSyncState =
-    EvidenceSyncState.entries.singleOrNull { it.value == this }
-        ?: throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED)
+    toStoredEnum(EvidenceSyncState.entries, EvidenceSyncState::value)
 
 private fun String.toPhotoUploadState(): PhotoUploadState =
-    PhotoUploadState.entries.singleOrNull { it.value == this }
+    toStoredEnum(PhotoUploadState.entries, PhotoUploadState::value)
+
+private fun <T> String.toStoredEnum(
+    values: Iterable<T>,
+    value: (T) -> String,
+): T = values.singleOrNull { value(it) == this }
         ?: throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED)

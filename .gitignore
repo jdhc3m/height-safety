@@ -8,6 +8,7 @@ private-sources/*
 .vscode/
 
 node_modules/
+.pnpm-store/
 dist/
 .tools/
 .contract-tmp/

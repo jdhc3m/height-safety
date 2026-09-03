@@ -270,7 +270,11 @@ class FieldViewModelTest {
                 nowEpochMillis = { 1_000L },
                 elapsedRealtimeMillis = { 500L },
             ),
-            anchorEvidenceService = AnchorEvidenceService(evidenceStore) { 2_000L },
+            anchorEvidenceService = AnchorEvidenceService(
+                store = evidenceStore,
+                nowEpochMillis = { 2_000L },
+                elapsedRealtimeMillis = { 2_000L },
+            ),
             inspectionIdGenerator = { "inspection-001" },
         )
 
@@ -296,6 +300,109 @@ class FieldViewModelTest {
         assertEquals(EvidenceSaveState.SAVED_LOCALLY, saved.saveState)
         assertEquals("inspection-001", evidenceStore.drafts.single().inspectionId)
         assertEquals("Recorded observation.", evidenceStore.drafts.single().observations)
+    }
+
+    @Test
+    fun anchorCaptureRejectsDraftRetargetedToAnotherAnchor() = runTest {
+        val job = job(
+            "assigned",
+            jobId = "job-001",
+            assignment = assignment("company-a", "job-001", "inspector-a"),
+        )
+        val gateway = FakeGateway(jobs = listOf(job))
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            jobPackService = JobPackService(
+                gateway = gateway,
+                store = FakeJobPackStore(),
+                nowEpochMillis = { 1_000L },
+                elapsedRealtimeMillis = { 500L },
+            ),
+            anchorEvidenceService = AnchorEvidenceService(
+                store = FakeEvidenceStore(),
+                nowEpochMillis = { 2_000L },
+                elapsedRealtimeMillis = { 2_000L },
+            ),
+        )
+
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+        viewModel.openJobPack(job)
+        advanceUntilIdle()
+        val opened = viewModel.uiState.value as FieldUiState.JobPackOpened
+        viewModel.openAnchor(opened.opened.stored.pack.anchors.single())
+        val capture = viewModel.uiState.value as FieldUiState.AnchorCapture
+
+        viewModel.updateAnchorDraft(capture.draft.copy(expectedAnchorId = "another-anchor"))
+
+        val rejected = viewModel.uiState.value as FieldUiState.AnchorCapture
+        assertEquals(capture.draft, rejected.draft)
+        assertEquals(EvidenceSaveState.FAILED, rejected.saveState)
+        assertEquals(
+            "Evidence must remain associated with the opened anchor.",
+            rejected.saveError,
+        )
+    }
+
+    @Test
+    fun capturedPhotoIsBoundToCurrentInspectionAndSavedLocally() = runTest {
+        val job = job(
+            "assigned",
+            jobId = "job-001",
+            assignment = assignment("company-a", "job-001", "inspector-a"),
+        )
+        val gateway = FakeGateway(jobs = listOf(job))
+        val evidenceStore = FakeEvidenceStore()
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            jobPackService = JobPackService(
+                gateway = gateway,
+                store = FakeJobPackStore(),
+                nowEpochMillis = { 1_000L },
+                elapsedRealtimeMillis = { 500L },
+            ),
+            anchorEvidenceService = AnchorEvidenceService(
+                store = evidenceStore,
+                nowEpochMillis = { 2_000L },
+                elapsedRealtimeMillis = { 2_000L },
+            ),
+            inspectionIdGenerator = { "inspection-001" },
+        )
+
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+        viewModel.openJobPack(job)
+        advanceUntilIdle()
+        viewModel.openAnchor(
+            (viewModel.uiState.value as FieldUiState.JobPackOpened)
+                .opened.stored.pack.anchors.single(),
+        )
+
+        viewModel.attachCapturedPhoto(
+            CapturedAnchorPhoto(
+                companyId = "company-a",
+                jobId = "job-001",
+                inspectionId = "inspection-001",
+                localId = "photo-001",
+                storageReference = "anchor-photos/photo-001.jpg",
+                capturedAtEpochMillis = 2_100L,
+                checksum = "sha256-photo-001",
+                contentType = "image/jpeg",
+            ),
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            EvidenceSaveState.SAVED_LOCALLY,
+            (viewModel.uiState.value as FieldUiState.AnchorCapture).saveState,
+        )
+        assertEquals("photo-001", evidenceStore.drafts.single().photos.single().localId)
+        assertEquals(
+            "inspection-001",
+            evidenceStore.drafts.single().photos.single().anchorInspectionId,
+        )
     }
 
     private fun viewModel(
@@ -332,7 +439,12 @@ class FieldViewModelTest {
         }
 
         override suspend fun saveEvidence(draft: AnchorInspectionDraft) {
-            drafts.removeIf { it.inspectionId == draft.inspectionId }
+            drafts.removeIf {
+                it.companyId == draft.companyId &&
+                    it.jobId == draft.jobId &&
+                    it.jobPackVersion == draft.jobPackVersion &&
+                    it.inspectionId == draft.inspectionId
+            }
             drafts += draft
         }
     }

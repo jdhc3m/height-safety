@@ -1,8 +1,12 @@
 package au.com.heightsafety.app
 
+import android.app.Activity
+import android.app.KeyguardManager
+import android.content.ActivityNotFoundException
 import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Column
@@ -25,9 +29,31 @@ import au.com.heightsafety.data.EncryptedJobPackStore
 import au.com.heightsafety.domain.AnchorEvidenceService
 import au.com.heightsafety.domain.JobPackService
 import au.com.heightsafety.domain.ProviderAccessTokenSource
+import kotlin.coroutines.resume
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 /** Debug-only interactive field flow backed by synthetic data. */
 class DebugDemoActivity : ComponentActivity() {
+    private var fieldViewModel: FieldViewModel? = null
+    private var deviceAuthenticationContinuation: CancellableContinuation<Boolean>? = null
+
+    private val cameraCaptureLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        CameraCaptureIntent.capturedPhoto(result.data)?.let { photo ->
+            fieldViewModel?.attachCapturedPhoto(photo)
+        }
+    }
+
+    private val deviceAuthenticationLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        val continuation = deviceAuthenticationContinuation ?: return@registerForActivityResult
+        deviceAuthenticationContinuation = null
+        continuation.resume(result.resultCode == Activity.RESULT_OK)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -47,6 +73,7 @@ class DebugDemoActivity : ComponentActivity() {
         val anchorEvidenceService = AnchorEvidenceService(
             store = localStore,
             nowEpochMillis = { System.currentTimeMillis() },
+            elapsedRealtimeMillis = { SystemClock.elapsedRealtime() },
         )
 
         setContent {
@@ -60,9 +87,11 @@ class DebugDemoActivity : ComponentActivity() {
                     scope = scope,
                     jobPackService = jobPackService,
                     anchorEvidenceService = anchorEvidenceService,
-                    deviceAuthenticationGate = DeviceAuthenticationGate { true },
+                    deviceAuthenticationGate = DeviceAuthenticationGate {
+                        authenticateWithDeviceCredential()
+                    },
                 )
-            }
+            }.also { fieldViewModel = it }
             LaunchedEffect(viewModel) {
                 viewModel.signIn(DebugDemoGateway.DEMO_COMPANY_ID)
             }
@@ -103,9 +132,59 @@ class DebugDemoActivity : ComponentActivity() {
                             onCloseAnchor = viewModel::closeAnchor,
                             onUpdateAnchorDraft = viewModel::updateAnchorDraft,
                             onSaveAnchorDraft = viewModel::saveAnchorDraft,
+                            onCapturePhoto = {
+                                val capture = viewModel.uiState.value as? FieldUiState.AnchorCapture
+                                capture?.let {
+                                    cameraCaptureLauncher.launch(
+                                        CameraCaptureIntent.create(
+                                            context = this@DebugDemoActivity,
+                                            companyId = it.draft.companyId,
+                                            jobId = it.draft.jobId,
+                                            inspectionId = it.draft.inspectionId,
+                                            photoDirectoryName = DebugDemoGateway.DEMO_DIRECTORY_NAME,
+                                        ),
+                                    )
+                                }
+                            },
                         )
                     }
                 }
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        deviceAuthenticationContinuation?.cancel()
+        deviceAuthenticationContinuation = null
+        super.onDestroy()
+    }
+
+    private suspend fun authenticateWithDeviceCredential(): Boolean {
+        val keyguardManager = getSystemService(KeyguardManager::class.java)
+        if (keyguardManager == null || !keyguardManager.isDeviceSecure) {
+            return false
+        }
+        val intent = keyguardManager.createConfirmDeviceCredentialIntent(
+            getString(R.string.device_unlock_title),
+            getString(R.string.device_unlock_description),
+        ) ?: return false
+
+        return suspendCancellableCoroutine { continuation ->
+            if (deviceAuthenticationContinuation != null) {
+                continuation.resume(false)
+                return@suspendCancellableCoroutine
+            }
+            deviceAuthenticationContinuation = continuation
+            continuation.invokeOnCancellation {
+                if (deviceAuthenticationContinuation === continuation) {
+                    deviceAuthenticationContinuation = null
+                }
+            }
+            try {
+                deviceAuthenticationLauncher.launch(intent)
+            } catch (_: ActivityNotFoundException) {
+                deviceAuthenticationContinuation = null
+                continuation.resume(false)
             }
         }
     }

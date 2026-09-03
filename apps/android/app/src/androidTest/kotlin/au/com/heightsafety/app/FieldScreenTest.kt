@@ -20,6 +20,7 @@ import au.com.heightsafety.domain.OfflineAuthorizationLease
 import au.com.heightsafety.domain.ProductRole
 import au.com.heightsafety.domain.OpenedJobPack
 import au.com.heightsafety.domain.RecordedOutcome
+import au.com.heightsafety.domain.ReconciliationProposal
 import au.com.heightsafety.domain.SupportedJurisdiction
 import au.com.heightsafety.domain.StoredJobPack
 import org.junit.Assert.assertEquals
@@ -295,18 +296,114 @@ class FieldScreenTest {
                 onSignOut = {},
                 onUpdateAnchorDraft = { updatedDraft = it },
                 onSaveAnchorDraft = { saveClicked = true },
+                onCapturePhoto = {},
             )
         }
 
         composeTestRule.onNodeWithText("Anchor capture").assertIsDisplayed()
         composeTestRule.onNodeWithText("Recorded outcome").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Serviceable").performClick()
+        composeTestRule.onNodeWithText("Newly discovered anchor")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Proof test (optional)")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Removed from service recorded")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Capture photo")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Serviceable").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Save evidence locally")
             .performScrollTo()
             .performClick()
 
         assertEquals(RecordedOutcome.SERVICEABLE, updatedDraft?.recordedOutcome)
         assertTrue(saveClicked)
+    }
+
+    @Test
+    fun anchorCaptureCanStartAReconciliationProposal() {
+        val anchor = JobPackAnchor(
+            companyId = "company-a",
+            anchorId = "anchor-001",
+            siteId = "site-001",
+            label = "A-001",
+            registerId = "REG-001",
+            location = "North roof",
+            anchorType = "single_point",
+            manufacturer = null,
+            model = null,
+            installContext = null,
+            registerStatus = "active",
+            notes = null,
+            createdAtEpochMillis = 1L,
+            updatedAtEpochMillis = 2L,
+        )
+        val pack = FieldJobPack(
+            companyId = "company-a",
+            jobId = "job-001",
+            siteId = "site-001",
+            jurisdiction = SupportedJurisdiction.QLD,
+            reference = "JOB-001",
+            plannedDate = "2026-09-15",
+            workflowStatus = "assigned",
+            jobPackVersion = 7L,
+            siteName = "Site A",
+            siteAddress = "1 Example Street",
+            siteReference = "SITE-A",
+            accessNotes = null,
+            anchors = listOf(anchor),
+        )
+        val lease = OfflineAuthorizationLease(
+            companyId = "company-a",
+            userId = "inspector-a",
+            jobId = "job-001",
+            issuedAtEpochMillis = 1_000L,
+            expiresAtEpochMillis = 86_401_000L,
+            issuedAtElapsedRealtimeMillis = 500L,
+        )
+        val draft = AnchorInspectionDraft(
+            companyId = "company-a",
+            jobId = "job-001",
+            jobPackVersion = 7L,
+            inspectionId = "inspection-001",
+            expectedAnchorId = "anchor-001",
+            createdAtEpochMillis = 1_000L,
+        )
+        var updatedDraft: AnchorInspectionDraft? = null
+        composeTestRule.setContent {
+            FieldScreen(
+                state = FieldUiState.AnchorCapture(
+                    account = account(),
+                    jobs = listOf(job()),
+                    job = job(),
+                    opened = OpenedJobPack(
+                        StoredJobPack(pack, lease),
+                        JobPackOpenSource.CACHED,
+                    ),
+                    anchor = anchor,
+                    draft = draft,
+                    evidence = emptyList(),
+                ),
+                onSignIn = {},
+                onRetry = {},
+                onRefresh = {},
+                onSignOut = {},
+                onUpdateAnchorDraft = { updatedDraft = it },
+            )
+        }
+
+        composeTestRule.onNodeWithText("Newly discovered anchor")
+            .performScrollTo()
+            .performClick()
+
+        assertEquals(null, updatedDraft?.expectedAnchorId)
+        assertEquals(
+            ReconciliationProposal.NEWLY_DISCOVERED,
+            updatedDraft?.reconciliationProposal,
+        )
     }
 
     private fun setContent(state: FieldUiState) {

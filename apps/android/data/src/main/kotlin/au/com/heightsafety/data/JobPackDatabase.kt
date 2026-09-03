@@ -89,8 +89,8 @@ internal data class OfflineAuthorizationLeaseEntity(
 
 @Entity(
     tableName = "anchor_inspection",
-    primaryKeys = ["companyId", "jobId", "inspectionId"],
-    indices = [Index(value = ["companyId", "jobId"])],
+    primaryKeys = ["companyId", "jobId", "jobPackVersion", "inspectionId"],
+    indices = [Index(value = ["companyId", "jobId", "jobPackVersion"])],
     foreignKeys = [
         ForeignKey(
             entity = JobPackEntity::class,
@@ -103,8 +103,8 @@ internal data class OfflineAuthorizationLeaseEntity(
 internal data class AnchorInspectionEntity(
     val companyId: String,
     val jobId: String,
-    val inspectionId: String,
     val jobPackVersion: Long,
+    val inspectionId: String,
     val expectedAnchorId: String?,
     val provisionalAnchorId: String?,
     val identityConfirmed: Boolean,
@@ -130,13 +130,13 @@ internal data class AnchorInspectionEntity(
 
 @Entity(
     tableName = "anchor_evidence_photo",
-    primaryKeys = ["companyId", "jobId", "inspectionId", "localId"],
-    indices = [Index(value = ["companyId", "jobId", "inspectionId"])],
+    primaryKeys = ["companyId", "jobId", "jobPackVersion", "inspectionId", "localId"],
+    indices = [Index(value = ["companyId", "jobId", "jobPackVersion", "inspectionId"])],
     foreignKeys = [
         ForeignKey(
             entity = AnchorInspectionEntity::class,
-            parentColumns = ["companyId", "jobId", "inspectionId"],
-            childColumns = ["companyId", "jobId", "inspectionId"],
+            parentColumns = ["companyId", "jobId", "jobPackVersion", "inspectionId"],
+            childColumns = ["companyId", "jobId", "jobPackVersion", "inspectionId"],
             onDelete = ForeignKey.CASCADE,
         ),
     ],
@@ -144,6 +144,7 @@ internal data class AnchorInspectionEntity(
 internal data class AnchorEvidencePhotoEntity(
     val companyId: String,
     val jobId: String,
+    val jobPackVersion: Long,
     val inspectionId: String,
     val localId: String,
     val storageReference: String,
@@ -198,11 +199,13 @@ internal abstract class JobPackDao {
 
     @Query(
         "DELETE FROM anchor_evidence_photo " +
-            "WHERE companyId = :companyId AND jobId = :jobId AND inspectionId = :inspectionId",
+            "WHERE companyId = :companyId AND jobId = :jobId " +
+            "AND jobPackVersion = :jobPackVersion AND inspectionId = :inspectionId",
     )
     protected abstract fun deletePhotos(
         companyId: String,
         jobId: String,
+        jobPackVersion: Long,
         inspectionId: String,
     )
 
@@ -235,11 +238,13 @@ internal abstract class JobPackDao {
     @Query(
         "SELECT * FROM anchor_evidence_photo " +
             "WHERE companyId = :companyId AND jobId = :jobId " +
-            "AND inspectionId = :inspectionId ORDER BY localId",
+            "AND jobPackVersion = :jobPackVersion AND inspectionId = :inspectionId " +
+            "ORDER BY localId",
     )
     protected abstract fun findPhotos(
         companyId: String,
         jobId: String,
+        jobPackVersion: Long,
         inspectionId: String,
     ): List<AnchorEvidencePhotoEntity>
 
@@ -275,6 +280,7 @@ internal abstract class JobPackDao {
         deletePhotos(
             companyId = inspection.companyId,
             jobId = inspection.jobId,
+            jobPackVersion = inspection.jobPackVersion,
             inspectionId = inspection.inspectionId,
         )
         replaceInspection(inspection)
@@ -293,7 +299,12 @@ internal abstract class JobPackDao {
     ).map { inspection ->
         AnchorInspectionStorageSnapshot(
             inspection = inspection,
-            photos = findPhotos(companyId, jobId, inspection.inspectionId),
+            photos = findPhotos(
+                companyId,
+                jobId,
+                inspection.jobPackVersion,
+                inspection.inspectionId,
+            ),
         )
     }
 
@@ -368,6 +379,173 @@ internal val JOB_PACK_MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+internal val JOB_PACK_MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE anchor_inspection_v3 (
+                companyId TEXT NOT NULL,
+                jobId TEXT NOT NULL,
+                jobPackVersion INTEGER NOT NULL,
+                inspectionId TEXT NOT NULL,
+                expectedAnchorId TEXT,
+                provisionalAnchorId TEXT,
+                identityConfirmed INTEGER NOT NULL,
+                locationConfirmed INTEGER NOT NULL,
+                location TEXT,
+                observations TEXT,
+                recordedOutcome TEXT,
+                exceptionReason TEXT,
+                reconciliationProposal TEXT,
+                reconciliationReferenceId TEXT,
+                disposition TEXT,
+                notes TEXT,
+                defectDescription TEXT,
+                recommendation TEXT,
+                proofTestLoad TEXT,
+                proofTestHold TEXT,
+                proofTestResult TEXT,
+                proofTestEquipmentReference TEXT,
+                syncState TEXT NOT NULL,
+                createdAtEpochMillis INTEGER NOT NULL,
+                updatedAtEpochMillis INTEGER NOT NULL,
+                PRIMARY KEY(companyId, jobId, jobPackVersion, inspectionId),
+                FOREIGN KEY(companyId, jobId)
+                    REFERENCES job_pack(companyId, jobId)
+                    ON UPDATE NO ACTION ON DELETE RESTRICT
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO anchor_inspection_v3 (
+                companyId,
+                jobId,
+                jobPackVersion,
+                inspectionId,
+                expectedAnchorId,
+                provisionalAnchorId,
+                identityConfirmed,
+                locationConfirmed,
+                location,
+                observations,
+                recordedOutcome,
+                exceptionReason,
+                reconciliationProposal,
+                reconciliationReferenceId,
+                disposition,
+                notes,
+                defectDescription,
+                recommendation,
+                proofTestLoad,
+                proofTestHold,
+                proofTestResult,
+                proofTestEquipmentReference,
+                syncState,
+                createdAtEpochMillis,
+                updatedAtEpochMillis
+            )
+            SELECT
+                companyId,
+                jobId,
+                jobPackVersion,
+                inspectionId,
+                expectedAnchorId,
+                provisionalAnchorId,
+                identityConfirmed,
+                locationConfirmed,
+                location,
+                observations,
+                recordedOutcome,
+                exceptionReason,
+                reconciliationProposal,
+                reconciliationReferenceId,
+                disposition,
+                notes,
+                defectDescription,
+                recommendation,
+                proofTestLoad,
+                proofTestHold,
+                proofTestResult,
+                proofTestEquipmentReference,
+                syncState,
+                createdAtEpochMillis,
+                updatedAtEpochMillis
+            FROM anchor_inspection
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            CREATE TABLE anchor_evidence_photo_v3 (
+                companyId TEXT NOT NULL,
+                jobId TEXT NOT NULL,
+                jobPackVersion INTEGER NOT NULL,
+                inspectionId TEXT NOT NULL,
+                localId TEXT NOT NULL,
+                storageReference TEXT NOT NULL,
+                capturedAtEpochMillis INTEGER NOT NULL,
+                checksum TEXT NOT NULL,
+                uploadState TEXT NOT NULL,
+                contentType TEXT,
+                PRIMARY KEY(companyId, jobId, jobPackVersion, inspectionId, localId),
+                FOREIGN KEY(companyId, jobId, jobPackVersion, inspectionId)
+                    REFERENCES anchor_inspection_v3(
+                        companyId,
+                        jobId,
+                        jobPackVersion,
+                        inspectionId
+                    )
+                    ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO anchor_evidence_photo_v3 (
+                companyId,
+                jobId,
+                jobPackVersion,
+                inspectionId,
+                localId,
+                storageReference,
+                capturedAtEpochMillis,
+                checksum,
+                uploadState,
+                contentType
+            )
+            SELECT
+                photo.companyId,
+                photo.jobId,
+                inspection.jobPackVersion,
+                photo.inspectionId,
+                photo.localId,
+                photo.storageReference,
+                photo.capturedAtEpochMillis,
+                photo.checksum,
+                photo.uploadState,
+                photo.contentType
+            FROM anchor_evidence_photo AS photo
+            INNER JOIN anchor_inspection AS inspection
+                ON inspection.companyId = photo.companyId
+                AND inspection.jobId = photo.jobId
+                AND inspection.inspectionId = photo.inspectionId
+            """.trimIndent(),
+        )
+        db.execSQL("DROP TABLE anchor_evidence_photo")
+        db.execSQL("DROP TABLE anchor_inspection")
+        db.execSQL("ALTER TABLE anchor_inspection_v3 RENAME TO anchor_inspection")
+        db.execSQL("ALTER TABLE anchor_evidence_photo_v3 RENAME TO anchor_evidence_photo")
+        db.execSQL(
+            "CREATE INDEX index_anchor_inspection_companyId_jobId_jobPackVersion " +
+                "ON anchor_inspection(companyId, jobId, jobPackVersion)",
+        )
+        db.execSQL(
+            "CREATE INDEX index_anchor_evidence_photo_companyId_jobId_jobPackVersion_inspectionId " +
+                "ON anchor_evidence_photo(companyId, jobId, jobPackVersion, inspectionId)",
+        )
+    }
+}
+
 @Database(
     entities = [
         JobPackEntity::class,
@@ -376,7 +554,7 @@ internal val JOB_PACK_MIGRATION_1_2 = object : Migration(1, 2) {
         AnchorInspectionEntity::class,
         AnchorEvidencePhotoEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 internal abstract class JobPackDatabase : RoomDatabase() {

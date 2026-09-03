@@ -84,6 +84,7 @@ public enum class CaptureValidationCode {
     MISSING_PROVISIONAL_ANCHOR_ID,
     MISSING_RECONCILIATION_REFERENCE,
     MISSING_LOCATION_CONTEXT,
+    MISSING_SEARCH_CONTEXT,
     MISSING_OUTCOME,
     MISSING_IDENTITY_CONFIRMATION,
     MISSING_LOCATION_CONFIRMATION,
@@ -187,6 +188,15 @@ public data class AnchorInspectionDraft(
                     issues += issue(
                         CaptureValidationCode.MISSING_EXCEPTION_REASON,
                         "Select why the anchor was not inspected.",
+                    )
+                } else if (
+                    exceptionReason == InspectionExceptionReason.UNABLE_TO_LOCATE &&
+                    !hasText(observations) &&
+                    !hasText(notes)
+                ) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_SEARCH_CONTEXT,
+                        "Record the search or location context for an anchor that could not be located.",
                     )
                 }
             }
@@ -353,6 +363,7 @@ public class AnchorEvidenceValidationException(
 public class AnchorEvidenceService(
     private val store: AnchorEvidenceStore,
     private val nowEpochMillis: () -> Long,
+    private val elapsedRealtimeMillis: () -> Long,
 ) {
     public suspend fun loadDrafts(
         session: FieldSession,
@@ -372,18 +383,19 @@ public class AnchorEvidenceService(
         anchor: JobPackAnchor,
         inspectionId: String,
     ): AnchorInspectionDraft {
-        requirePackAccess(session, opened)
-        require(opened.stored.pack.anchors.any { it.anchorId == anchor.anchorId }) {
-            "anchor is not in the opened job-pack snapshot"
-        }
-        val now = checkedNow()
+        val now = requirePackAccess(session, opened)
+        val canonicalAnchor = opened.stored.pack.anchors.singleOrNull {
+            it.anchorId == anchor.anchorId
+        } ?: throw IllegalArgumentException(
+            "anchor is not in the opened job-pack snapshot",
+        )
         return AnchorInspectionDraft(
             companyId = opened.stored.pack.companyId,
             jobId = opened.stored.pack.jobId,
             jobPackVersion = opened.stored.pack.jobPackVersion,
             inspectionId = inspectionId,
-            expectedAnchorId = anchor.anchorId,
-            location = anchor.location,
+            expectedAnchorId = canonicalAnchor.anchorId,
+            location = canonicalAnchor.location,
             createdAtEpochMillis = now,
         )
     }
@@ -393,28 +405,32 @@ public class AnchorEvidenceService(
         opened: OpenedJobPack,
         draft: AnchorInspectionDraft,
     ): AnchorInspectionDraft {
-        requirePackAccess(session, opened)
+        val accessNow = requirePackAccess(session, opened)
         val localIssues = draft.localSaveIssues(opened.stored.pack)
         if (localIssues.isNotEmpty()) {
             throw AnchorEvidenceValidationException(localIssues)
         }
         val saved = draft.copy(
             syncState = EvidenceSyncState.LOCAL,
-            updatedAtEpochMillis = maxOf(draft.updatedAtEpochMillis, checkedNow()),
+            updatedAtEpochMillis = maxOf(draft.updatedAtEpochMillis, accessNow),
         )
         store.saveEvidence(saved)
         return saved
     }
 
     public fun validateForCompletion(
+        session: FieldSession,
         opened: OpenedJobPack,
         draft: AnchorInspectionDraft,
-    ): List<CaptureValidationIssue> = draft.validationIssues(opened.stored.pack)
+    ): List<CaptureValidationIssue> {
+        requirePackAccess(session, opened)
+        return draft.validationIssues(opened.stored.pack)
+    }
 
     private fun requirePackAccess(
         session: FieldSession,
         opened: OpenedJobPack,
-    ) {
+    ): Long {
         requireInspectorSession(session)
         val stored = opened.stored
         if (
@@ -427,13 +443,35 @@ public class AnchorEvidenceService(
                 "evidence access does not match the opened inspector job pack",
             )
         }
-        if (session.isExpired(checkedNow())) {
+        val now = checkedNow()
+        if (session.isExpired(now)) {
             throw FieldSessionExpiredException()
         }
+        when (stored.lease.lockReason(now, checkedElapsed())) {
+            null -> Unit
+            OfflineLeaseLockReason.WALL_CLOCK_EXPIRED -> throw JobPackAccessException(
+                JobPackAccessFailure.LEASE_EXPIRED,
+                "offline job-pack lease expired; local evidence is preserved",
+            )
+            OfflineLeaseLockReason.ELAPSED_RUNTIME_EXPIRED ->
+                throw JobPackAccessException(
+                    JobPackAccessFailure.ELAPSED_RUNTIME_EXPIRED,
+                    "offline job-pack lease expired; local evidence is preserved",
+                )
+            OfflineLeaseLockReason.CLOCK_ROLLBACK -> throw JobPackAccessException(
+                JobPackAccessFailure.CLOCK_ROLLBACK,
+                "offline job-pack access locked after clock rollback; local evidence is preserved",
+            )
+        }
+        return now
     }
 
     private fun checkedNow(): Long = nowEpochMillis().also {
         require(it >= 0) { "current epoch time must not be negative" }
+    }
+
+    private fun checkedElapsed(): Long = elapsedRealtimeMillis().also {
+        require(it >= 0) { "current elapsed time must not be negative" }
     }
 }
 
