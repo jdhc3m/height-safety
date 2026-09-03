@@ -10,12 +10,12 @@ available. They are not an invoice or a commitment to deploy.
 
 ## What is still missing
 
-The current state is the first Android anchor-capture slice, not a complete
-pilot. The remaining work is:
+The bounded Android 3B-03 local anchor-capture slice is complete, but this is
+not a complete pilot. The remaining work is:
 
-1. **Finish 3B-03 and 3B-04:** complete the anchor evidence flow for notes,
-   defects, recommendations, provisional outcomes, exceptions, photos and
-   submission readiness; make queued submission state visible.
+1. **Finish 3B-04:** add submission readiness for the completed anchor
+   evidence flow, distinguish blockers from warnings and make queued submission
+   state visible without claiming server success.
 2. **Build 3C sync:** durable idempotent mutation outbox, photo upload queue and
    retry states, server acknowledgements, conflict visibility, logout/lease
    expiry/revocation safety, and the bounded offline recovery path.

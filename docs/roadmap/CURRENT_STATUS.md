@@ -5,7 +5,8 @@ Last update: 2026-09-03
 ## Active stage
 
 Stage 3B — anchor vertical slice; `3A-01` through `3A-05` are Done.
-`3B-01` and `3B-02` are Done. `3B-03` is In progress. G-03 is Done as D-027.
+`3B-01`, `3B-02` and the bounded local-capture acceptance for `3B-03` are Done.
+`3B-04` is the next implementation slice. G-03 is Done as D-027.
 
 ## Completed
 
@@ -185,34 +186,34 @@ Stage 3B — anchor vertical slice; `3A-01` through `3A-05` are Done.
   pack replacement, tenant-isolated local keys, wall-clock/elapsed-runtime/
   rollback lease locks that preserve local evidence, and read-only pack UI
   states. Independent review passed after the release-time snapshot correction.
-  Anchor evidence capture remains `3B-03`.
+- `3B-03` is complete for its bounded local-capture acceptance. The Android
+  field flow records and reopens expected-anchor evidence and explicit newly
+  discovered provisional records without silently removing expected register
+  coverage. Domain validation covers outcomes, exceptions, identity/location,
+  reconciliation, dispositions, observations, recommendations, optional
+  proof-test fields and photo association; encrypted local drafts survive
+  restart and CameraX stores durable app-private JPEG evidence with a checksum.
+  Submission, upload/retry and synchronisation remain separate `3B-04`/`3C`
+  work.
 
 ## In progress
 
-- `3B-03` first slice adds domain-owned anchor evidence validation and the
-  encrypted local draft/photo-reference boundary. Camera hardware capture,
-  submission and synchronisation remain bounded follow-on slices in this
-  ticket.
-- `3B-03` camera slice now uses CameraX to capture JPEG bytes into app-private
-  no-backup storage, verifies a SHA-256 checksum and automatically persists the
-  anchor-scoped photo reference in the encrypted local draft. Upload, retry and
-  synchronisation remain open.
-- The `3B-03` correction closes review gaps around lease enforcement, canonical
-  anchor binding, draft retargeting, pack-version-safe evidence keys, unable-to-
-  locate search context, and reconciliation/disposition/proof-test capture
-  controls. The debug demo now also requires device credentials.
-- `3B-01` and `3B-02` checks pass. Compose UI tests and encrypted job-pack
-  adapter tests pass on the local
-  `Pixel_5_API_30` emulator. Runtime persistence, durable audit, identity
-  membership, pack-update/sync/recovery workflows and production deployment
-  adapters remain deliberately unconfigured and are separate work.
+- `3B-04` review and queue-submission work is next: distinguish blockers from
+  warnings and create durable local submission intent without claiming server
+  success.
+- Scoped `3B-03` JVM, lint, Compose and encrypted-storage checks pass; the
+  `Pixel_5_API_30` emulator passes 13 app and 10 data instrumented tests.
+  Runtime persistence, durable audit, identity membership, pack-update/sync/
+  recovery workflows and production deployment adapters remain deliberately
+  unconfigured and are separate work.
 - Production provider selection, runtime deployment-role configuration and later
   feature APIs remain separate work from the completed `3A-02` boundary.
 - Keep design-partner outreach ready; practitioner validation still open.
 
 ## Next recommended task
 
-Continue `3B-03` anchor evidence capture. Do not add Kotlin
+Continue with `3B-04` review and queue submission, then `3C` synchronisation.
+Do not add Kotlin
 Multiplatform, an iOS target or deferred standards candidates. Authentication
 vendor selection and the durable identity/runtime adapters remain deferred.
 Production provider/native backup configuration, retention/RPO/RTO and strict

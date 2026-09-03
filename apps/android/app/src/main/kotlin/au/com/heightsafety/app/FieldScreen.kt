@@ -57,6 +57,8 @@ fun FieldScreen(
     onOpenJob: (InspectorJob) -> Unit = {},
     onCloseJobPack: () -> Unit = {},
     onOpenAnchor: (JobPackAnchor) -> Unit = {},
+    onOpenEvidence: (AnchorInspectionDraft) -> Unit = {},
+    onAddDiscoveredAnchor: () -> Unit = {},
     onCloseAnchor: () -> Unit = {},
     onUpdateAnchorDraft: (AnchorInspectionDraft) -> Unit = {},
     onSaveAnchorDraft: () -> Unit = {},
@@ -118,6 +120,8 @@ fun FieldScreen(
                             state = state,
                             onClose = onCloseJobPack,
                             onOpenAnchor = onOpenAnchor,
+                            onOpenEvidence = onOpenEvidence,
+                            onAddDiscoveredAnchor = onAddDiscoveredAnchor,
                         )
                         is FieldUiState.AnchorCapture -> AnchorCaptureContent(
                             state = state,
@@ -416,8 +420,14 @@ private fun JobPackContent(
     state: FieldUiState.JobPackOpened,
     onClose: () -> Unit,
     onOpenAnchor: (JobPackAnchor) -> Unit,
+    onOpenEvidence: (AnchorInspectionDraft) -> Unit,
+    onAddDiscoveredAnchor: () -> Unit,
 ) {
     val pack = state.opened.stored.pack
+    val discoveredEvidence = state.evidence.filter {
+        it.expectedAnchorId == null &&
+            it.reconciliationProposal == ReconciliationProposal.NEWLY_DISCOVERED
+    }
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -466,17 +476,16 @@ private fun JobPackContent(
             stringResource(R.string.expected_anchor_count, pack.anchors.size),
             style = MaterialTheme.typography.titleMedium,
         )
-        if (pack.anchors.isEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(stringResource(R.string.no_expected_anchors))
-        } else {
-            Spacer(modifier = Modifier.height(8.dp))
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (pack.anchors.isEmpty()) {
+                item { Text(stringResource(R.string.no_expected_anchors)) }
+            } else {
                 items(pack.anchors, key = JobPackAnchor::anchorId) { anchor ->
                     JobPackAnchorRow(
                         anchor = anchor,
@@ -485,6 +494,35 @@ private fun JobPackContent(
                         },
                         onOpenAnchor = onOpenAnchor,
                     )
+                }
+            }
+
+            if (discoveredEvidence.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.discovered_anchor_records),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+                items(
+                    items = discoveredEvidence,
+                    key = { evidence -> "discovered-${evidence.inspectionId}" },
+                ) { evidence ->
+                    DiscoveredAnchorRow(
+                        evidence = evidence,
+                        onOpenEvidence = onOpenEvidence,
+                    )
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onAddDiscoveredAnchor,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.record_discovered_anchor))
                 }
             }
         }
@@ -521,6 +559,37 @@ private fun JobPackAnchorRow(
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = { onOpenAnchor(anchor) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.capture_anchor_evidence))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DiscoveredAnchorRow(
+    evidence: AnchorInspectionDraft,
+    onOpenEvidence: (AnchorInspectionDraft) -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = evidence.provisionalAnchorId ?: evidence.inspectionId,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            evidence.location?.let {
+                Text(stringResource(R.string.location_value, it))
+            }
+            Text(stringResource(R.string.newly_discovered_record))
+            Text(
+                stringResource(R.string.anchor_evidence_saved),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = { onOpenEvidence(evidence) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(R.string.capture_anchor_evidence))
@@ -578,7 +647,7 @@ private fun AnchorCaptureContent(
                     fontWeight = FontWeight.SemiBold,
                 )
                 (if (draft.reconciliationProposal == null) {
-                    state.anchor.location
+                    state.anchor?.location
                 } else {
                     draft.location
                 })?.let {
@@ -593,42 +662,50 @@ private fun AnchorCaptureContent(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
-        ReconciliationChoices(
-            expectedSelected = draft.reconciliationProposal == null &&
-                draft.expectedAnchorId == state.anchor.anchorId,
-            selected = draft.reconciliationProposal,
-            onSelected = { proposal ->
-                onUpdateDraft(
-                    when (proposal) {
-                        null -> draft.copy(
-                            expectedAnchorId = state.anchor.anchorId,
-                            provisionalAnchorId = null,
-                            reconciliationProposal = null,
-                            reconciliationReferenceId = null,
-                            location = state.anchor.location,
-                        )
-                        ReconciliationProposal.NEWLY_DISCOVERED -> draft.copy(
-                            expectedAnchorId = null,
-                            reconciliationProposal = proposal,
-                            reconciliationReferenceId = null,
-                            location = null,
-                        )
-                        ReconciliationProposal.REPLACEMENT -> draft.copy(
-                            expectedAnchorId = state.anchor.anchorId,
-                            reconciliationProposal = proposal,
-                            reconciliationReferenceId = null,
-                            location = null,
-                        )
-                        ReconciliationProposal.DUPLICATE -> draft.copy(
-                            expectedAnchorId = state.anchor.anchorId,
-                            provisionalAnchorId = null,
-                            reconciliationProposal = proposal,
-                            location = state.anchor.location,
-                        )
-                    },
-                )
-            },
-        )
+        val expectedAnchor = state.anchor
+        if (expectedAnchor == null) {
+            Text(
+                text = stringResource(R.string.newly_discovered_record),
+                color = MaterialTheme.colorScheme.primary,
+            )
+        } else {
+            ReconciliationChoices(
+                expectedSelected = draft.reconciliationProposal == null &&
+                    draft.expectedAnchorId == expectedAnchor.anchorId,
+                selected = draft.reconciliationProposal,
+                onSelected = { proposal ->
+                    onUpdateDraft(
+                        when (proposal) {
+                            null -> draft.copy(
+                                expectedAnchorId = expectedAnchor.anchorId,
+                                provisionalAnchorId = null,
+                                reconciliationProposal = null,
+                                reconciliationReferenceId = null,
+                                location = expectedAnchor.location,
+                            )
+                            ReconciliationProposal.NEWLY_DISCOVERED -> draft.copy(
+                                expectedAnchorId = null,
+                                reconciliationProposal = proposal,
+                                reconciliationReferenceId = null,
+                                location = null,
+                            )
+                            ReconciliationProposal.REPLACEMENT -> draft.copy(
+                                expectedAnchorId = expectedAnchor.anchorId,
+                                reconciliationProposal = proposal,
+                                reconciliationReferenceId = null,
+                                location = null,
+                            )
+                            ReconciliationProposal.DUPLICATE -> draft.copy(
+                                expectedAnchorId = expectedAnchor.anchorId,
+                                provisionalAnchorId = null,
+                                reconciliationProposal = proposal,
+                                location = expectedAnchor.location,
+                            )
+                        },
+                    )
+                },
+            )
+        }
         when (draft.reconciliationProposal) {
             ReconciliationProposal.NEWLY_DISCOVERED,
             ReconciliationProposal.REPLACEMENT,

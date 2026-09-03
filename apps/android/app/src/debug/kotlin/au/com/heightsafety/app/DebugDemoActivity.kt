@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -92,9 +91,6 @@ class DebugDemoActivity : ComponentActivity() {
                     },
                 )
             }.also { fieldViewModel = it }
-            LaunchedEffect(viewModel) {
-                viewModel.signIn(DebugDemoGateway.DEMO_COMPANY_ID)
-            }
             val state by viewModel.uiState.collectAsState()
 
             MaterialTheme {
@@ -117,6 +113,10 @@ class DebugDemoActivity : ComponentActivity() {
                                 text = "Synthetic NSW/QLD jobs. No server or real account.",
                                 style = MaterialTheme.typography.bodySmall,
                             )
+                            Text(
+                                text = "Temporary demo login: enter company ID aaa.",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                         }
                     }
                     Surface(modifier = Modifier.weight(1f)) {
@@ -129,6 +129,8 @@ class DebugDemoActivity : ComponentActivity() {
                             onOpenJob = viewModel::openJobPack,
                             onCloseJobPack = viewModel::closeJobPack,
                             onOpenAnchor = viewModel::openAnchor,
+                            onOpenEvidence = viewModel::openEvidence,
+                            onAddDiscoveredAnchor = viewModel::openNewlyDiscoveredAnchor,
                             onCloseAnchor = viewModel::closeAnchor,
                             onUpdateAnchorDraft = viewModel::updateAnchorDraft,
                             onSaveAnchorDraft = viewModel::saveAnchorDraft,

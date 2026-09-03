@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Height Safety — 3B field flow</title>
+  <title>Height Safety — 3B aligned field flow</title>
   <style>
     :root {
       color-scheme: light;
@@ -27,12 +27,15 @@
     }
     * { box-sizing: border-box; }
     body { margin: 0; color: var(--ink); background: #e8eef5; }
-    button, input { font: inherit; }
+    button, input, textarea { font: inherit; }
     button { min-height: 48px; cursor: pointer; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #8aa4d1; outline-offset: 2px; }
+    .icon { width: 20px; height: 20px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
     .app { min-height: 100vh; display: grid; grid-template-columns: 300px minmax(0, 1fr); }
-    .sidebar { padding: 28px 20px; background: #102235; color: #fff; }
+    .sidebar { padding: 28px 20px; background: var(--ink); color: #fff; }
     .brand { display: flex; gap: 12px; align-items: center; margin-bottom: 32px; }
-    .brand-mark { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; background: #f2b84b; color: #102235; font-weight: 900; }
+    .brand-mark { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 13px; background: #f2b84b; color: var(--ink); }
+    .brand-mark .icon { width: 23px; height: 23px; stroke-width: 2.4; }
     .brand strong { display: block; font-size: 16px; letter-spacing: .02em; }
     .brand span { display: block; margin-top: 3px; color: #b7c8df; font-size: 12px; }
     .side-label { margin: 22px 10px 10px; color: #8fa6c0; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
@@ -50,24 +53,26 @@
     .prototype-badge { flex: 0 0 auto; padding: 9px 12px; border-radius: 999px; background: var(--amber-soft); color: var(--amber); font-size: 12px; font-weight: 800; }
     .workspace { display: grid; grid-template-columns: minmax(320px, 430px) minmax(280px, 1fr); gap: 24px; align-items: start; max-width: 1120px; margin: 0 auto; }
     .phone-shell { padding: 14px; border-radius: 32px; background: #cad5e2; box-shadow: var(--shadow); }
-    .phone { min-height: 760px; overflow: hidden; border: 7px solid #182a3e; border-radius: 24px; background: var(--surface); }
+    .phone { min-height: 800px; overflow: hidden; border: 7px solid #182a3e; border-radius: 24px; background: var(--surface); }
     .phone-status { display: flex; justify-content: space-between; padding: 12px 18px 6px; color: var(--muted); font-size: 11px; font-weight: 800; }
-    .screen { display: none; min-height: 710px; padding: 20px 20px 28px; }
+    .screen { display: none; min-height: 748px; padding: 20px 20px 28px; }
     .screen.active { display: block; }
     .screen.center { display: none; }
     .screen.center.active { display: flex; flex-direction: column; justify-content: center; }
     .screen-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .header-leading { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
     .screen-header h2 { margin: 0; font-size: 24px; letter-spacing: -.025em; }
-    .screen-header p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+    .screen-header p { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.35; }
     .avatar { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 14px; background: var(--primary-soft); color: var(--primary); font-size: 13px; font-weight: 900; }
-    .hero-mark { width: 64px; height: 64px; display: grid; place-items: center; margin: 0 auto 20px; border-radius: 20px; background: var(--ink); color: #f2b84b; font-size: 26px; font-weight: 900; }
+    .hero-mark { width: 68px; height: 68px; display: grid; place-items: center; margin: 0 auto 20px; border-radius: 21px; background: var(--ink); color: #f2b84b; }
+    .hero-mark .icon { width: 34px; height: 34px; stroke-width: 2.2; }
     .center h2 { margin: 0; text-align: center; font-size: 28px; letter-spacing: -.035em; }
     .center .lead { max-width: 290px; margin: 10px auto 28px; color: var(--muted); text-align: center; line-height: 1.45; }
     .field { display: grid; gap: 7px; margin: 14px 0; }
     .field label { color: var(--muted); font-size: 12px; font-weight: 800; }
     .field input, .note-input { width: 100%; min-height: 54px; padding: 0 15px; border: 1px solid #9baaba; border-radius: 14px; outline: none; background: var(--surface-strong); color: var(--ink); }
-    .field input:focus, .note-input:focus { border: 2px solid var(--primary); }
-    .button { width: 100%; border: 0; border-radius: 16px; padding: 12px 16px; font-weight: 800; }
+    .note-input { min-height: 100px; padding: 14px; resize: vertical; }
+    .button { display: inline-flex; width: 100%; min-height: 48px; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 16px; padding: 12px 16px; font-weight: 800; }
     .button.primary { background: var(--primary); color: #fff; }
     .button.primary:hover { background: var(--primary-dark); }
     .button.tonal { background: var(--primary-soft); color: var(--primary-dark); }
@@ -75,17 +80,18 @@
     .button.text { min-height: 48px; padding: 8px 12px; background: transparent; color: var(--primary); }
     .button:disabled { opacity: .48; cursor: not-allowed; }
     .helper { margin: 16px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
-    .banner { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0 18px; padding: 12px; border-radius: 16px; background: var(--amber-soft); color: var(--amber); font-size: 12px; line-height: 1.35; }
+    .banner { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0 18px; padding: 12px; border-radius: 16px; background: var(--amber-soft); color: var(--amber); font-size: 12px; line-height: 1.4; }
     .banner.good { background: var(--green-soft); color: var(--green); }
     .banner.error { background: var(--red-soft); color: var(--red); }
-    .banner .dot { flex: 0 0 auto; width: 9px; height: 9px; margin-top: 4px; border-radius: 50%; background: currentColor; }
-    .job-list, .anchor-list { display: grid; gap: 12px; }
-    .job-card, .anchor-row, .summary-card { padding: 16px; border: 1px solid var(--outline); border-radius: 18px; background: var(--surface-strong); }
-    .job-card { width: 100%; text-align: left; }
+    .banner .icon { margin-top: 1px; }
+    .banner b { font-size: 13px; }
+    .job-list, .anchor-list, .choice-list { display: grid; gap: 12px; }
+    .card, .job-card, .anchor-row { padding: 16px; border: 1px solid var(--outline); border-radius: 18px; background: var(--surface-strong); }
     .job-card:hover, .anchor-row:hover { border-color: #7898c8; box-shadow: 0 7px 18px rgba(46, 90, 172, .10); }
     .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .job-card h3, .anchor-row h3, .summary-card h3 { margin: 0; font-size: 16px; }
-    .job-card p, .anchor-row p, .summary-card p { margin: 5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .job-card h3, .anchor-row h3, .card h3 { margin: 0; font-size: 16px; }
+    .job-card p, .anchor-row p, .card p { margin: 5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .job-card .button, .anchor-row .button { margin-top: 14px; }
     .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
     .chip { display: inline-flex; align-items: center; min-height: 30px; padding: 5px 10px; border-radius: 999px; background: var(--surface-tint); color: var(--muted); font-size: 11px; font-weight: 800; }
     .chip.blue { background: var(--primary-soft); color: var(--primary-dark); }
@@ -95,43 +101,54 @@
     .section-title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 22px 0 10px; }
     .section-title h3 { margin: 0; font-size: 15px; }
     .section-title span { color: var(--muted); font-size: 12px; }
-    .progress { height: 9px; overflow: hidden; border-radius: 99px; background: var(--outline); }
-    .progress i { display: block; width: 38%; height: 100%; border-radius: inherit; background: var(--primary); }
-    .anchor-row { width: 100%; text-align: left; }
-    .anchor-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; background: var(--primary-soft); color: var(--primary); font-weight: 900; }
-    .back { display: inline-flex; align-items: center; min-height: 48px; margin: -8px 0 8px -10px; border: 0; background: transparent; color: var(--primary); font-size: 13px; font-weight: 800; }
+    .info-list { display: grid; gap: 8px; margin-top: 12px; }
+    .info-row { display: flex; gap: 9px; align-items: flex-start; color: var(--ink); font-size: 12px; line-height: 1.4; }
+    .info-row .icon { width: 17px; height: 17px; color: var(--muted); }
+    .context-card { background: var(--surface-tint); }
+    .context-card .row { align-items: flex-start; }
+    .context-card .icon-box, .anchor-icon { display: grid; place-items: center; flex: 0 0 auto; width: 38px; height: 38px; border-radius: 12px; background: var(--primary-soft); color: var(--primary); }
+    .anchor-icon { width: 40px; height: 40px; }
+    .anchor-icon .icon { width: 21px; height: 21px; }
+    .back { display: inline-flex; align-items: center; gap: 6px; min-height: 48px; margin: -8px 0 8px -10px; border: 0; background: transparent; color: var(--primary); font-size: 13px; font-weight: 800; }
+    .back .icon { width: 18px; height: 18px; }
     .outcome-grid { display: grid; gap: 10px; }
-    .outcome { width: 100%; min-height: 54px; padding: 10px 13px; border: 1px solid var(--outline); border-radius: 14px; background: var(--surface-strong); color: var(--ink); text-align: left; }
+    .outcome { display: block; width: 100%; min-height: 58px; padding: 10px 13px; border: 1px solid var(--outline); border-radius: 14px; background: var(--surface-strong); color: var(--ink); text-align: left; }
     .outcome.selected { border: 2px solid var(--primary); background: var(--primary-soft); }
     .outcome strong { display: block; font-size: 14px; }
     .outcome span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
-    .photo-box { display: grid; place-items: center; min-height: 170px; margin: 14px 0; border: 1px dashed #7898c8; border-radius: 18px; background: var(--primary-soft); color: var(--primary-dark); text-align: center; }
+    .choice-list .outcome { min-height: 48px; }
+    .photo-box { display: grid; place-items: center; min-height: 120px; margin: 14px 0; border: 1px dashed #7898c8; border-radius: 18px; background: var(--primary-soft); color: var(--primary-dark); text-align: center; }
+    .photo-box .icon { width: 30px; height: 30px; margin-bottom: 8px; }
     .photo-box b { display: block; margin-bottom: 5px; }
     .photo-box span { color: var(--muted); font-size: 12px; }
-    .note-input { min-height: 100px; padding: 14px; resize: vertical; }
+    .toggle-row { display: flex; gap: 10px; align-items: center; min-height: 48px; color: var(--ink); font-size: 13px; }
+    .toggle-row input { width: 20px; height: 20px; accent-color: var(--primary); }
     .actions { display: grid; gap: 10px; margin-top: 18px; }
-    .stepper { display: flex; align-items: center; gap: 6px; margin: 0 0 18px; }
-    .stepper i { flex: 1; height: 4px; border-radius: 99px; background: var(--outline); }
-    .stepper i.done { background: var(--primary); }
-    .stepper i.current { background: #8aa4d1; }
-    .review-item { display: flex; gap: 10px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--outline); }
-    .review-item:last-child { border-bottom: 0; }
-    .check { width: 24px; height: 24px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 8px; background: var(--green-soft); color: var(--green); font-size: 13px; font-weight: 900; }
-    .review-item b { font-size: 13px; }
-    .review-item span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .future { border-style: dashed; background: #fbfcfe; }
+    .future .future-label { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 10px; color: var(--amber); font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .system-dialog { width: 100%; padding: 24px 18px; border: 1px solid var(--outline); border-radius: 22px; background: var(--surface-strong); box-shadow: var(--shadow); text-align: center; }
+    .system-dialog .icon-box { display: grid; place-items: center; width: 48px; height: 48px; margin: 0 auto 14px; border-radius: 16px; background: var(--primary-soft); color: var(--primary); }
+    .system-dialog h2 { margin: 0; font-size: 22px; }
+    .system-dialog p { margin: 9px 0 18px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .system-note { margin-top: 14px !important; font-size: 11px !important; }
     .side-panel { display: grid; gap: 16px; }
     .panel { padding: 20px; border: 1px solid var(--outline); border-radius: 22px; background: rgba(255,255,255,.76); box-shadow: 0 7px 22px rgba(16,34,53,.06); }
     .panel h2 { margin: 0; font-size: 18px; letter-spacing: -.02em; }
     .panel p { margin: 9px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .basis-badge { display: inline-flex; margin-bottom: 12px; padding: 7px 10px; border-radius: 999px; background: var(--green-soft); color: var(--green); font-size: 11px; font-weight: 900; }
     .flow-map { display: grid; gap: 8px; margin-top: 16px; }
-    .flow-node { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 11px 12px; border-radius: 13px; background: var(--surface-tint); color: var(--ink); font-size: 12px; font-weight: 800; }
+    .flow-node { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 11px 12px; border: 0; border-radius: 13px; background: var(--surface-tint); color: var(--ink); text-align: left; font-size: 12px; font-weight: 800; }
     .flow-node.current { background: var(--primary-soft); color: var(--primary-dark); }
+    .flow-node.future-node { border: 1px dashed var(--outline); background: transparent; }
     .flow-node small { color: var(--muted); font-weight: 600; }
     .flow-arrow { margin: -4px 0 -4px 20px; color: #7e91a8; font-size: 14px; }
     .compare { display: grid; gap: 10px; margin-top: 16px; }
     .compare-row { display: grid; grid-template-columns: 88px 1fr; gap: 10px; font-size: 12px; line-height: 1.4; }
     .compare-row b { color: var(--primary-dark); }
+    .icon-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .icon-list span { display: inline-flex; gap: 6px; align-items: center; padding: 7px 8px; border-radius: 10px; background: var(--surface-tint); color: var(--muted); font-size: 11px; }
     .footer-note { max-width: 1120px; margin: 24px auto 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    [hidden] { display: none !important; }
     @media (max-width: 900px) {
       .app { grid-template-columns: 1fr; }
       .sidebar { padding: 18px; }
@@ -148,182 +165,423 @@
       .rounds { grid-template-columns: 1fr; }
       .main { padding: 20px 12px 36px; }
       .phone-shell { padding: 8px; }
-      .phone { min-height: 720px; }
+      .phone { min-height: 760px; }
     }
   </style>
 </head>
 <body>
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.4 2.9 8.4 7 10 4.1-1.6 7-5.6 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-work" viewBox="0 0 24 24"><path d="M4 7h16v13H4z"/><path d="M8 7V4h8v3M4 12h16M10 12v2h4v-2"/></symbol>
+    <symbol id="i-location" viewBox="0 0 24 24"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-pack" viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.5 7.8 7.5 4.3 7.5-4.3M12 12.1V21"/></symbol>
+    <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-3.3 3.2-5 7-5s6.3 1.7 7 5"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></symbol>
+    <symbol id="i-cloud-check" viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .5-8A5.5 5.5 0 0 0 7 8.5 4.5 4.5 0 0 0 7 18Z"/><path d="m9 14 2 2 4-4"/></symbol>
+    <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="m3 3 18 18M7 18h10a4 4 0 0 0 1.8-7.6A5.5 5.5 0 0 0 8.2 8.2M4.8 13.2A4.5 4.5 0 0 0 7 18"/></symbol>
+    <symbol id="i-sync" viewBox="0 0 24 24"><path d="M4 7h12l-3-3M20 17H8l3 3M16 7a6 6 0 0 1 4 5M8 17a6 6 0 0 1-4-5"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 7h4l1.5-2h5L16 7h4v12H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H6M11 6l-6 6 6 6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24"><path d="m12 4 9 16H3L12 4Z"/><path d="M12 9v5M12 17h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14-4L4 9M4 5v4h4M4 13a8 8 0 0 0 14 4l2-2M20 19v-4h-4"/></symbol>
+    <symbol id="i-outcome" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m8.5 12 2.3 2.3 4.7-4.7"/></symbol>
+  </svg>
+
   <div class="app">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark">HS</div>
-        <div><strong>Height Safety</strong><span>Field flow exploration</span></div>
+        <div class="brand-mark"><svg class="icon"><use href="#i-shield"></use></svg></div>
+        <div><strong>Height Safety</strong><span>2B-aligned field exploration</span></div>
       </div>
-      <div class="side-label">Three design rounds</div>
+      <div class="side-label">Design review set</div>
       <div class="rounds">
-        <button class="round" data-round="1"><b>Round 1 · Structure</b><span>Separate frames and clear action</span></button>
-        <button class="round" data-round="2"><b>Round 2 · Field-first</b><span>Context, sync and coverage</span></button>
-        <button class="round selected" data-round="3"><b>Round 3 · Evidence-safe</b><span>Material 3 and review gates</span></button>
+        <button class="round selected" data-round="1"><b>Built baseline</b><span>Matches current Android screens</span></button>
+        <button class="round" data-round="2"><b>3B-03 capture</b><span>2B evidence controls in one workspace</span></button>
+        <button class="round" data-round="3"><b>Next slice</b><span>Review and sync direction only</span></button>
       </div>
-      <div class="side-note">Fictional prototype. NSW/QLD are recorded context only. No automatic compliance or certification.</div>
+      <div class="side-note">Stage 2B is workflow source of truth. Fictional values mirror the debug build. NSW/QLD stay recorded site context only.</div>
     </aside>
 
     <main class="main">
       <header class="topbar">
         <div>
-          <p class="eyebrow">3B field workflow · selected round 3</p>
-          <h1>Inspect one anchor with confidence.</h1>
-          <p>Context first. Evidence attached to the selected anchor. Save state visible at every step.</p>
+          <p class="eyebrow">3B field workflow · 2B aligned</p>
+          <h1>Make every anchor record easy to understand.</h1>
+          <p>Job context first. One selected anchor at a time. Evidence and local state stay visible.</p>
         </div>
-        <div class="prototype-badge">Prototype · no live auth</div>
+        <div class="prototype-badge">Design only · no app changes</div>
       </header>
 
       <div class="workspace">
-        <section class="phone-shell" aria-label="Clickable phone prototype">
+        <section class="phone-shell" aria-label="Clickable phone design exploration">
           <div class="phone">
             <div class="phone-status"><span>9:41</span><span>Wi-Fi · 84%</span></div>
 
-            <div class="screen center" data-screen="signin">
-              <div class="hero-mark">HS</div>
+            <div class="screen center active" data-screen="signin">
+              <div class="hero-mark"><svg class="icon"><use href="#i-shield"></use></svg></div>
               <h2>Height Safety</h2>
               <p class="lead">Field evidence for installed single-point roof anchors.</p>
-              <div class="field"><label for="company">Company ID</label><input id="company" value="company-a" autocomplete="off"></div>
-              <button class="button primary" data-go="jobs">Continue to jobs</button>
-              <p class="helper">Prototype sign-in only. Identity provider is not connected in this design review.</p>
+              <div class="field"><label for="company">Company ID</label><input id="company" value="aaa" autocomplete="off"></div>
+              <button class="button primary" data-go="signin-loading">Sign in <svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+              <p class="helper">Sign-in uses the configured identity provider. Provider selection remains outside this build.</p>
+            </div>
+
+            <div class="screen center" data-screen="signin-loading">
+              <div class="hero-mark"><svg class="icon"><use href="#i-shield"></use></svg></div>
+              <h2>Inspector sign-in</h2>
+              <p class="lead">Signing in and preparing your authorised field jobs.</p>
+              <div class="field"><label for="company-loading">Company ID</label><input id="company-loading" value="aaa" disabled></div>
+              <button class="button primary" disabled><svg class="icon"><use href="#i-sync"></use></svg> Signing in</button>
+              <p class="helper">Controls remain disabled while the provider/session result is loading.</p>
+            </div>
+
+            <div class="screen center" data-screen="signin-error">
+              <div class="hero-mark"><svg class="icon"><use href="#i-shield"></use></svg></div>
+              <h2>Inspector sign-in</h2>
+              <p class="lead">Access could not be established for this company.</p>
+              <div class="banner error"><svg class="icon"><use href="#i-cloud-off"></use></svg><span>Sign-in error. Correct the company ID or try again when access is available.</span></div>
+              <div class="field"><label for="company-error">Company ID</label><input id="company-error" value="aaa" autocomplete="off"></div>
+              <button class="button primary" data-go="signin-loading">Try again <svg class="icon"><use href="#i-refresh"></use></svg></button>
+            </div>
+
+            <div class="screen" data-screen="jobs-loading">
+              <div class="screen-header"><div class="header-leading"><div class="icon-box"><svg class="icon"><use href="#i-work"></use></svg></div><div><h2>Inspector jobs</h2><p>debug.inspector@example.test<br>Company: aaa</p></div></div><div class="avatar">DI</div></div>
+              <div class="banner"><svg class="icon"><use href="#i-sync"></use></svg><span><b>Syncing jobs</b><br>Waiting for the authorised job list.</span></div>
             </div>
 
             <div class="screen" data-screen="jobs">
-              <div class="screen-header"><div><h2>Inspector jobs</h2><p>Alex Morgan · company-a</p></div><div class="avatar">AM</div></div>
-              <div class="banner good"><i class="dot"></i><span><b>Jobs updated</b><br>Last synchronised just now.</span></div>
-              <div class="section-title"><h3>Ready for field work</h3><span>2 jobs</span></div>
+              <div class="screen-header"><div class="header-leading"><div class="icon-box"><svg class="icon"><use href="#i-work"></use></svg></div><div><h2>Inspector jobs</h2><p>debug.inspector@example.test<br>Company: aaa</p></div></div><div class="avatar">DI</div></div>
+              <div class="banner good"><svg class="icon"><use href="#i-cloud-check"></use></svg><span><b>Jobs updated</b><br>Authorised jobs are available on this device.</span></div>
+              <div class="section-title"><h3>Eligible jobs</h3><span>2 jobs</span></div>
               <div class="job-list">
-                <button class="job-card" data-go="pack"><div class="row"><h3>JOB-001</h3><span class="chip blue">In progress</span></div><p>Brisbane warehouse roof</p><div class="chips"><span class="chip blue">QLD</span><span class="chip">Pack v7</span><span class="chip green">Assigned</span></div><p>12 Sep 2026 · 8 anchors</p></button>
-                <button class="job-card" data-go="pack"><div class="row"><h3>JOB-004</h3><span class="chip">Released</span></div><p>North Brisbane workshop</p><div class="chips"><span class="chip blue">QLD</span><span class="chip">Pack v2</span><span class="chip amber">Available</span></div><p>14 Sep 2026 · 5 anchors</p></button>
+                <article class="job-card">
+                  <div class="row"><h3>DEMO-NSW-001</h3><span class="chip blue">Assigned</span></div>
+                  <div class="info-list">
+                    <div class="info-row"><svg class="icon"><use href="#i-location"></use></svg><span>Jurisdiction: NSW</span></div>
+                    <div class="info-row"><svg class="icon"><use href="#i-work"></use></svg><span>Status: Assigned</span></div>
+                    <div class="info-row"><svg class="icon"><use href="#i-pack"></use></svg><span>Job pack version: 1</span></div>
+                    <div class="info-row"><svg class="icon"><use href="#i-person"></use></svg><span>Assignment: Assigned</span></div>
+                    <div class="info-row"><svg class="icon"><use href="#i-calendar"></use></svg><span>Planned date: 2026-09-03</span></div>
+                  </div>
+                  <button class="button primary" data-go="unlock">Open job pack <svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+                </article>
+                <article class="job-card">
+                  <div class="row"><h3>DEMO-QLD-001</h3><span class="chip blue">Assigned</span></div>
+                  <div class="info-list">
+                    <div class="info-row"><svg class="icon"><use href="#i-location"></use></svg><span>Jurisdiction: QLD</span></div>
+                    <div class="info-row"><svg class="icon"><use href="#i-work"></use></svg><span>Status: Assigned</span></div>
+                    <div class="info-row"><svg class="icon"><use href="#i-pack"></use></svg><span>Job pack version: 1</span></div>
+                    <div class="info-row"><svg class="icon"><use href="#i-person"></use></svg><span>Assignment: Assigned</span></div>
+                    <div class="info-row"><svg class="icon"><use href="#i-calendar"></use></svg><span>Planned date: 2026-09-03</span></div>
+                  </div>
+                  <button class="button primary" data-go="unlock">Open job pack <svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+                </article>
               </div>
-              <div class="actions"><button class="button outline" data-go="signin">Sign out</button></div>
+              <div class="actions"><button class="button outline" data-go="signin"><svg class="icon"><use href="#i-arrow-left"></use></svg> Sign out</button></div>
+            </div>
+
+            <div class="screen" data-screen="jobs-empty">
+              <div class="screen-header"><div class="header-leading"><div class="icon-box"><svg class="icon"><use href="#i-work"></use></svg></div><div><h2>Inspector jobs</h2><p>debug.inspector@example.test<br>Company: aaa</p></div></div><div class="avatar">DI</div></div>
+              <div class="banner good"><svg class="icon"><use href="#i-cloud-check"></use></svg><span><b>Jobs updated</b><br>No authorised jobs are currently available.</span></div>
+              <div class="card" style="text-align:center;padding:28px 18px">
+                <svg class="icon" style="width:40px;height:40px;margin-bottom:10px;color:var(--primary)"><use href="#i-work"></use></svg>
+                <h3>No eligible jobs</h3>
+                <p>Released jobs and jobs assigned to this inspector appear here.</p>
+                <button class="button tonal" style="margin-top:18px" data-go="jobs"><svg class="icon"><use href="#i-refresh"></use></svg> Refresh jobs</button>
+              </div>
+            </div>
+
+            <div class="screen" data-screen="jobs-error">
+              <div class="screen-header"><div class="header-leading"><div class="icon-box"><svg class="icon"><use href="#i-work"></use></svg></div><div><h2>Inspector jobs</h2><p>debug.inspector@example.test<br>Company: aaa</p></div></div><div class="avatar">DI</div></div>
+              <div class="banner error"><svg class="icon"><use href="#i-cloud-off"></use></svg><span><b>Job sync failed</b><br>Unable to sync jobs. Check connection and try again.</span></div>
+              <button class="button primary" data-go="jobs-loading"><svg class="icon"><use href="#i-refresh"></use></svg> Retry</button>
+            </div>
+
+            <div class="screen center" data-screen="unlock">
+              <div class="system-dialog">
+                <div class="icon-box"><svg class="icon"><use href="#i-lock"></use></svg></div>
+                <h2>Unlock Height Safety</h2>
+                <p>Confirm device access to open this job pack.</p>
+                <button class="button primary" data-go="pack-loading">Confirm device access <svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+                <button class="button text" data-go="jobs">Cancel</button>
+                <p class="system-note">System step: the real app uses the platform device-credential prompt before opening the pack.</p>
+              </div>
+            </div>
+
+            <div class="screen center" data-screen="pack-loading">
+              <div class="hero-mark"><svg class="icon"><use href="#i-pack"></use></svg></div>
+              <h2>Downloading job pack</h2>
+              <p class="lead">Preparing the versioned site and expected-anchor snapshot.</p>
+              <button class="button primary" data-go="pack"><svg class="icon"><use href="#i-sync"></use></svg> Continue to job pack</button>
             </div>
 
             <div class="screen" data-screen="pack">
-              <button class="back" data-go="jobs">‹ Jobs</button>
-              <div class="screen-header"><div><h2>Job pack</h2><p>JOB-001 · Brisbane warehouse roof</p></div><span class="chip amber">Saved locally</span></div>
-              <div class="summary-card"><div class="row"><h3>Recorded site context</h3><span class="chip blue">QLD</span></div><p>Shown as recorded context. No legal rule is derived from this value.</p></div>
+              <button class="back" data-go="jobs"><svg class="icon"><use href="#i-arrow-left"></use></svg> Back to jobs</button>
+              <div class="screen-header"><div class="header-leading"><div class="icon-box"><svg class="icon"><use href="#i-pack"></use></svg></div><div><h2>Job pack</h2><p>DEMO-NSW-001<br>Synthetic NSW roof site</p></div></div><span class="chip amber">Available offline</span></div>
+              <div class="card context-card">
+                <div class="row"><div class="header-leading"><div class="icon-box"><svg class="icon"><use href="#i-location"></use></svg></div><div><h3>Recorded site context</h3><p>Site: Synthetic NSW roof site</p></div></div><span class="chip blue">NSW</span></div>
+                <p style="margin-left:48px">NSW or Queensland is recorded site context only. No legal rule is derived here.</p>
+              </div>
               <div class="section-title"><h3>Pack details</h3></div>
-              <div class="summary-card"><p><b>Version</b><br>Job pack v7</p><p><b>Assignment</b><br>Assigned to Alex Morgan</p><p><b>Expected anchors</b><br>8 register items</p></div>
-              <div class="banner"><i class="dot"></i><span>Capture can continue without connection. Local save preserves evidence for later synchronisation.</span></div>
-              <div class="actions"><button class="button primary" data-go="anchors">Open anchor register</button><button class="button outline" data-go="jobs">Not now</button></div>
+              <div class="card">
+                <div class="info-list" style="margin-top:0">
+                  <div class="info-row"><svg class="icon"><use href="#i-pack"></use></svg><span>Job pack version: 1</span></div>
+                  <div class="info-row"><svg class="icon"><use href="#i-work"></use></svg><span>Status: Assigned</span></div>
+                  <div class="info-row"><svg class="icon"><use href="#i-person"></use></svg><span>Assignment: Assigned</span></div>
+                  <div class="info-row"><svg class="icon"><use href="#i-location"></use></svg><span>Address: 1 Debug Street</span></div>
+                  <div class="info-row"><svg class="icon"><use href="#i-calendar"></use></svg><span>Offline access until: 2026-09-04</span></div>
+                </div>
+                <p style="margin-top:12px;color:var(--green);font-weight:800"><svg class="icon" style="vertical-align:middle;margin-right:4px"><use href="#i-cloud-check"></use></svg>Downloaded and stored securely</p>
+              </div>
+              <div class="banner"><svg class="icon"><use href="#i-info"></use></svg><span>Downloading a pack does not change job workflow state. Local evidence remains visible for later synchronisation.</span></div>
+              <div class="section-title"><h3>Expected anchors</h3><span>1 register item</span></div>
+              <div class="anchor-list">
+                <article class="anchor-row">
+                  <div class="row"><div class="header-leading"><div class="anchor-icon"><svg class="icon"><use href="#i-shield"></use></svg></div><div><h3>A-001</h3><p>Location: North roof, grid A-1</p></div></div><span class="chip amber">Open</span></div>
+                  <div class="info-list"><div class="info-row"><svg class="icon"><use href="#i-work"></use></svg><span>Status: Active</span></div><div class="info-row"><svg class="icon"><use href="#i-info"></use></svg><span>Evidence: Not started</span></div></div>
+                  <button class="button primary" data-go="capture"><svg class="icon"><use href="#i-camera"></use></svg> Capture evidence</button>
+                </article>
+              </div>
             </div>
 
-            <div class="screen" data-screen="anchors">
-              <button class="back" data-go="pack">‹ Job pack</button>
-              <div class="screen-header"><div><h2>Anchor register</h2><p>JOB-001 · Pack v7</p></div><span class="chip amber">Local</span></div>
-              <div class="section-title"><h3>Coverage progress</h3><span>3 of 8 covered</span></div>
-              <div class="progress"><i></i></div>
-              <div class="anchor-list" style="margin-top:16px">
-                <button class="anchor-row" data-go="capture"><div class="row"><div class="row" style="justify-content:flex-start"><div class="anchor-icon">A1</div><div><h3>A-001</h3><p>North roof line · 2 photos</p></div></div><span class="chip green">Ready</span></div></button>
-                <button class="anchor-row" data-go="capture"><div class="row"><div class="row" style="justify-content:flex-start"><div class="anchor-icon">A2</div><div><h3>A-002</h3><p>North roof line · no evidence</p></div></div><span class="chip amber">Open</span></div></button>
-                <button class="anchor-row" data-go="capture"><div class="row"><div class="row" style="justify-content:flex-start"><div class="anchor-icon">A3</div><div><h3>A-003</h3><p>East roof line · 1 photo</p></div></div><span class="chip green">Ready</span></div></button>
-              </div>
-              <div class="actions"><button class="button primary" data-go="capture">Open selected anchor</button></div>
+            <div class="screen" data-screen="pack-error">
+              <button class="back" data-go="jobs"><svg class="icon"><use href="#i-arrow-left"></use></svg> Back to jobs</button>
+              <div class="screen-header"><div class="header-leading"><div class="icon-box"><svg class="icon"><use href="#i-pack"></use></svg></div><div><h2>Job pack</h2><p>DEMO-NSW-001</p></div></div></div>
+              <div class="banner error"><svg class="icon"><use href="#i-warning"></use></svg><span><b>Job-pack access unavailable</b><br>Retry when safe. Any local evidence remains preserved.</span></div>
+              <button class="button primary" data-go="pack-loading"><svg class="icon"><use href="#i-refresh"></use></svg> Retry</button>
             </div>
 
             <div class="screen" data-screen="capture">
-              <button class="back" data-go="anchors">‹ Anchor register</button>
-              <div class="screen-header"><div><h2>Anchor A-001</h2><p>North roof line · selected anchor</p></div><span class="chip amber">Not submitted</span></div>
-              <div class="banner good"><i class="dot"></i><span>Changes save locally as you work.</span></div>
-              <div class="section-title"><h3>Recorded outcome</h3><span>Required</span></div>
-              <div class="outcome-grid">
-                <button class="outcome selected"><strong>Serviceable</strong><span>Inspector-entered recorded outcome</span></button>
-                <button class="outcome"><strong>Defective</strong><span>Requires defect description</span></button>
-                <button class="outcome"><strong>Not inspected</strong><span>Requires exception reason</span></button>
-                <button class="outcome"><strong>Further assessment required</strong><span>Record reason and follow-up</span></button>
+              <button class="back" data-go="pack"><svg class="icon"><use href="#i-arrow-left"></use></svg> Back to job pack</button>
+              <div class="screen-header"><div class="header-leading"><div class="icon-box"><svg class="icon"><use href="#i-shield"></use></svg></div><div><h2>Anchor capture</h2><p>DEMO-NSW-001 · selected anchor</p></div></div><span class="chip amber">Local draft</span></div>
+
+              <div class="card context-card">
+                <div class="row"><div class="header-leading"><div class="anchor-icon"><svg class="icon"><use href="#i-shield"></use></svg></div><div><h3>A-001</h3><p>Location: North roof, grid A-1</p></div></div><span class="chip blue">NSW</span></div>
+                <p style="margin-left:50px">Evidence stays associated with this anchor inspection.</p>
               </div>
-              <div class="actions"><button class="button primary" data-go="evidence">Add evidence</button></div>
+
+              <div class="section-title"><h3>Anchor record</h3><span>Keep identities separate</span></div>
+              <div class="choice-list">
+                <button class="outcome selected"><strong>Expected register anchor</strong><span>Use the selected record from the job pack.</span></button>
+                <button class="outcome"><strong>Newly discovered anchor</strong><span>Create a provisional ID, location and evidence.</span></button>
+                <button class="outcome"><strong>Replacement proposal</strong><span>Link old and new records for reviewer decision.</span></button>
+                <button class="outcome"><strong>Duplicate proposal</strong><span>Keep both identities until office review resolves them.</span></button>
+              </div>
+
+              <div class="section-title"><h3>Recorded outcome</h3><span>Inspector-entered</span></div>
+              <div class="outcome-grid" id="outcome-options">
+                <button class="outcome selected" data-outcome="serviceable"><strong>Serviceable</strong><span>Record observations supporting this entered result.</span></button>
+                <button class="outcome" data-outcome="defective"><strong>Defective</strong><span>Requires defect description and supporting observation.</span></button>
+                <button class="outcome" data-outcome="not-inspected"><strong>Not inspected</strong><span>Requires an exception reason; no serviceability implication.</span></button>
+                <button class="outcome" data-outcome="further-assessment"><strong>Further assessment required</strong><span>Record reason and recommended follow-up or review note.</span></button>
+              </div>
+
+              <div class="card" id="exception-card" hidden style="margin-top:14px;background:var(--amber-soft)">
+                <h3>Exception reason</h3>
+                <p>Choose why expected inspection could not be completed normally.</p>
+                <div class="choice-list" style="margin-top:10px">
+                  <button class="outcome"><strong>Inaccessible</strong><span>Record available context or photo.</span></button>
+                  <button class="outcome"><strong>Unable to locate</strong><span>Preserve expected item and record search/location context.</span></button>
+                </div>
+              </div>
+
+              <div class="section-title"><h3>Confirmation</h3></div>
+              <div class="card">
+                <label class="toggle-row"><input type="checkbox"> Identity confirmed</label>
+                <label class="toggle-row"><input type="checkbox"> Location confirmed</label>
+              </div>
+
+              <div class="section-title"><h3>Disposition</h3></div>
+              <div class="card"><label class="toggle-row"><input type="checkbox"> Removed from service recorded</label><p>Software does not perform or verify physical isolation.</p></div>
+
+              <div class="section-title"><h3>Evidence details</h3></div>
+              <div class="field"><label for="observations">Observations</label><textarea class="note-input" id="observations" placeholder="Enter what was observed…"></textarea></div>
+              <div class="card" id="conditional-evidence" hidden style="margin-top:12px">
+                <h3 id="conditional-title">Conditional evidence</h3>
+                <p id="conditional-copy">Additional detail is required for this recorded outcome.</p>
+                <div class="field"><label for="conditional-note">Detail</label><textarea class="note-input" id="conditional-note" placeholder="Enter supporting detail…"></textarea></div>
+              </div>
+
+              <div class="section-title"><h3>Proof test <span style="font-weight:normal">(optional)</span></h3></div>
+              <div class="card">
+                <p>Entered evidence only. No pass or compliance result is calculated.</p>
+                <div class="field"><label for="load">Load</label><input id="load" placeholder="Enter load if performed"></div>
+                <div class="field"><label for="hold">Hold</label><input id="hold" placeholder="Enter hold if performed"></div>
+                <div class="field"><label for="result">Result</label><input id="result" placeholder="Enter recorded result"></div>
+                <div class="field"><label for="equipment">Equipment reference</label><input id="equipment" placeholder="Enter equipment/reference"></div>
+              </div>
+
+              <div class="section-title"><h3>Photos</h3><span id="photo-count">0 attached</span></div>
+              <div class="card">
+                <div class="photo-box"><svg class="icon"><use href="#i-camera"></use></svg><div><b>No photos attached</b><span>Capture keeps this photo associated with A-001.</span></div></div>
+                <button class="button tonal" id="capture-photo"><svg class="icon"><use href="#i-camera"></use></svg> Capture photo</button>
+              </div>
+
+              <div class="banner good" id="save-state" style="margin-top:16px"><svg class="icon"><use href="#i-info"></use></svg><span>Draft changes are local until synchronisation.</span></div>
+              <div class="actions"><button class="button primary" id="save-draft"><svg class="icon"><use href="#i-check"></use></svg> Save evidence locally</button></div>
             </div>
 
-            <div class="screen" data-screen="evidence">
-              <button class="back" data-go="capture">‹ Anchor A-001</button>
-              <div class="screen-header"><div><h2>Evidence</h2><p>Attached to anchor A-001</p></div><span class="chip green">Local save</span></div>
-              <div class="photo-box"><div><b>＋ Add photo</b><span>Photo remains associated with A-001</span></div></div>
-              <div class="field"><label for="notes">Observation note</label><textarea id="notes" class="note-input">Fictional observation for design review.</textarea></div>
-              <div class="summary-card"><div class="row"><h3>Recorded outcome</h3><span class="chip green">Serviceable</span></div><p>Outcome remains an inspector-entered record. Product does not infer compliance.</p></div>
-              <div class="actions"><button class="button primary" data-go="review">Review inspection</button></div>
+            <div class="screen" data-screen="future-review">
+              <div class="screen-header"><div class="header-leading"><div class="icon-box"><svg class="icon"><use href="#i-outcome"></use></svg></div><div><h2>Review &amp; submission</h2><p>Exact inspection revision</p></div></div><span class="chip amber">Future slice</span></div>
+              <div class="card future"><div class="future-label"><svg class="icon"><use href="#i-info"></use></svg> Not built in current app</div><h3>Review before submission</h3><p>Design direction for 3B-04. Show coverage, conditional-field issues, photo/mutation states, conflicts and requested changes before freezing a local submitted revision.</p></div>
+              <div class="section-title"><h3>Hard blockers</h3><span>Cannot be waived</span></div>
+              <div class="card">
+                <div class="info-row"><svg class="icon" style="color:var(--red)"><use href="#i-warning"></use></svg><span>Expected anchor has no coverage record.</span></div>
+                <div class="info-row"><svg class="icon" style="color:var(--red)"><use href="#i-warning"></use></svg><span>Photo is pending, failed or has an integrity issue.</span></div>
+                <div class="info-row"><svg class="icon" style="color:var(--red)"><use href="#i-warning"></use></svg><span>Mutation is pending, failed or in conflict.</span></div>
+              </div>
+              <div class="actions"><button class="button outline" data-go="capture"><svg class="icon"><use href="#i-arrow-left"></use></svg> Return to capture</button></div>
             </div>
 
-            <div class="screen" data-screen="review">
-              <button class="back" data-go="evidence">‹ Evidence</button>
-              <div class="screen-header"><div><h2>Review before save</h2><p>A-001 · JOB-001</p></div><span class="chip amber">1 of 8</span></div>
-              <div class="stepper"><i class="done"></i><i class="done"></i><i class="current"></i><i></i></div>
-              <div class="summary-card"><div class="review-item"><div class="check">✓</div><div><b>Recorded outcome</b><span>Serviceable</span></div></div><div class="review-item"><div class="check">✓</div><div><b>Evidence association</b><span>Photo and note attached to A-001</span></div></div><div class="review-item"><div class="check">✓</div><div><b>Sync state</b><span>Saved locally · not yet synchronised</span></div></div></div>
-              <div class="banner"><i class="dot"></i><span>Review completion is separate from technical judgement or professional approval.</span></div>
-              <div class="actions"><button class="button primary" data-go="sync">Save locally</button><button class="button outline" data-go="capture">Edit evidence</button></div>
-            </div>
-
-            <div class="screen" data-screen="sync">
-              <div class="screen-header"><div><h2>Saved locally</h2><p>Evidence is safe on this device</p></div><div class="avatar">✓</div></div>
-              <div class="banner good"><i class="dot"></i><span><b>Local save complete</b><br>Submission intent waits for a later connected sync.</span></div>
-              <div class="summary-card"><h3>Next step</h3><p>Continue remaining anchors. When connected, synchronisation can move this evidence to the server. Failed uploads or conflicts remain visible.</p></div>
-              <div class="actions"><button class="button primary" data-go="anchors">Return to register</button><button class="button outline" data-go="jobs">Back to jobs</button></div>
+            <div class="screen" data-screen="future-sync">
+              <div class="screen-header"><div class="header-leading"><div class="icon-box"><svg class="icon"><use href="#i-cloud-check"></use></svg></div><div><h2>Sync states</h2><p>Visible evidence lifecycle</p></div></div><span class="chip amber">Future slice</span></div>
+              <div class="card future"><div class="future-label"><svg class="icon"><use href="#i-info"></use></svg> Not built in current app</div><h3>Never hide local state</h3><p>Design direction for later mutation and photo upload work. Retry uses stable identities and conflicts stay visible.</p></div>
+              <div class="chips">
+                <span class="chip">Local</span><span class="chip amber">Pending</span><span class="chip blue">Synchronising</span><span class="chip green">Synchronised</span><span class="chip red">Failed</span><span class="chip red">Conflict</span>
+              </div>
+              <div class="actions"><button class="button outline" data-go="capture"><svg class="icon"><use href="#i-arrow-left"></use></svg> Return to capture</button></div>
             </div>
           </div>
         </section>
 
         <aside class="side-panel">
-          <section class="panel"><h2 id="round-title">Round 3 · Evidence-safe</h2><p id="round-description">Material 3 roles, explicit recorded outcomes, anchor-scoped evidence and a review gate.</p><div class="compare"><div class="compare-row"><b>Better than</b><span id="round-better">Round 2: adds evidence integrity and accessibility without adding legal inference.</span></div><div class="compare-row"><b>Primary gain</b><span id="round-gain">Field user sees what is recorded, what is local, and what remains.</span></div></div></section>
-          <section class="panel"><h2>Flow</h2><div class="flow-map"><div class="flow-node current" data-flow="signin">Sign in <small>provider-neutral</small></div><div class="flow-arrow">↓</div><div class="flow-node" data-flow="jobs">Eligible jobs <small>job context</small></div><div class="flow-arrow">↓</div><div class="flow-node" data-flow="pack">Job pack <small>version + lease</small></div><div class="flow-arrow">↓</div><div class="flow-node" data-flow="anchors">Anchor register <small>coverage</small></div><div class="flow-arrow">↓</div><div class="flow-node" data-flow="capture">Capture <small>recorded outcome</small></div><div class="flow-arrow">↓</div><div class="flow-node" data-flow="evidence">Evidence <small>anchor association</small></div><div class="flow-arrow">↓</div><div class="flow-node" data-flow="review">Review <small>local save</small></div><div class="flow-arrow">↓</div><div class="flow-node" data-flow="sync">Sync state <small>visible</small></div></div></section>
-          <section class="panel"><h2>Review guardrails</h2><p>NSW/QLD stays recorded context. No screen says certified, compliant, passed, engineer-approved or standards-approved.</p><p>Prototype uses fictional data. Live authentication and durable offline storage remain outside this design artifact.</p></section>
+          <section class="panel">
+            <span class="basis-badge">Source of truth · Stage 2B</span>
+            <h2 id="round-title">Built baseline</h2>
+            <p id="round-description">Current Android screens: sign-in, authorized jobs, versioned job pack and one selected-anchor capture workspace.</p>
+            <div class="compare">
+              <div class="compare-row"><b>Align to</b><span id="round-better">FieldScreen state and Stage 2B concepts. No invented routes.</span></div>
+              <div class="compare-row"><b>Primary gain</b><span id="round-gain">User sees job context, expected anchor and local evidence state before acting.</span></div>
+            </div>
+          </section>
+          <section class="panel">
+            <h2>Flow</h2>
+            <div class="flow-map">
+              <button class="flow-node current" data-flow="signin">Sign in <small>built</small></button>
+              <div class="flow-arrow">↓</div>
+              <button class="flow-node" data-flow="jobs">Eligible jobs <small>built</small></button>
+              <div class="flow-arrow">↓</div>
+              <button class="flow-node" data-flow="pack">Job pack <small>built</small></button>
+              <div class="flow-arrow">↓</div>
+              <button class="flow-node" data-flow="capture">Anchor capture <small>3B-03</small></button>
+              <div class="flow-arrow">↓</div>
+              <button class="flow-node future-node" data-flow="future-review">Review &amp; submission <small>future</small></button>
+              <div class="flow-arrow">↓</div>
+              <button class="flow-node future-node" data-flow="future-sync">Sync states <small>future</small></button>
+            </div>
+          </section>
+          <section class="panel">
+            <h2>2B guardrails</h2>
+            <p>Recorded outcome, exception, reconciliation, disposition, synchronisation and review issue stay separate. NSW/QLD is recorded site context only.</p>
+            <div class="icon-list">
+              <span><svg class="icon"><use href="#i-work"></use> Work</span>
+              <span><svg class="icon"><use href="#i-location"></use> Location</span>
+              <span><svg class="icon"><use href="#i-pack"></use> Pack</span>
+              <span><svg class="icon"><use href="#i-camera"></use> Photo</span>
+              <span><svg class="icon"><use href="#i-warning"></use> Attention</span>
+            </div>
+          </section>
         </aside>
       </div>
-      <p class="footer-note">Design exploration only · use the Brilliant storyboard for visual comparison and this HTML file for click simulation.</p>
+      <p class="footer-note">Design exploration only · fictional debug values · future surfaces are labelled · no certification, compliance or professional approval claim.</p>
     </main>
   </div>
 
   <script>
     const roundData = {
       1: {
-        title: 'Round 1 · Structure repair',
-        description: 'Separate phone frames, one clear header and one primary action.',
-        better: 'Baseline: removes the current blank, clipped and overlapping gallery treatment.',
-        gain: 'Readable hierarchy and clear next action.'
+        title: 'Built baseline',
+        description: 'Current Android screens: sign-in, authorized jobs, versioned job pack and one selected-anchor capture workspace.',
+        better: 'FieldScreen state and Stage 2B concepts. No invented routes.',
+        gain: 'User sees job context, expected anchor and local evidence state before acting.'
       },
       2: {
-        title: 'Round 2 · Field-first context',
-        description: 'Adds job-pack metadata, persistent sync state and anchor coverage.',
-        better: 'Round 1: tells field user which job, pack and work remain.',
-        gain: 'Context and local-save confidence before capture.'
+        title: '3B-03 capture',
+        description: 'One selected-anchor workspace carries the 2B evidence model without splitting evidence into disconnected screens.',
+        better: 'The prior exploration: removes a separate evidence route that is not in the built app.',
+        gain: 'Reconciliation, outcome, exception, disposition, proof-test and photo association stay visible together.'
       },
       3: {
-        title: 'Round 3 · Evidence-safe',
-        description: 'Material 3 roles, explicit recorded outcomes, anchor-scoped evidence and review gate.',
-        better: 'Round 2: adds accessibility and evidence integrity without legal inference.',
-        gain: 'Consistent UI plus visible evidence and sync boundaries.'
+        title: 'Next slice',
+        description: 'Review/submission and complete sync states remain a clearly labelled direction for later tickets.',
+        better: 'Premature implementation: keeps current behavior honest and leaves review authority explicit.',
+        gain: 'Owner can validate future wording without mistaking it for current Android behavior.'
       }
     };
-    let currentRound = '3';
-    let currentScreen = 'signin';
     const screens = [...document.querySelectorAll('[data-screen]')];
     const flowNodes = [...document.querySelectorAll('[data-flow]')];
+    let currentScreen = 'signin';
+
     function show(screen) {
       currentScreen = screen;
       screens.forEach(item => item.classList.toggle('active', item.dataset.screen === screen));
       flowNodes.forEach(item => item.classList.toggle('current', item.dataset.flow === screen));
     }
-    function selectRound(round) {
-      currentRound = round;
-      document.querySelectorAll('.round').forEach(item => item.classList.toggle('selected', item.dataset.round === round));
-      const data = roundData[round];
-      document.querySelector('#round-title').textContent = data.title;
-      document.querySelector('#round-description').textContent = data.description;
-      document.querySelector('#round-better').textContent = data.better;
-      document.querySelector('#round-gain').textContent = data.gain;
-    }
-    document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => show(button.dataset.go)));
-    document.querySelectorAll('.round').forEach(button => button.addEventListener('click', () => selectRound(button.dataset.round)));
-    document.querySelectorAll('.outcome').forEach(button => button.addEventListener('click', () => {
-      document.querySelectorAll('.outcome').forEach(item => item.classList.remove('selected'));
-      button.classList.add('selected');
-    }));
+
+    document.querySelectorAll('[data-go]').forEach(button => {
+      button.addEventListener('click', () => {
+        const target = button.dataset.go;
+        show(target);
+      });
+    });
+
     flowNodes.forEach(node => node.addEventListener('click', () => show(node.dataset.flow)));
-    selectRound(currentRound);
+
+    document.querySelectorAll('.round').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.round').forEach(item => item.classList.toggle('selected', item.dataset.round === button.dataset.round));
+        const data = roundData[button.dataset.round];
+        document.querySelector('#round-title').textContent = data.title;
+        document.querySelector('#round-description').textContent = data.description;
+        document.querySelector('#round-better').textContent = data.better;
+        document.querySelector('#round-gain').textContent = data.gain;
+      });
+    });
+
+    document.querySelectorAll('#outcome-options .outcome').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('#outcome-options .outcome').forEach(item => item.classList.remove('selected'));
+        button.classList.add('selected');
+        const outcome = button.dataset.outcome;
+        const exception = document.querySelector('#exception-card');
+        const conditional = document.querySelector('#conditional-evidence');
+        const title = document.querySelector('#conditional-title');
+        const copy = document.querySelector('#conditional-copy');
+        exception.hidden = outcome !== 'not-inspected';
+        conditional.hidden = outcome === 'serviceable' || outcome === 'not-inspected';
+        if (outcome === 'defective') {
+          title.textContent = 'Defect description';
+          copy.textContent = 'At least one defect description and supporting observation are required.';
+        } else if (outcome === 'further-assessment') {
+          title.textContent = 'Recommendation or follow-up';
+          copy.textContent = 'Record reason and recommended follow-up or review note.';
+        }
+      });
+    });
+
+    document.querySelectorAll('.choice-list .outcome').forEach(button => {
+      button.addEventListener('click', () => {
+        const siblings = [...button.parentElement.querySelectorAll('.outcome')];
+        siblings.forEach(item => item.classList.remove('selected'));
+        button.classList.add('selected');
+      });
+    });
+
+    document.querySelector('#capture-photo').addEventListener('click', () => {
+      document.querySelector('#photo-count').textContent = '1 attached';
+      document.querySelector('#capture-photo').innerHTML = '<svg class="icon"><use href="#i-camera"></use></svg> Capture another photo';
+    });
+
+    document.querySelector('#save-draft').addEventListener('click', () => {
+      const banner = document.querySelector('#save-state');
+      banner.classList.add('good');
+      banner.innerHTML = '<svg class="icon"><use href="#i-cloud-check"></use></svg><span><b>Saved locally on this device.</b><br>Submission waits for a later connected sync.</span>';
+    });
+
     show(currentScreen);
   </script>
 </body>

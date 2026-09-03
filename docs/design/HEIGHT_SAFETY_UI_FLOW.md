@@ -1,96 +1,111 @@
 # Height Safety UI flow proposal
 
-Status: design exploration only. The current Android screen is a bounded
-3B-03 implementation; this proposal is not approved production redesign.
+Status: ready for owner validation. Design exploration only; no Android code is
+changed by this alignment pass.
 
-Purpose: replace the current 3B-01 visual direction with a field-first,
-Material 3-informed flow for owner review before implementation.
+Purpose: align the 3B visual exploration with the built Android field screens
+and the canonical Stage 2B workflow before any further UI implementation.
 
-## Product boundary
+## Source of truth
 
-This proposal covers the inspector's field path:
+- Workflow and field meaning:
+  [Stage 2B Anchor Workflow Specification](../requirements/STAGE_2B_WORKFLOW_SPEC.md).
+- Built screen behavior:
+  [Android 3B UI alignment](ANDROID_3B_UI_ALIGNMENT.md) and
+  `apps/android/app/src/main/kotlin/au/com/heightsafety/app/FieldScreen.kt`.
+- Current capture boundary:
+  [Android 3B-03 screen reference](ANDROID_3B_03_SCREEN_REFERENCE.md).
 
-`Sign in` → `Eligible jobs` → `Job pack` → `Anchor register` → `Anchor capture`
-→ `Evidence` → `Review and save/submit`
+The design is fictional and reviewable. It does not approve production Android
+UI, validate partner terminology or expand product scope.
 
-The prototype uses fictional values only. `NSW` and `QLD` are displayed as
-recorded site context. Nothing in the flow calculates or asserts legal rules,
-certification, standards compliance or professional approval.
+## Built flow to align
 
-## Design direction
+`Sign in` → `Eligible jobs` → `Job pack` → `Anchor capture`
 
-- Calm light surface with deep slate text and blue primary actions.
-- Amber reserved for attention, pending evidence and review-needed context.
-- Red reserved for errors or hard blockers.
-- Strong job/site context at top of every working screen.
-- One primary action per screen.
-- Minimum 48dp equivalent target for every interactive control.
-- Compact cards with restrained elevation and consistent M3 shape levels.
-- Persistent local/sync state; no hidden offline behavior.
-- Anchor-scoped photo, note, defect and recommendation evidence.
-- `Recorded outcome` label remains explicit and neutral.
+The opened job pack contains the expected anchor register. Anchor evidence is
+captured in one selected-anchor workspace. There is no separate anchor-register
+or evidence route in the current app.
 
-## Iteration record
+Built state coverage:
 
-### Round 1 — structure repair
+- signed out, signing in, sign-in/session error;
+- loading, loaded, empty and failed job sync;
+- job-pack device-credential gate, loading, opened and error; and
+- anchor draft editing, local save, local-save error and CameraX launch.
 
-Change: separate phone frames, remove nested full-screen gallery surfaces,
-introduce one header and one primary action.
+## 2B field controls
 
-Why better: fixes the current blank/overlapping gallery and makes the flow
-readable at a glance.
+The selected-anchor workspace keeps these concepts separate:
 
-### Round 2 — field-first workflow
+- register reconciliation: expected, newly discovered, replacement and
+  duplicate proposal;
+- recorded outcome: Serviceable, Defective, Not inspected or Further assessment
+  required;
+- exception reason: Inaccessible or Unable to locate when Not inspected;
+- identity/location confirmation;
+- disposition: Removed from service recorded;
+- observations, notes, defects and recommendations;
+- optional entered proof-test load, hold, result, equipment/reference and
+  associated evidence; and
+- photos with explicit anchor-inspection association.
 
-Change: add job-pack metadata, persistent sync status, anchor coverage count,
-and an evidence count on each anchor.
+Every expected anchor must be accounted for before local submission. Conditional
+relationships remain visible as validation issues. The UI must not calculate a
+pass, compliance result or technical conclusion.
 
-Why better than Round 1: field user sees what job is active, what pack version
-is being used, what work remains and whether local work is safely saved.
+## Visual direction
 
-### Round 3 — M3 and evidence integrity
+- Calm light surface, deep slate text, blue primary actions.
+- Amber for local/pending/review attention; green for saved/synchronised
+  information; red only for failure or hard blocker.
+- Compact Material 3 cards, clear section hierarchy and minimum 48dp targets.
+- Text plus useful icons for work, location, pack, calendar, sync, lock, anchor,
+  camera, warning and local save. Icons never replace labels or state text.
+- Strong job/site/pack context before capture.
+- Phone-first layout with clean reflow on larger windows.
+- One primary action per screen or section; local save remains distinct from
+  server submission.
 
-Change: use semantic colour roles, M3 type/shape hierarchy, 48dp controls,
-explicit recorded-outcome wording, anchor-scoped evidence and a final review
-gate.
+Colour tokens carried from exploration:
 
-Why better than Round 2: visual system becomes consistent and accessible while
-the flow directly reflects offline evidence rules and avoids unsupported
-compliance claims.
+| Role | Value |
+| --- | --- |
+| Deep slate | `#102235` |
+| Primary blue | `#2E5AAC` |
+| Soft blue | `#E2EAFE` |
+| Attention amber | `#815800` / `#FFF0D6` |
+| Saved green | `#17633A` / `#E2F3EA` |
+| Failure red | `#A33B3B` / `#FDE7E5` |
 
-## Proposed clickable path
+## Future surfaces
 
-1. `Sign in`: company ID, provider-neutral note, prototype-only success action.
-2. `Eligible jobs`: job reference, site, recorded jurisdiction, status, pack
-   version, assignment and sync state.
-3. `Job pack`: confirm version, site context and local authorisation state.
-4. `Anchor register`: expected anchors, coverage progress and evidence counts.
-5. `Anchor capture`: one selected anchor, observations and neutral recorded
-   outcome choices.
-6. `Evidence`: photo placeholder, note, defect/recommendation context and
-   anchor association.
-7. `Review`: coverage, missing evidence and recorded outcomes before local
-   save or submission intent.
-8. `Sync`: local, pending, synchronising, synchronised, failed and conflict
-   examples.
+Review/submission and complete pending/uploaded/failed/conflict handling remain
+future design surfaces for 3B-04 and 3C. They are labelled as future in the
+clickable exploration and are not represented as built Android screens.
+
+Future review must show hard blockers, warnings requiring reviewer disposition,
+requested changes, exact snapshot approval and neutral draft-report handoff.
+It must not silently rewrite inspector evidence or claim certification,
+compliance, engineer approval or standards approval.
 
 ## Owner review checklist
 
-- Can a field user identify job, site and pack version immediately?
-- Is recorded NSW/QLD context visible without implying a legal result?
-- Is next action obvious on every screen?
-- Can user distinguish local save from synchronised server state?
-- Is every photo/note visibly attached to selected anchor?
-- Are `Not inspected` and `Further assessment required` visibly distinct?
-- Does any label imply certification, compliance, approval or engineer review?
-- Does layout remain usable on phone and tablet widths?
+- Does screen order match field work: job, pack, expected anchor, capture?
+- Can user find job reference, site, recorded jurisdiction, pack version and
+  local/sync state before capture?
+- Are reconciliation, recorded outcome, exception and disposition visibly
+  distinct?
+- Is every photo/note visibly tied to the selected anchor inspection?
+- Are Not inspected and Further assessment required clearly different?
+- Are proposed icons readable in field conditions and with assistive technology?
+- Which future review/submit wording needs practitioner validation?
 
 ## Artifacts
 
-- [Research note](../discovery/STAGE_3B_UI_RESEARCH.md)
-- [Brilliant storyboard](height-safety-3b-flow.bl)
+- [2B-aligned screen map](ANDROID_3B_UI_ALIGNMENT.md)
+- [3B-01 reference](ANDROID_3B_01_SCREEN_REFERENCE.md)
+- [3B-02 reference](ANDROID_3B_02_SCREEN_REFERENCE.md)
+- [3B-03 reference](ANDROID_3B_03_SCREEN_REFERENCE.md)
 - [Clickable HTML flow](height-safety-3b-flow.html)
-
-The native Brilliant canvas `Height Safety/3B UI Exploration` is now created
-and visually checked. Brilliant remains a static design canvas, so use the
-HTML companion when click simulation is required.
+- [Portable Brilliant storyboard](height-safety-3b-flow.bl)

@@ -226,6 +226,74 @@ class FieldScreenTest {
     }
 
     @Test
+    fun openedJobPackOffersNewlyDiscoveredAnchorCapture() {
+        val anchor = JobPackAnchor(
+            companyId = "company-a",
+            anchorId = "anchor-001",
+            siteId = "site-001",
+            label = "A-001",
+            registerId = "REG-001",
+            location = "North roof",
+            anchorType = "single_point",
+            manufacturer = null,
+            model = null,
+            installContext = null,
+            registerStatus = "active",
+            notes = null,
+            createdAtEpochMillis = 1L,
+            updatedAtEpochMillis = 2L,
+        )
+        val pack = FieldJobPack(
+            companyId = "company-a",
+            jobId = "job-001",
+            siteId = "site-001",
+            jurisdiction = SupportedJurisdiction.NSW,
+            reference = "JOB-001",
+            plannedDate = "2026-09-15",
+            workflowStatus = "assigned",
+            jobPackVersion = 7L,
+            siteName = "Site A",
+            siteAddress = "1 Example Street",
+            siteReference = "SITE-A",
+            accessNotes = null,
+            anchors = listOf(anchor),
+        )
+        val lease = OfflineAuthorizationLease(
+            companyId = "company-a",
+            userId = "inspector-a",
+            jobId = "job-001",
+            issuedAtEpochMillis = 1_000L,
+            expiresAtEpochMillis = 86_401_000L,
+            issuedAtElapsedRealtimeMillis = 500L,
+        )
+        var addClicked = false
+        composeTestRule.setContent {
+            FieldScreen(
+                state = FieldUiState.JobPackOpened(
+                    account = account(),
+                    jobs = listOf(job()),
+                    job = job(),
+                    opened = OpenedJobPack(
+                        StoredJobPack(pack, lease),
+                        JobPackOpenSource.CACHED,
+                    ),
+                ),
+                onSignIn = {},
+                onRetry = {},
+                onRefresh = {},
+                onSignOut = {},
+                onAddDiscoveredAnchor = { addClicked = true },
+            )
+        }
+
+        composeTestRule.onNodeWithText("Record newly discovered anchor")
+            .performScrollTo()
+            .performClick()
+
+        assertTrue(addClicked)
+    }
+
+    @Test
     fun anchorCaptureUsesNeutralOutcomeAndLocalSaveAction() {
         val anchor = JobPackAnchor(
             companyId = "company-a",

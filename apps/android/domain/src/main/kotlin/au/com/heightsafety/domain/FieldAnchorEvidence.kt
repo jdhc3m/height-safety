@@ -154,6 +154,34 @@ public data class AnchorInspectionDraft(
     /** Full Stage 2B capture gate. Local drafts may remain incomplete. */
     public fun validationIssues(pack: FieldJobPack): List<CaptureValidationIssue> {
         val issues = identityIssues(pack).toMutableList()
+        issues += reconciliationIdentityIssues(pack)
+        when (reconciliationProposal) {
+            ReconciliationProposal.NEWLY_DISCOVERED -> {
+                if (!hasText(location)) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_LOCATION_CONTEXT,
+                        "Record location context for the newly discovered anchor.",
+                    )
+                }
+            }
+            ReconciliationProposal.REPLACEMENT -> {
+                if (!hasText(location)) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_LOCATION_CONTEXT,
+                        "Record location context for the replacement proposal.",
+                    )
+                }
+            }
+            ReconciliationProposal.DUPLICATE -> {
+                if (!hasText(reconciliationReferenceId)) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_RECONCILIATION_REFERENCE,
+                        "Record the related anchor reference for review.",
+                    )
+                }
+            }
+            null -> Unit
+        }
         when (recordedOutcome) {
             null -> issues += issue(
                 CaptureValidationCode.MISSING_OUTCOME,
@@ -234,7 +262,8 @@ public data class AnchorInspectionDraft(
 
     /** Safe-to-save gate: identity and evidence association only. */
     public fun localSaveIssues(pack: FieldJobPack): List<CaptureValidationIssue> =
-        identityIssues(pack)
+        (identityIssues(pack) + reconciliationIdentityIssues(pack))
+            .distinctBy(CaptureValidationIssue::code)
 
     private fun identityIssues(pack: FieldJobPack): List<CaptureValidationIssue> {
         val issues = mutableListOf<CaptureValidationIssue>()
@@ -264,6 +293,15 @@ public data class AnchorInspectionDraft(
             )
         }
 
+        return issues
+    }
+
+    private fun reconciliationIdentityIssues(
+        pack: FieldJobPack,
+    ): List<CaptureValidationIssue> {
+        val issues = mutableListOf<CaptureValidationIssue>()
+        val hasExpectedAnchor = hasText(expectedAnchorId)
+        val hasProvisionalAnchor = hasText(provisionalAnchorId)
         when (reconciliationProposal) {
             null -> if (hasProvisionalAnchor) {
                 issues += issue(
@@ -284,10 +322,10 @@ public data class AnchorInspectionDraft(
                         "Record a stable provisional anchor ID.",
                     )
                 }
-                if (!hasText(location)) {
+                if (pack.anchors.any { it.anchorId == provisionalAnchorId }) {
                     issues += issue(
-                        CaptureValidationCode.MISSING_LOCATION_CONTEXT,
-                        "Record location context for the newly discovered anchor.",
+                        CaptureValidationCode.INVALID_RECONCILIATION,
+                        "A newly discovered anchor needs an ID distinct from the expected register.",
                     )
                 }
             }
@@ -298,10 +336,10 @@ public data class AnchorInspectionDraft(
                         "Record the existing and provisional replacement identities.",
                     )
                 }
-                if (!hasText(location)) {
+                if (pack.anchors.any { it.anchorId == provisionalAnchorId }) {
                     issues += issue(
-                        CaptureValidationCode.MISSING_LOCATION_CONTEXT,
-                        "Record location context for the replacement proposal.",
+                        CaptureValidationCode.INVALID_RECONCILIATION,
+                        "A replacement needs an identity distinct from the expected register.",
                     )
                 }
             }
@@ -310,12 +348,6 @@ public data class AnchorInspectionDraft(
                     issues += issue(
                         CaptureValidationCode.UNKNOWN_EXPECTED_ANCHOR,
                         "Record the existing anchor identity for the duplicate proposal.",
-                    )
-                }
-                if (!hasText(reconciliationReferenceId)) {
-                    issues += issue(
-                        CaptureValidationCode.MISSING_RECONCILIATION_REFERENCE,
-                        "Record the related anchor reference for review.",
                     )
                 }
             }
@@ -396,6 +428,31 @@ public class AnchorEvidenceService(
             inspectionId = inspectionId,
             expectedAnchorId = canonicalAnchor.anchorId,
             location = canonicalAnchor.location,
+            createdAtEpochMillis = now,
+        )
+    }
+
+    public fun newProvisionalDraft(
+        session: FieldSession,
+        opened: OpenedJobPack,
+        inspectionId: String,
+        provisionalAnchorId: String,
+    ): AnchorInspectionDraft {
+        val now = requirePackAccess(session, opened)
+        require(inspectionId.isNotBlank()) { "inspectionId is required" }
+        require(provisionalAnchorId.isNotBlank()) {
+            "provisionalAnchorId is required"
+        }
+        require(opened.stored.pack.anchors.none { it.anchorId == provisionalAnchorId }) {
+            "provisionalAnchorId must not match an expected anchor"
+        }
+        return AnchorInspectionDraft(
+            companyId = opened.stored.pack.companyId,
+            jobId = opened.stored.pack.jobId,
+            jobPackVersion = opened.stored.pack.jobPackVersion,
+            inspectionId = inspectionId,
+            provisionalAnchorId = provisionalAnchorId,
+            reconciliationProposal = ReconciliationProposal.NEWLY_DISCOVERED,
             createdAtEpochMillis = now,
         )
     }

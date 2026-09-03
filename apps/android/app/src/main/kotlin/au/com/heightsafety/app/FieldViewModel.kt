@@ -10,6 +10,7 @@ import au.com.heightsafety.domain.AnchorEvidenceService
 import au.com.heightsafety.domain.AnchorInspectionDraft
 import au.com.heightsafety.domain.AnchorEvidencePhoto
 import au.com.heightsafety.domain.CaptureValidationIssue
+import au.com.heightsafety.domain.FieldJobPack
 import au.com.heightsafety.domain.InspectorJob
 import au.com.heightsafety.domain.JobPackAnchor
 import au.com.heightsafety.domain.JobPackAccessException
@@ -92,7 +93,7 @@ sealed interface FieldUiState {
         val jobs: List<InspectorJob>,
         val job: InspectorJob,
         val opened: OpenedJobPack,
-        val anchor: JobPackAnchor,
+        val anchor: JobPackAnchor?,
         val draft: AnchorInspectionDraft,
         val evidence: List<AnchorInspectionDraft>,
         val saveState: EvidenceSaveState = EvidenceSaveState.EDITING,
@@ -130,6 +131,9 @@ class FieldViewModel(
     private val nowEpochMillis: () -> Long = { System.currentTimeMillis() },
     private val deviceAuthenticationGate: DeviceAuthenticationGate,
     private val inspectionIdGenerator: () -> String = { UUID.randomUUID().toString() },
+    private val provisionalAnchorIdGenerator: () -> String = {
+        "provisional-${UUID.randomUUID()}"
+    },
 ) {
     private val _uiState = MutableStateFlow<FieldUiState>(FieldUiState.SignedOut)
     val uiState: StateFlow<FieldUiState> = _uiState.asStateFlow()
@@ -311,6 +315,11 @@ class FieldViewModel(
                 anchor = canonicalAnchor,
                 inspectionId = inspectionIdGenerator(),
             )
+            val validationIssues = service.validateForCompletion(
+                session = currentSession,
+                opened = current.opened,
+                draft = draft,
+            )
             _uiState.value = FieldUiState.AnchorCapture(
                 account = current.account,
                 jobs = current.jobs,
@@ -319,6 +328,140 @@ class FieldViewModel(
                 anchor = canonicalAnchor,
                 draft = draft,
                 evidence = current.evidence,
+                validationIssues = validationIssues,
+            )
+        } catch (error: Throwable) {
+            if (error.isSessionExpired()) {
+                expireSession()
+            } else if (error is JobPackAccessException) {
+                _uiState.value = FieldUiState.JobPackError(
+                    account = current.account,
+                    jobs = current.jobs,
+                    job = current.job,
+                    message = jobPackMessage(error),
+                    canRetry = canRetryJobPack(error),
+                )
+            } else {
+                _uiState.value = FieldUiState.JobPackError(
+                    account = current.account,
+                    jobs = current.jobs,
+                    job = current.job,
+                    message = "Unable to open anchor evidence. Try again.",
+                    canRetry = true,
+                )
+            }
+        }
+    }
+
+    fun openNewlyDiscoveredAnchor() {
+        val current = _uiState.value as? FieldUiState.JobPackOpened ?: return
+        val currentSession = session ?: run {
+            _uiState.value = FieldUiState.SignedOut
+            return
+        }
+        val service = anchorEvidenceService
+        if (service == null) {
+            _uiState.value = FieldUiState.JobPackError(
+                account = current.account,
+                jobs = current.jobs,
+                job = current.job,
+                message = "Evidence storage is not configured for this build.",
+                canRetry = false,
+            )
+            return
+        }
+
+        try {
+            val draft = service.newProvisionalDraft(
+                session = currentSession,
+                opened = current.opened,
+                inspectionId = inspectionIdGenerator(),
+                provisionalAnchorId = provisionalAnchorIdGenerator(),
+            )
+            _uiState.value = FieldUiState.AnchorCapture(
+                account = current.account,
+                jobs = current.jobs,
+                job = current.job,
+                opened = current.opened,
+                anchor = null,
+                draft = draft,
+                evidence = current.evidence,
+            )
+        } catch (error: Throwable) {
+            if (error.isSessionExpired()) {
+                expireSession()
+            } else if (error is JobPackAccessException) {
+                _uiState.value = FieldUiState.JobPackError(
+                    account = current.account,
+                    jobs = current.jobs,
+                    job = current.job,
+                    message = jobPackMessage(error),
+                    canRetry = canRetryJobPack(error),
+                )
+            } else {
+                _uiState.value = FieldUiState.JobPackError(
+                    account = current.account,
+                    jobs = current.jobs,
+                    job = current.job,
+                    message = "Unable to start newly discovered anchor evidence. Try again.",
+                    canRetry = true,
+                )
+            }
+        }
+    }
+
+    fun openEvidence(draft: AnchorInspectionDraft) {
+        val current = _uiState.value as? FieldUiState.JobPackOpened ?: return
+        val currentSession = session ?: run {
+            _uiState.value = FieldUiState.SignedOut
+            return
+        }
+        val service = anchorEvidenceService
+        if (service == null) {
+            _uiState.value = FieldUiState.JobPackError(
+                account = current.account,
+                jobs = current.jobs,
+                job = current.job,
+                message = "Evidence storage is not configured for this build.",
+                canRetry = false,
+            )
+            return
+        }
+
+        try {
+            val storedDraft = current.evidence.singleOrNull {
+                it.inspectionId == draft.inspectionId
+            } ?: throw IllegalArgumentException("evidence is not in the opened job pack")
+            val pack = current.opened.stored.pack
+            if (!storedDraft.isScopedTo(pack)) {
+                throw IllegalArgumentException("evidence does not match the opened job pack")
+            }
+            val canonicalAnchor = storedDraft.expectedAnchorId?.let { expectedAnchorId ->
+                pack.anchors.singleOrNull { it.anchorId == expectedAnchorId }
+                    ?: throw IllegalArgumentException(
+                        "evidence expected anchor is not in the opened job-pack snapshot",
+                    )
+            }
+            if (
+                canonicalAnchor == null &&
+                    storedDraft.reconciliationProposal != ReconciliationProposal.NEWLY_DISCOVERED
+            ) {
+                throw IllegalArgumentException("provisional evidence is not a newly discovered proposal")
+            }
+            val validationIssues = service.validateForCompletion(
+                session = currentSession,
+                opened = current.opened,
+                draft = storedDraft,
+            )
+            _uiState.value = FieldUiState.AnchorCapture(
+                account = current.account,
+                jobs = current.jobs,
+                job = current.job,
+                opened = current.opened,
+                anchor = canonicalAnchor,
+                draft = storedDraft,
+                evidence = current.evidence,
+                validationIssues = validationIssues,
             )
         } catch (error: Throwable) {
             if (error.isSessionExpired()) {
@@ -679,6 +822,13 @@ private fun AnchorInspectionDraft.isBoundTo(
     }
     return when (reconciliationProposal) {
         ReconciliationProposal.NEWLY_DISCOVERED -> expectedAnchorId == null
-        else -> expectedAnchorId == capture.anchor.anchorId
+        else -> capture.anchor?.let { expectedAnchorId == it.anchorId } == true
     }
 }
+
+private fun AnchorInspectionDraft.isScopedTo(
+    pack: FieldJobPack,
+): Boolean =
+    companyId == pack.companyId &&
+        jobId == pack.jobId &&
+        jobPackVersion == pack.jobPackVersion

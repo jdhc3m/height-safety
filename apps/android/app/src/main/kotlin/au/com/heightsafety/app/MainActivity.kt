@@ -84,6 +84,8 @@ class MainActivity : ComponentActivity() {
                 onOpenJob = viewModel::openJobPack,
                 onCloseJobPack = viewModel::closeJobPack,
                 onOpenAnchor = viewModel::openAnchor,
+                onOpenEvidence = viewModel::openEvidence,
+                onAddDiscoveredAnchor = viewModel::openNewlyDiscoveredAnchor,
                 onCloseAnchor = viewModel::closeAnchor,
                 onUpdateAnchorDraft = viewModel::updateAnchorDraft,
                 onSaveAnchorDraft = viewModel::saveAnchorDraft,

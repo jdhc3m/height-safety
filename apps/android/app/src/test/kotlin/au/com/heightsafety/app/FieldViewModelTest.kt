@@ -17,6 +17,8 @@ import au.com.heightsafety.domain.JobPackService
 import au.com.heightsafety.domain.OfflineAuthorizationLease
 import au.com.heightsafety.domain.ProductRole
 import au.com.heightsafety.domain.ProviderAccessTokenSource
+import au.com.heightsafety.domain.RecordedOutcome
+import au.com.heightsafety.domain.ReconciliationProposal
 import au.com.heightsafety.domain.StoredJobPack
 import au.com.heightsafety.domain.SupportedJurisdiction
 import kotlinx.coroutines.CoroutineScope
@@ -303,6 +305,77 @@ class FieldViewModelTest {
     }
 
     @Test
+    fun newlyDiscoveredAnchorDraftCanBeSavedAndReopened() = runTest {
+        val job = job(
+            "assigned",
+            jobId = "job-001",
+            assignment = assignment("company-a", "job-001", "inspector-a"),
+        )
+        val gateway = FakeGateway(jobs = listOf(job))
+        val evidenceStore = FakeEvidenceStore()
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            jobPackService = JobPackService(
+                gateway = gateway,
+                store = FakeJobPackStore(),
+                nowEpochMillis = { 1_000L },
+                elapsedRealtimeMillis = { 500L },
+            ),
+            anchorEvidenceService = AnchorEvidenceService(
+                store = evidenceStore,
+                nowEpochMillis = { 2_000L },
+                elapsedRealtimeMillis = { 2_000L },
+            ),
+            inspectionIdGenerator = { "inspection-discovered-001" },
+            provisionalAnchorIdGenerator = { "provisional-001" },
+        )
+
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+        viewModel.openJobPack(job)
+        advanceUntilIdle()
+        viewModel.openNewlyDiscoveredAnchor()
+
+        val started = viewModel.uiState.value as FieldUiState.AnchorCapture
+        assertEquals(null, started.anchor)
+        assertEquals(
+            ReconciliationProposal.NEWLY_DISCOVERED,
+            started.draft.reconciliationProposal,
+        )
+        assertEquals("provisional-001", started.draft.provisionalAnchorId)
+
+        viewModel.updateAnchorDraft(
+            started.draft.copy(
+                identityConfirmed = true,
+                locationConfirmed = true,
+                location = "South roof",
+                observations = "Anchor observed onsite.",
+                recordedOutcome = RecordedOutcome.FURTHER_ASSESSMENT_REQUIRED,
+                recommendation = "Office review of register proposal.",
+            ),
+        )
+        viewModel.saveAnchorDraft()
+        advanceUntilIdle()
+        viewModel.closeAnchor()
+        viewModel.closeJobPack()
+        viewModel.openJobPack(job)
+        advanceUntilIdle()
+
+        val opened = viewModel.uiState.value as FieldUiState.JobPackOpened
+        assertEquals(1, opened.evidence.size)
+        viewModel.openEvidence(opened.evidence.single())
+
+        val reopened = viewModel.uiState.value as FieldUiState.AnchorCapture
+        assertEquals(null, reopened.anchor)
+        assertEquals("South roof", reopened.draft.location)
+        assertEquals(
+            "Anchor observed onsite.",
+            reopened.draft.observations,
+        )
+    }
+
+    @Test
     fun anchorCaptureRejectsDraftRetargetedToAnotherAnchor() = runTest {
         val job = job(
             "assigned",
@@ -414,6 +487,7 @@ class FieldViewModelTest {
         deviceAuthenticationGate: DeviceAuthenticationGate =
             DeviceAuthenticationGate { true },
         inspectionIdGenerator: () -> String = { "inspection-generated" },
+        provisionalAnchorIdGenerator: () -> String = { "provisional-generated" },
     ) = FieldViewModel(
         gateway = gateway,
         providerAccessTokenSource = ProviderAccessTokenSource { "provider-token" },
@@ -423,6 +497,7 @@ class FieldViewModelTest {
         anchorEvidenceService = anchorEvidenceService,
         deviceAuthenticationGate = deviceAuthenticationGate,
         inspectionIdGenerator = inspectionIdGenerator,
+        provisionalAnchorIdGenerator = provisionalAnchorIdGenerator,
     )
 
     private class FakeEvidenceStore : AnchorEvidenceStore {

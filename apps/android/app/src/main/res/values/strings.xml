@@ -33,6 +33,8 @@
     <string name="offline_lease_expiry">Offline access until: %1$s</string>
     <string name="expected_anchor_count">Expected anchors: %1$d</string>
     <string name="no_expected_anchors">No expected anchors are recorded in this job pack.</string>
+    <string name="discovered_anchor_records">Discovered anchor records</string>
+    <string name="record_discovered_anchor">Record newly discovered anchor</string>
     <string name="location_value">Location: %1$s</string>
     <string name="capture_anchor_evidence">Capture evidence</string>
     <string name="anchor_evidence_not_started">Evidence: Not started</string>

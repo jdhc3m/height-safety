@@ -259,6 +259,86 @@ class FieldAnchorEvidenceTest {
         assertEquals("North roof", created.location)
     }
 
+    @Test
+    fun provisionalDraftStartsAsExplicitNewlyDiscoveredEvidence() {
+        val service = AnchorEvidenceService(
+            store = FakeEvidenceStore(),
+            nowEpochMillis = { 2_000L },
+            elapsedRealtimeMillis = { 2_000L },
+        )
+
+        val created = service.newProvisionalDraft(
+            session = session(),
+            opened = opened(),
+            inspectionId = "inspection-discovered-001",
+            provisionalAnchorId = "provisional-001",
+        )
+
+        assertEquals(null, created.expectedAnchorId)
+        assertEquals("provisional-001", created.provisionalAnchorId)
+        assertEquals(
+            ReconciliationProposal.NEWLY_DISCOVERED,
+            created.reconciliationProposal,
+        )
+        assertTrue(
+            created.validationIssues(pack()).any {
+                it.code == CaptureValidationCode.MISSING_LOCATION_CONTEXT
+            },
+        )
+    }
+
+    @Test
+    fun provisionalAndReplacementIdentitiesCannotReuseExpectedAnchorId() {
+        val provisional = draft().copy(
+            expectedAnchorId = null,
+            provisionalAnchorId = "anchor-001",
+            reconciliationProposal = ReconciliationProposal.NEWLY_DISCOVERED,
+            location = "South roof",
+        )
+        assertTrue(
+            provisional.validationIssues(pack()).any {
+                it.code == CaptureValidationCode.INVALID_RECONCILIATION
+            },
+        )
+
+        val replacement = draft().copy(
+            provisionalAnchorId = "anchor-001",
+            reconciliationProposal = ReconciliationProposal.REPLACEMENT,
+            location = "South roof",
+        )
+        assertTrue(
+            replacement.validationIssues(pack()).any {
+                it.code == CaptureValidationCode.INVALID_RECONCILIATION
+            },
+        )
+    }
+
+    @Test
+    fun localSaveRejectsReconciliationIdentityCollision() = runTest {
+        val service = AnchorEvidenceService(
+            store = FakeEvidenceStore(),
+            nowEpochMillis = { 2_000L },
+            elapsedRealtimeMillis = { 2_000L },
+        )
+        val error = try {
+            service.saveDraft(
+                session(),
+                opened(),
+                draft().copy(
+                    expectedAnchorId = null,
+                    provisionalAnchorId = "anchor-001",
+                    reconciliationProposal = ReconciliationProposal.NEWLY_DISCOVERED,
+                ),
+            )
+            null
+        } catch (exception: AnchorEvidenceValidationException) {
+            exception
+        }
+
+        assertTrue(error != null)
+        assertTrue(error!!.issues.has(CaptureValidationCode.INVALID_RECONCILIATION))
+    }
+
     private class FakeEvidenceStore : AnchorEvidenceStore {
         val drafts = mutableListOf<AnchorInspectionDraft>()
 
