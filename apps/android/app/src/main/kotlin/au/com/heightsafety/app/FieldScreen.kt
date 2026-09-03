@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -33,10 +34,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import au.com.heightsafety.domain.JobPackAnchor
+import au.com.heightsafety.domain.AnchorInspectionDraft
+import au.com.heightsafety.domain.InspectionExceptionReason
 import au.com.heightsafety.domain.InspectorAssignment
 import au.com.heightsafety.domain.InspectorJob
+import au.com.heightsafety.domain.JobPackAnchor
 import au.com.heightsafety.domain.JobPackOpenSource
+import au.com.heightsafety.domain.RecordedOutcome
 import java.text.DateFormat
 import java.util.Date
 
@@ -49,6 +53,10 @@ fun FieldScreen(
     onSignOut: () -> Unit,
     onOpenJob: (InspectorJob) -> Unit = {},
     onCloseJobPack: () -> Unit = {},
+    onOpenAnchor: (JobPackAnchor) -> Unit = {},
+    onCloseAnchor: () -> Unit = {},
+    onUpdateAnchorDraft: (AnchorInspectionDraft) -> Unit = {},
+    onSaveAnchorDraft: () -> Unit = {},
 ) {
     MaterialTheme {
         Scaffold { innerPadding ->
@@ -105,6 +113,13 @@ fun FieldScreen(
                         is FieldUiState.JobPackOpened -> JobPackContent(
                             state = state,
                             onClose = onCloseJobPack,
+                            onOpenAnchor = onOpenAnchor,
+                        )
+                        is FieldUiState.AnchorCapture -> AnchorCaptureContent(
+                            state = state,
+                            onClose = onCloseAnchor,
+                            onUpdateDraft = onUpdateAnchorDraft,
+                            onSave = onSaveAnchorDraft,
                         )
                     }
                 }
@@ -395,6 +410,7 @@ private fun JobCard(
 private fun JobPackContent(
     state: FieldUiState.JobPackOpened,
     onClose: () -> Unit,
+    onOpenAnchor: (JobPackAnchor) -> Unit,
 ) {
     val pack = state.opened.stored.pack
     Column(modifier = Modifier.fillMaxSize()) {
@@ -457,7 +473,13 @@ private fun JobPackContent(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(pack.anchors, key = JobPackAnchor::anchorId) { anchor ->
-                    JobPackAnchorRow(anchor)
+                    JobPackAnchorRow(
+                        anchor = anchor,
+                        evidence = state.evidence.firstOrNull {
+                            it.expectedAnchorId == anchor.anchorId
+                        },
+                        onOpenAnchor = onOpenAnchor,
+                    )
                 }
             }
         }
@@ -465,7 +487,11 @@ private fun JobPackContent(
 }
 
 @Composable
-private fun JobPackAnchorRow(anchor: JobPackAnchor) {
+private fun JobPackAnchorRow(
+    anchor: JobPackAnchor,
+    evidence: AnchorInspectionDraft?,
+    onOpenAnchor: (JobPackAnchor) -> Unit,
+) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -477,8 +503,309 @@ private fun JobPackAnchorRow(anchor: JobPackAnchor) {
                 Text(stringResource(R.string.location_value, it))
             }
             Text(stringResource(R.string.status_value, displayStatus(anchor.registerStatus)))
+            Text(
+                stringResource(
+                    if (evidence == null) {
+                        R.string.anchor_evidence_not_started
+                    } else {
+                        R.string.anchor_evidence_saved
+                    },
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = { onOpenAnchor(anchor) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.capture_anchor_evidence))
+            }
         }
     }
+}
+
+@Composable
+private fun AnchorCaptureContent(
+    state: FieldUiState.AnchorCapture,
+    onClose: () -> Unit,
+    onUpdateDraft: (AnchorInspectionDraft) -> Unit,
+    onSave: () -> Unit,
+) {
+    val draft = state.draft
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onClose) {
+                Text(stringResource(R.string.back_to_job_pack))
+            }
+            Text(
+                text = stringResource(R.string.anchor_capture_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = state.job.reference,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(stringResource(R.string.site_value, state.opened.stored.pack.siteName))
+        Text(
+            stringResource(
+                R.string.jurisdiction_value,
+                state.opened.stored.pack.jurisdiction.value,
+            ),
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = draft.expectedAnchorId ?: draft.provisionalAnchorId.orEmpty(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                state.anchor.location?.let {
+                    Text(stringResource(R.string.location_value, it))
+                }
+                Text(stringResource(R.string.anchor_evidence_scope))
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.recorded_outcome_label),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutcomeChoices(
+            selected = draft.recordedOutcome,
+            onSelected = { outcome ->
+                onUpdateDraft(
+                    draft.copy(
+                        recordedOutcome = outcome,
+                        exceptionReason = if (outcome == RecordedOutcome.NOT_INSPECTED) {
+                            draft.exceptionReason
+                        } else {
+                            null
+                        },
+                    ),
+                )
+            },
+        )
+        if (draft.recordedOutcome == RecordedOutcome.NOT_INSPECTED) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.exception_reason_label),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            ExceptionChoices(
+                selected = draft.exceptionReason,
+                onSelected = { reason -> onUpdateDraft(draft.copy(exceptionReason = reason)) },
+            )
+        } else {
+            ConfirmationRow(
+                label = stringResource(R.string.identity_confirmed),
+                checked = draft.identityConfirmed,
+                onCheckedChange = {
+                    onUpdateDraft(draft.copy(identityConfirmed = it))
+                },
+            )
+            ConfirmationRow(
+                label = stringResource(R.string.location_confirmed),
+                checked = draft.locationConfirmed,
+                onCheckedChange = {
+                    onUpdateDraft(draft.copy(locationConfirmed = it))
+                },
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        EvidenceTextField(
+            label = stringResource(R.string.observations_label),
+            value = draft.observations,
+            onValueChange = { onUpdateDraft(draft.copy(observations = it)) },
+            minLines = 3,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        if (draft.recordedOutcome == RecordedOutcome.DEFECTIVE) {
+            EvidenceTextField(
+                label = stringResource(R.string.defect_description_label),
+                value = draft.defectDescription,
+                onValueChange = { onUpdateDraft(draft.copy(defectDescription = it)) },
+                minLines = 2,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        if (draft.recordedOutcome == RecordedOutcome.FURTHER_ASSESSMENT_REQUIRED) {
+            EvidenceTextField(
+                label = stringResource(R.string.recommendation_label),
+                value = draft.recommendation,
+                onValueChange = { onUpdateDraft(draft.copy(recommendation = it)) },
+                minLines = 2,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        EvidenceTextField(
+            label = stringResource(R.string.notes_label),
+            value = draft.notes,
+            onValueChange = { onUpdateDraft(draft.copy(notes = it)) },
+            minLines = 2,
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = stringResource(R.string.photos_label),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(stringResource(R.string.photos_attached, draft.photos.size))
+                Text(
+                    text = stringResource(R.string.photos_association_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (state.validationIssues.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.capture_still_needs),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+            state.validationIssues.forEach { issue ->
+                Text(
+                    text = "• ${issue.message}",
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+        state.saveError?.let { error ->
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(error, color = MaterialTheme.colorScheme.error)
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = when (state.saveState) {
+                EvidenceSaveState.SAVING -> stringResource(R.string.saving_locally)
+                EvidenceSaveState.SAVED_LOCALLY -> stringResource(R.string.saved_locally)
+                EvidenceSaveState.FAILED -> stringResource(R.string.local_save_failed)
+                EvidenceSaveState.EDITING -> stringResource(R.string.local_draft_note)
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = onSave,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = state.saveState != EvidenceSaveState.SAVING,
+        ) {
+            Text(stringResource(R.string.save_evidence_locally))
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun OutcomeChoices(
+    selected: RecordedOutcome?,
+    onSelected: (RecordedOutcome) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        RecordedOutcome.entries.forEach { outcome ->
+            val label = when (outcome) {
+                RecordedOutcome.SERVICEABLE -> R.string.outcome_serviceable
+                RecordedOutcome.DEFECTIVE -> R.string.outcome_defective
+                RecordedOutcome.NOT_INSPECTED -> R.string.outcome_not_inspected
+                RecordedOutcome.FURTHER_ASSESSMENT_REQUIRED ->
+                    R.string.outcome_further_assessment
+            }
+            if (selected == outcome) {
+                Button(
+                    onClick = { onSelected(outcome) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(label))
+                }
+            } else {
+                TextButton(
+                    onClick = { onSelected(outcome) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(label))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExceptionChoices(
+    selected: InspectionExceptionReason?,
+    onSelected: (InspectionExceptionReason) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(
+            InspectionExceptionReason.INACCESSIBLE to R.string.exception_inaccessible,
+            InspectionExceptionReason.UNABLE_TO_LOCATE to R.string.exception_unable_to_locate,
+        ).forEach { (reason, label) ->
+            if (selected == reason) {
+                Button(
+                    onClick = { onSelected(reason) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(label))
+                }
+            } else {
+                TextButton(
+                    onClick = { onSelected(reason) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(label))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConfirmationRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
+        Text(label)
+    }
+}
+
+@Composable
+private fun EvidenceTextField(
+    label: String,
+    value: String?,
+    onValueChange: (String) -> Unit,
+    minLines: Int,
+) {
+    OutlinedTextField(
+        value = value.orEmpty(),
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(label) },
+        minLines = minLines,
+    )
 }
 
 private fun displayLeaseExpiry(epochMillis: Long): String =

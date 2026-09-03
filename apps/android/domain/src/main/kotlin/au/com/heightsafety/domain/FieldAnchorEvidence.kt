@@ -1,0 +1,440 @@
+package au.com.heightsafety.domain
+
+public enum class RecordedOutcome(public val value: String) {
+    SERVICEABLE("serviceable"),
+    DEFECTIVE("defective"),
+    NOT_INSPECTED("not_inspected"),
+    FURTHER_ASSESSMENT_REQUIRED("further_assessment_required"),
+}
+
+public enum class InspectionExceptionReason(public val value: String) {
+    INACCESSIBLE("inaccessible"),
+    UNABLE_TO_LOCATE("unable_to_locate"),
+}
+
+public enum class ReconciliationProposal(public val value: String) {
+    NEWLY_DISCOVERED("newly_discovered"),
+    REPLACEMENT("replacement"),
+    DUPLICATE("duplicate"),
+}
+
+public enum class RecordedDisposition(public val value: String) {
+    REMOVED_FROM_SERVICE("removed_from_service"),
+}
+
+public enum class EvidenceSyncState(public val value: String) {
+    LOCAL("local"),
+    PENDING("pending"),
+    SYNCHRONISING("synchronising"),
+    SYNCHRONISED("synchronised"),
+    FAILED("failed"),
+    CONFLICT("conflict"),
+}
+
+public enum class PhotoUploadState(public val value: String) {
+    PENDING_UPLOAD("pending_upload"),
+    UPLOADED("uploaded"),
+    FAILED("failed"),
+}
+
+public data class RecordedProofTest(
+    public val load: String? = null,
+    public val hold: String? = null,
+    public val result: String? = null,
+    public val equipmentReference: String? = null,
+) {
+    public val hasEnteredValue: Boolean
+        get() = listOf(load, hold, result, equipmentReference).any(::hasText)
+
+    public val isComplete: Boolean
+        get() = listOf(load, hold, result, equipmentReference).all(::hasText)
+}
+
+public data class AnchorEvidencePhoto(
+    public val companyId: String,
+    public val jobId: String,
+    public val anchorInspectionId: String,
+    public val localId: String,
+    public val storageReference: String,
+    public val capturedAtEpochMillis: Long,
+    public val checksum: String,
+    public val uploadState: PhotoUploadState = PhotoUploadState.PENDING_UPLOAD,
+    public val contentType: String? = null,
+) {
+    init {
+        require(companyId.isNotBlank()) { "photo companyId is required" }
+        require(jobId.isNotBlank()) { "photo jobId is required" }
+        require(anchorInspectionId.isNotBlank()) {
+            "photo anchorInspectionId is required"
+        }
+        require(localId.isNotBlank()) { "photo localId is required" }
+        require(storageReference.isNotBlank()) { "photo storageReference is required" }
+        require(capturedAtEpochMillis >= 0) {
+            "photo capturedAtEpochMillis must not be negative"
+        }
+        require(checksum.isNotBlank()) { "photo checksum is required" }
+    }
+}
+
+public enum class CaptureValidationCode {
+    PACK_IDENTITY_MISMATCH,
+    MISSING_ANCHOR_REFERENCE,
+    UNKNOWN_EXPECTED_ANCHOR,
+    INVALID_RECONCILIATION,
+    MISSING_PROVISIONAL_ANCHOR_ID,
+    MISSING_RECONCILIATION_REFERENCE,
+    MISSING_LOCATION_CONTEXT,
+    MISSING_OUTCOME,
+    MISSING_IDENTITY_CONFIRMATION,
+    MISSING_LOCATION_CONFIRMATION,
+    INVALID_EXCEPTION,
+    MISSING_EXCEPTION_REASON,
+    MISSING_OBSERVATIONS,
+    MISSING_DEFECT_DESCRIPTION,
+    MISSING_FOLLOW_UP,
+    INCOMPLETE_PROOF_TEST,
+}
+
+public data class CaptureValidationIssue(
+    public val code: CaptureValidationCode,
+    public val message: String,
+)
+
+public data class AnchorInspectionDraft(
+    public val companyId: String,
+    public val jobId: String,
+    public val jobPackVersion: Long,
+    public val inspectionId: String,
+    public val expectedAnchorId: String? = null,
+    public val provisionalAnchorId: String? = null,
+    public val identityConfirmed: Boolean = false,
+    public val locationConfirmed: Boolean = false,
+    public val location: String? = null,
+    public val observations: String? = null,
+    public val recordedOutcome: RecordedOutcome? = null,
+    public val exceptionReason: InspectionExceptionReason? = null,
+    public val reconciliationProposal: ReconciliationProposal? = null,
+    public val reconciliationReferenceId: String? = null,
+    public val disposition: RecordedDisposition? = null,
+    public val notes: String? = null,
+    public val defectDescription: String? = null,
+    public val recommendation: String? = null,
+    public val proofTest: RecordedProofTest? = null,
+    public val photos: List<AnchorEvidencePhoto> = emptyList(),
+    public val syncState: EvidenceSyncState = EvidenceSyncState.LOCAL,
+    public val createdAtEpochMillis: Long,
+    public val updatedAtEpochMillis: Long = createdAtEpochMillis,
+) {
+    init {
+        require(companyId.isNotBlank()) { "evidence companyId is required" }
+        require(jobId.isNotBlank()) { "evidence jobId is required" }
+        require(jobPackVersion > 0) { "evidence jobPackVersion must be positive" }
+        require(inspectionId.isNotBlank()) { "evidence inspectionId is required" }
+        require(createdAtEpochMillis >= 0) {
+            "evidence createdAtEpochMillis must not be negative"
+        }
+        require(updatedAtEpochMillis >= createdAtEpochMillis) {
+            "evidence updatedAtEpochMillis must not precede creation"
+        }
+        require(photos.map(AnchorEvidencePhoto::localId).distinct().size == photos.size) {
+            "evidence photo local IDs must be unique"
+        }
+        require(
+            photos.all {
+                it.companyId == companyId &&
+                    it.jobId == jobId &&
+                    it.anchorInspectionId == inspectionId
+            },
+        ) {
+            "evidence photos must belong to the same inspection"
+        }
+    }
+
+    /** Full Stage 2B capture gate. Local drafts may remain incomplete. */
+    public fun validationIssues(pack: FieldJobPack): List<CaptureValidationIssue> {
+        val issues = identityIssues(pack).toMutableList()
+        when (recordedOutcome) {
+            null -> issues += issue(
+                CaptureValidationCode.MISSING_OUTCOME,
+                "Select a recorded outcome.",
+            )
+            RecordedOutcome.SERVICEABLE -> {
+                requireIdentityAndLocation(issues)
+                if (!hasText(observations)) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_OBSERVATIONS,
+                        "Record observations supporting the recorded outcome.",
+                    )
+                }
+            }
+            RecordedOutcome.DEFECTIVE -> {
+                requireIdentityAndLocation(issues)
+                if (!hasText(observations)) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_OBSERVATIONS,
+                        "Record observations supporting the recorded outcome.",
+                    )
+                }
+                if (!hasText(defectDescription)) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_DEFECT_DESCRIPTION,
+                        "Record at least one defect description.",
+                    )
+                }
+            }
+            RecordedOutcome.NOT_INSPECTED -> {
+                if (exceptionReason == null) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_EXCEPTION_REASON,
+                        "Select why the anchor was not inspected.",
+                    )
+                }
+            }
+            RecordedOutcome.FURTHER_ASSESSMENT_REQUIRED -> {
+                requireIdentityAndLocation(issues)
+                if (!hasText(observations)) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_OBSERVATIONS,
+                        "Record why further assessment is required.",
+                    )
+                }
+                if (!hasText(notes) && !hasText(recommendation)) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_FOLLOW_UP,
+                        "Record a follow-up or review note.",
+                    )
+                }
+            }
+        }
+
+        if (recordedOutcome != RecordedOutcome.NOT_INSPECTED && exceptionReason != null) {
+            issues += issue(
+                CaptureValidationCode.INVALID_EXCEPTION,
+                "An exception reason is only recorded with Not inspected.",
+            )
+        }
+        if (proofTest != null && !proofTest.isComplete) {
+            issues += issue(
+                CaptureValidationCode.INCOMPLETE_PROOF_TEST,
+                "Complete the entered proof-test fields or remove the partial test.",
+            )
+        }
+        return issues.distinctBy(CaptureValidationIssue::code)
+    }
+
+    /** Safe-to-save gate: identity and evidence association only. */
+    public fun localSaveIssues(pack: FieldJobPack): List<CaptureValidationIssue> =
+        identityIssues(pack)
+
+    private fun identityIssues(pack: FieldJobPack): List<CaptureValidationIssue> {
+        val issues = mutableListOf<CaptureValidationIssue>()
+        if (
+            companyId != pack.companyId ||
+            jobId != pack.jobId ||
+            jobPackVersion != pack.jobPackVersion
+        ) {
+            issues += issue(
+                CaptureValidationCode.PACK_IDENTITY_MISMATCH,
+                "Evidence does not match the opened job-pack snapshot.",
+            )
+        }
+
+        val hasExpectedAnchor = hasText(expectedAnchorId)
+        val hasProvisionalAnchor = hasText(provisionalAnchorId)
+        if (!hasExpectedAnchor && !hasProvisionalAnchor) {
+            issues += issue(
+                CaptureValidationCode.MISSING_ANCHOR_REFERENCE,
+                "Select an expected anchor or record a provisional anchor ID.",
+            )
+        }
+        if (hasExpectedAnchor && pack.anchors.none { it.anchorId == expectedAnchorId }) {
+            issues += issue(
+                CaptureValidationCode.UNKNOWN_EXPECTED_ANCHOR,
+                "The expected anchor is not in this job-pack snapshot.",
+            )
+        }
+
+        when (reconciliationProposal) {
+            null -> if (hasProvisionalAnchor) {
+                issues += issue(
+                    CaptureValidationCode.INVALID_RECONCILIATION,
+                    "A provisional anchor ID needs a reconciliation proposal.",
+                )
+            }
+            ReconciliationProposal.NEWLY_DISCOVERED -> {
+                if (hasExpectedAnchor) {
+                    issues += issue(
+                        CaptureValidationCode.INVALID_RECONCILIATION,
+                        "A newly discovered anchor cannot replace an expected ID silently.",
+                    )
+                }
+                if (!hasProvisionalAnchor) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_PROVISIONAL_ANCHOR_ID,
+                        "Record a stable provisional anchor ID.",
+                    )
+                }
+                if (!hasText(location)) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_LOCATION_CONTEXT,
+                        "Record location context for the newly discovered anchor.",
+                    )
+                }
+            }
+            ReconciliationProposal.REPLACEMENT -> {
+                if (!hasExpectedAnchor || !hasProvisionalAnchor) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_PROVISIONAL_ANCHOR_ID,
+                        "Record the existing and provisional replacement identities.",
+                    )
+                }
+                if (!hasText(location)) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_LOCATION_CONTEXT,
+                        "Record location context for the replacement proposal.",
+                    )
+                }
+            }
+            ReconciliationProposal.DUPLICATE -> {
+                if (!hasExpectedAnchor) {
+                    issues += issue(
+                        CaptureValidationCode.UNKNOWN_EXPECTED_ANCHOR,
+                        "Record the existing anchor identity for the duplicate proposal.",
+                    )
+                }
+                if (!hasText(reconciliationReferenceId)) {
+                    issues += issue(
+                        CaptureValidationCode.MISSING_RECONCILIATION_REFERENCE,
+                        "Record the related anchor reference for review.",
+                    )
+                }
+            }
+        }
+        return issues
+    }
+
+    private fun requireIdentityAndLocation(issues: MutableList<CaptureValidationIssue>) {
+        if (!identityConfirmed) {
+            issues += issue(
+                CaptureValidationCode.MISSING_IDENTITY_CONFIRMATION,
+                "Confirm the anchor identity before recording this outcome.",
+            )
+        }
+        if (!locationConfirmed) {
+            issues += issue(
+                CaptureValidationCode.MISSING_LOCATION_CONFIRMATION,
+                "Confirm the anchor location before recording this outcome.",
+            )
+        }
+    }
+
+    private fun issue(
+        code: CaptureValidationCode,
+        message: String,
+    ) = CaptureValidationIssue(code, message)
+}
+
+public interface AnchorEvidenceStore {
+    public suspend fun loadEvidence(
+        companyId: String,
+        jobId: String,
+        jobPackVersion: Long,
+    ): List<AnchorInspectionDraft>
+
+    public suspend fun saveEvidence(draft: AnchorInspectionDraft)
+}
+
+public class AnchorEvidenceValidationException(
+    public val issues: List<CaptureValidationIssue>,
+) : IllegalArgumentException(
+    issues.joinToString(separator = " ") { it.message },
+)
+
+public class AnchorEvidenceService(
+    private val store: AnchorEvidenceStore,
+    private val nowEpochMillis: () -> Long,
+) {
+    public suspend fun loadDrafts(
+        session: FieldSession,
+        opened: OpenedJobPack,
+    ): List<AnchorInspectionDraft> {
+        requirePackAccess(session, opened)
+        return store.loadEvidence(
+            companyId = opened.stored.pack.companyId,
+            jobId = opened.stored.pack.jobId,
+            jobPackVersion = opened.stored.pack.jobPackVersion,
+        )
+    }
+
+    public fun newExpectedDraft(
+        session: FieldSession,
+        opened: OpenedJobPack,
+        anchor: JobPackAnchor,
+        inspectionId: String,
+    ): AnchorInspectionDraft {
+        requirePackAccess(session, opened)
+        require(opened.stored.pack.anchors.any { it.anchorId == anchor.anchorId }) {
+            "anchor is not in the opened job-pack snapshot"
+        }
+        val now = checkedNow()
+        return AnchorInspectionDraft(
+            companyId = opened.stored.pack.companyId,
+            jobId = opened.stored.pack.jobId,
+            jobPackVersion = opened.stored.pack.jobPackVersion,
+            inspectionId = inspectionId,
+            expectedAnchorId = anchor.anchorId,
+            location = anchor.location,
+            createdAtEpochMillis = now,
+        )
+    }
+
+    public suspend fun saveDraft(
+        session: FieldSession,
+        opened: OpenedJobPack,
+        draft: AnchorInspectionDraft,
+    ): AnchorInspectionDraft {
+        requirePackAccess(session, opened)
+        val localIssues = draft.localSaveIssues(opened.stored.pack)
+        if (localIssues.isNotEmpty()) {
+            throw AnchorEvidenceValidationException(localIssues)
+        }
+        val saved = draft.copy(
+            syncState = EvidenceSyncState.LOCAL,
+            updatedAtEpochMillis = maxOf(draft.updatedAtEpochMillis, checkedNow()),
+        )
+        store.saveEvidence(saved)
+        return saved
+    }
+
+    public fun validateForCompletion(
+        opened: OpenedJobPack,
+        draft: AnchorInspectionDraft,
+    ): List<CaptureValidationIssue> = draft.validationIssues(opened.stored.pack)
+
+    private fun requirePackAccess(
+        session: FieldSession,
+        opened: OpenedJobPack,
+    ) {
+        requireInspectorSession(session)
+        val stored = opened.stored
+        if (
+            session.companyId != stored.pack.companyId ||
+            session.userId != stored.lease.userId ||
+            session.companyId != stored.lease.companyId ||
+            session.userId.isBlank()
+        ) {
+            throw FieldAuthorizationException(
+                "evidence access does not match the opened inspector job pack",
+            )
+        }
+        if (session.isExpired(checkedNow())) {
+            throw FieldSessionExpiredException()
+        }
+    }
+
+    private fun checkedNow(): Long = nowEpochMillis().also {
+        require(it >= 0) { "current epoch time must not be negative" }
+    }
+}
+
+private fun hasText(value: String?): Boolean = !value.isNullOrBlank()

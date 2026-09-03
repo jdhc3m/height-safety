@@ -10,6 +10,9 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
+import androidx.room.Update
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Entity(
     tableName = "job_pack",
@@ -84,22 +87,102 @@ internal data class OfflineAuthorizationLeaseEntity(
     val lastObservedEpochMillis: Long,
 )
 
+@Entity(
+    tableName = "anchor_inspection",
+    primaryKeys = ["companyId", "jobId", "inspectionId"],
+    indices = [Index(value = ["companyId", "jobId"])],
+    foreignKeys = [
+        ForeignKey(
+            entity = JobPackEntity::class,
+            parentColumns = ["companyId", "jobId"],
+            childColumns = ["companyId", "jobId"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+    ],
+)
+internal data class AnchorInspectionEntity(
+    val companyId: String,
+    val jobId: String,
+    val inspectionId: String,
+    val jobPackVersion: Long,
+    val expectedAnchorId: String?,
+    val provisionalAnchorId: String?,
+    val identityConfirmed: Boolean,
+    val locationConfirmed: Boolean,
+    val location: String?,
+    val observations: String?,
+    val recordedOutcome: String?,
+    val exceptionReason: String?,
+    val reconciliationProposal: String?,
+    val reconciliationReferenceId: String?,
+    val disposition: String?,
+    val notes: String?,
+    val defectDescription: String?,
+    val recommendation: String?,
+    val proofTestLoad: String?,
+    val proofTestHold: String?,
+    val proofTestResult: String?,
+    val proofTestEquipmentReference: String?,
+    val syncState: String,
+    val createdAtEpochMillis: Long,
+    val updatedAtEpochMillis: Long,
+)
+
+@Entity(
+    tableName = "anchor_evidence_photo",
+    primaryKeys = ["companyId", "jobId", "inspectionId", "localId"],
+    indices = [Index(value = ["companyId", "jobId", "inspectionId"])],
+    foreignKeys = [
+        ForeignKey(
+            entity = AnchorInspectionEntity::class,
+            parentColumns = ["companyId", "jobId", "inspectionId"],
+            childColumns = ["companyId", "jobId", "inspectionId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+)
+internal data class AnchorEvidencePhotoEntity(
+    val companyId: String,
+    val jobId: String,
+    val inspectionId: String,
+    val localId: String,
+    val storageReference: String,
+    val capturedAtEpochMillis: Long,
+    val checksum: String,
+    val uploadState: String,
+    val contentType: String?,
+)
+
 internal data class JobPackStorageSnapshot(
     val pack: JobPackEntity,
     val anchors: List<JobPackAnchorEntity>,
     val lease: OfflineAuthorizationLeaseEntity?,
 )
 
+internal data class AnchorInspectionStorageSnapshot(
+    val inspection: AnchorInspectionEntity,
+    val photos: List<AnchorEvidencePhotoEntity>,
+)
+
 @Dao
 internal abstract class JobPackDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    protected abstract fun replacePack(pack: JobPackEntity)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract fun insertPackIfMissing(pack: JobPackEntity)
+
+    @Update
+    protected abstract fun updatePack(pack: JobPackEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     protected abstract fun replaceAnchors(anchors: List<JobPackAnchorEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     protected abstract fun replaceLease(lease: OfflineAuthorizationLeaseEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract fun replaceInspection(inspection: AnchorInspectionEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract fun replacePhotos(photos: List<AnchorEvidencePhotoEntity>)
 
     @Query(
         "DELETE FROM job_pack_anchor " +
@@ -112,6 +195,16 @@ internal abstract class JobPackDao {
             "WHERE companyId = :companyId AND jobPackId = :jobId",
     )
     protected abstract fun deleteLease(companyId: String, jobId: String)
+
+    @Query(
+        "DELETE FROM anchor_evidence_photo " +
+            "WHERE companyId = :companyId AND jobId = :jobId AND inspectionId = :inspectionId",
+    )
+    protected abstract fun deletePhotos(
+        companyId: String,
+        jobId: String,
+        inspectionId: String,
+    )
 
     @Query("SELECT * FROM job_pack WHERE companyId = :companyId AND jobId = :jobId")
     protected abstract fun findPack(companyId: String, jobId: String): JobPackEntity?
@@ -128,6 +221,28 @@ internal abstract class JobPackDao {
     )
     protected abstract fun findLease(companyId: String, jobId: String): OfflineAuthorizationLeaseEntity?
 
+    @Query(
+        "SELECT * FROM anchor_inspection " +
+            "WHERE companyId = :companyId AND jobId = :jobId " +
+            "AND jobPackVersion = :jobPackVersion ORDER BY inspectionId",
+    )
+    protected abstract fun findInspections(
+        companyId: String,
+        jobId: String,
+        jobPackVersion: Long,
+    ): List<AnchorInspectionEntity>
+
+    @Query(
+        "SELECT * FROM anchor_evidence_photo " +
+            "WHERE companyId = :companyId AND jobId = :jobId " +
+            "AND inspectionId = :inspectionId ORDER BY localId",
+    )
+    protected abstract fun findPhotos(
+        companyId: String,
+        jobId: String,
+        inspectionId: String,
+    ): List<AnchorEvidencePhotoEntity>
+
     @Transaction
     open fun replaceJobPack(
         pack: JobPackEntity,
@@ -136,7 +251,8 @@ internal abstract class JobPackDao {
     ) {
         deleteLease(pack.companyId, pack.jobId)
         deleteAnchors(pack.companyId, pack.jobId)
-        replacePack(pack)
+        insertPackIfMissing(pack)
+        updatePack(pack)
         replaceAnchors(anchors)
         replaceLease(lease)
     }
@@ -151,8 +267,105 @@ internal abstract class JobPackDao {
         )
     }
 
+    @Transaction
+    open fun replaceEvidence(
+        inspection: AnchorInspectionEntity,
+        photos: List<AnchorEvidencePhotoEntity>,
+    ) {
+        deletePhotos(
+            companyId = inspection.companyId,
+            jobId = inspection.jobId,
+            inspectionId = inspection.inspectionId,
+        )
+        replaceInspection(inspection)
+        replacePhotos(photos)
+    }
+
+    @Transaction
+    open fun evidenceSnapshots(
+        companyId: String,
+        jobId: String,
+        jobPackVersion: Long,
+    ): List<AnchorInspectionStorageSnapshot> = findInspections(
+        companyId = companyId,
+        jobId = jobId,
+        jobPackVersion = jobPackVersion,
+    ).map { inspection ->
+        AnchorInspectionStorageSnapshot(
+            inspection = inspection,
+            photos = findPhotos(companyId, jobId, inspection.inspectionId),
+        )
+    }
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract fun saveLease(lease: OfflineAuthorizationLeaseEntity)
+}
+
+internal val JOB_PACK_MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS anchor_inspection (
+                companyId TEXT NOT NULL,
+                jobId TEXT NOT NULL,
+                inspectionId TEXT NOT NULL,
+                jobPackVersion INTEGER NOT NULL,
+                expectedAnchorId TEXT,
+                provisionalAnchorId TEXT,
+                identityConfirmed INTEGER NOT NULL,
+                locationConfirmed INTEGER NOT NULL,
+                location TEXT,
+                observations TEXT,
+                recordedOutcome TEXT,
+                exceptionReason TEXT,
+                reconciliationProposal TEXT,
+                reconciliationReferenceId TEXT,
+                disposition TEXT,
+                notes TEXT,
+                defectDescription TEXT,
+                recommendation TEXT,
+                proofTestLoad TEXT,
+                proofTestHold TEXT,
+                proofTestResult TEXT,
+                proofTestEquipmentReference TEXT,
+                syncState TEXT NOT NULL,
+                createdAtEpochMillis INTEGER NOT NULL,
+                updatedAtEpochMillis INTEGER NOT NULL,
+                PRIMARY KEY(companyId, jobId, inspectionId),
+                FOREIGN KEY(companyId, jobId)
+                    REFERENCES job_pack(companyId, jobId)
+                    ON UPDATE NO ACTION ON DELETE RESTRICT
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_anchor_inspection_companyId_jobId " +
+                "ON anchor_inspection(companyId, jobId)",
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS anchor_evidence_photo (
+                companyId TEXT NOT NULL,
+                jobId TEXT NOT NULL,
+                inspectionId TEXT NOT NULL,
+                localId TEXT NOT NULL,
+                storageReference TEXT NOT NULL,
+                capturedAtEpochMillis INTEGER NOT NULL,
+                checksum TEXT NOT NULL,
+                uploadState TEXT NOT NULL,
+                contentType TEXT,
+                PRIMARY KEY(companyId, jobId, inspectionId, localId),
+                FOREIGN KEY(companyId, jobId, inspectionId)
+                    REFERENCES anchor_inspection(companyId, jobId, inspectionId)
+                    ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_anchor_evidence_photo_companyId_jobId_inspectionId " +
+                "ON anchor_evidence_photo(companyId, jobId, inspectionId)",
+        )
+    }
 }
 
 @Database(
@@ -160,8 +373,10 @@ internal abstract class JobPackDao {
         JobPackEntity::class,
         JobPackAnchorEntity::class,
         OfflineAuthorizationLeaseEntity::class,
+        AnchorInspectionEntity::class,
+        AnchorEvidencePhotoEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 internal abstract class JobPackDatabase : RoomDatabase() {

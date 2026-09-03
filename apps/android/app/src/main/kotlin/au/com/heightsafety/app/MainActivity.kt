@@ -15,6 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.collectAsState
 import au.com.heightsafety.data.EncryptedJobPackStore
 import au.com.heightsafety.api.infrastructure.ApiClient
+import au.com.heightsafety.domain.AnchorEvidenceService
 import au.com.heightsafety.domain.JobPackService
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellableContinuation
@@ -42,15 +43,20 @@ class MainActivity : ComponentActivity() {
                     authNames = arrayOf("access-token"),
                 )
                 val gateway = OpenApiFieldGateway(apiClient)
+                val localStore = EncryptedJobPackStore(applicationContext)
                 FieldViewModel(
                     gateway = gateway,
                     providerAccessTokenSource = UnconfiguredProviderAccessTokenSource(),
                     scope = scope,
                     jobPackService = JobPackService(
                         gateway = gateway,
-                        store = EncryptedJobPackStore(applicationContext),
+                        store = localStore,
                         nowEpochMillis = { System.currentTimeMillis() },
                         elapsedRealtimeMillis = { SystemClock.elapsedRealtime() },
+                    ),
+                    anchorEvidenceService = AnchorEvidenceService(
+                        store = localStore,
+                        nowEpochMillis = { System.currentTimeMillis() },
                     ),
                     deviceAuthenticationGate = DeviceAuthenticationGate {
                         authenticateWithDeviceCredential()
@@ -66,6 +72,10 @@ class MainActivity : ComponentActivity() {
                 onSignOut = viewModel::signOut,
                 onOpenJob = viewModel::openJobPack,
                 onCloseJobPack = viewModel::closeJobPack,
+                onOpenAnchor = viewModel::openAnchor,
+                onCloseAnchor = viewModel::closeAnchor,
+                onUpdateAnchorDraft = viewModel::updateAnchorDraft,
+                onSaveAnchorDraft = viewModel::saveAnchorDraft,
             )
         }
     }

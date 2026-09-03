@@ -20,6 +20,7 @@ if [[ "$mode" == "--check" ]]; then
   fi
   generated_schemas="$(mktemp -d "${TMPDIR:-/tmp}/height-safety-job-pack-schemas.XXXXXX")"
   trap 'rm -rf "$generated_schemas"' EXIT
+  cp -R "$committed_schemas/." "$generated_schemas/"
   bash "$ROOT/tools/gradle.sh" -p "$project" \
     -ProomSchemaLocation="$generated_schemas" \
     :data:kaptDebugKotlin --rerun-tasks --no-daemon

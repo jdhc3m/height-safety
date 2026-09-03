@@ -1,10 +1,20 @@
 package au.com.heightsafety.data
 
 import android.content.Context
+import au.com.heightsafety.domain.AnchorEvidencePhoto
+import au.com.heightsafety.domain.AnchorEvidenceStore
+import au.com.heightsafety.domain.AnchorInspectionDraft
 import au.com.heightsafety.domain.FieldJobPack
 import au.com.heightsafety.domain.FieldJobPackStore
 import au.com.heightsafety.domain.JobPackAnchor
 import au.com.heightsafety.domain.OfflineAuthorizationLease
+import au.com.heightsafety.domain.EvidenceSyncState
+import au.com.heightsafety.domain.InspectionExceptionReason
+import au.com.heightsafety.domain.PhotoUploadState
+import au.com.heightsafety.domain.RecordedDisposition
+import au.com.heightsafety.domain.RecordedOutcome
+import au.com.heightsafety.domain.RecordedProofTest
+import au.com.heightsafety.domain.ReconciliationProposal
 import au.com.heightsafety.domain.StoredJobPack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -13,7 +23,7 @@ public class EncryptedJobPackStore(
     context: Context,
     directoryName: String = DEFAULT_DIRECTORY_NAME,
     keyAlias: String = DEFAULT_KEY_ALIAS,
-) : FieldJobPackStore {
+) : FieldJobPackStore, AnchorEvidenceStore {
     private val files = JobPackStorageFiles(context.applicationContext, directoryName)
     private val opener = EncryptedJobPackDatabaseOpener(
         context = context.applicationContext,
@@ -54,6 +64,31 @@ public class EncryptedJobPackStore(
         withContext(Dispatchers.IO) {
             opener.open().use { handle ->
                 handle.database.jobPackDao().saveLease(lease.toEntity())
+            }
+        }
+
+    override suspend fun loadEvidence(
+        companyId: String,
+        jobId: String,
+        jobPackVersion: Long,
+    ): List<AnchorInspectionDraft> = withContext(Dispatchers.IO) {
+        require(companyId.isNotBlank()) { "companyId must not be blank" }
+        require(jobId.isNotBlank()) { "jobId must not be blank" }
+        require(jobPackVersion > 0) { "jobPackVersion must be positive" }
+        opener.open().use { handle ->
+            handle.database.jobPackDao()
+                .evidenceSnapshots(companyId, jobId, jobPackVersion)
+                .map(AnchorInspectionStorageSnapshot::toDomain)
+        }
+    }
+
+    override suspend fun saveEvidence(draft: AnchorInspectionDraft) =
+        withContext(Dispatchers.IO) {
+            opener.open().use { handle ->
+                handle.database.jobPackDao().replaceEvidence(
+                    inspection = draft.toEntity(),
+                    photos = draft.photos.map { it.toEntity() },
+                )
             }
         }
 
@@ -166,3 +201,125 @@ private fun OfflineAuthorizationLeaseEntity.toDomain(): OfflineAuthorizationLeas
         issuedAtElapsedRealtimeMillis = issuedAtElapsedRealtimeMillis,
         lastObservedEpochMillis = lastObservedEpochMillis,
     )
+
+private fun AnchorInspectionDraft.toEntity(): AnchorInspectionEntity =
+    AnchorInspectionEntity(
+        companyId = companyId,
+        jobId = jobId,
+        inspectionId = inspectionId,
+        jobPackVersion = jobPackVersion,
+        expectedAnchorId = expectedAnchorId,
+        provisionalAnchorId = provisionalAnchorId,
+        identityConfirmed = identityConfirmed,
+        locationConfirmed = locationConfirmed,
+        location = location,
+        observations = observations,
+        recordedOutcome = recordedOutcome?.value,
+        exceptionReason = exceptionReason?.value,
+        reconciliationProposal = reconciliationProposal?.value,
+        reconciliationReferenceId = reconciliationReferenceId,
+        disposition = disposition?.value,
+        notes = notes,
+        defectDescription = defectDescription,
+        recommendation = recommendation,
+        proofTestLoad = proofTest?.load,
+        proofTestHold = proofTest?.hold,
+        proofTestResult = proofTest?.result,
+        proofTestEquipmentReference = proofTest?.equipmentReference,
+        syncState = syncState.value,
+        createdAtEpochMillis = createdAtEpochMillis,
+        updatedAtEpochMillis = updatedAtEpochMillis,
+    )
+
+private fun AnchorEvidencePhoto.toEntity(): AnchorEvidencePhotoEntity =
+    AnchorEvidencePhotoEntity(
+        companyId = companyId,
+        jobId = jobId,
+        inspectionId = anchorInspectionId,
+        localId = localId,
+        storageReference = storageReference,
+        capturedAtEpochMillis = capturedAtEpochMillis,
+        checksum = checksum,
+        uploadState = uploadState.value,
+        contentType = contentType,
+    )
+
+private fun AnchorInspectionStorageSnapshot.toDomain(): AnchorInspectionDraft {
+    val inspection = inspection
+    return AnchorInspectionDraft(
+        companyId = inspection.companyId,
+        jobId = inspection.jobId,
+        jobPackVersion = inspection.jobPackVersion,
+        inspectionId = inspection.inspectionId,
+        expectedAnchorId = inspection.expectedAnchorId,
+        provisionalAnchorId = inspection.provisionalAnchorId,
+        identityConfirmed = inspection.identityConfirmed,
+        locationConfirmed = inspection.locationConfirmed,
+        location = inspection.location,
+        observations = inspection.observations,
+        recordedOutcome = inspection.recordedOutcome?.toRecordedOutcome(),
+        exceptionReason = inspection.exceptionReason?.toInspectionExceptionReason(),
+        reconciliationProposal = inspection.reconciliationProposal?.toReconciliationProposal(),
+        reconciliationReferenceId = inspection.reconciliationReferenceId,
+        disposition = inspection.disposition?.toRecordedDisposition(),
+        notes = inspection.notes,
+        defectDescription = inspection.defectDescription,
+        recommendation = inspection.recommendation,
+        proofTest = if (
+            inspection.proofTestLoad != null ||
+            inspection.proofTestHold != null ||
+            inspection.proofTestResult != null ||
+            inspection.proofTestEquipmentReference != null
+        ) {
+            RecordedProofTest(
+                load = inspection.proofTestLoad,
+                hold = inspection.proofTestHold,
+                result = inspection.proofTestResult,
+                equipmentReference = inspection.proofTestEquipmentReference,
+            )
+        } else {
+            null
+        },
+        photos = photos.map(AnchorEvidencePhotoEntity::toDomain),
+        syncState = inspection.syncState.toEvidenceSyncState(),
+        createdAtEpochMillis = inspection.createdAtEpochMillis,
+        updatedAtEpochMillis = inspection.updatedAtEpochMillis,
+    )
+}
+
+private fun AnchorEvidencePhotoEntity.toDomain(): AnchorEvidencePhoto =
+    AnchorEvidencePhoto(
+        companyId = companyId,
+        jobId = jobId,
+        anchorInspectionId = inspectionId,
+        localId = localId,
+        storageReference = storageReference,
+        capturedAtEpochMillis = capturedAtEpochMillis,
+        checksum = checksum,
+        uploadState = uploadState.toPhotoUploadState(),
+        contentType = contentType,
+    )
+
+private fun String.toRecordedOutcome(): RecordedOutcome =
+    RecordedOutcome.entries.singleOrNull { it.value == this }
+        ?: throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED)
+
+private fun String.toInspectionExceptionReason(): InspectionExceptionReason =
+    InspectionExceptionReason.entries.singleOrNull { it.value == this }
+        ?: throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED)
+
+private fun String.toReconciliationProposal(): ReconciliationProposal =
+    ReconciliationProposal.entries.singleOrNull { it.value == this }
+        ?: throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED)
+
+private fun String.toRecordedDisposition(): RecordedDisposition =
+    RecordedDisposition.entries.singleOrNull { it.value == this }
+        ?: throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED)
+
+private fun String.toEvidenceSyncState(): EvidenceSyncState =
+    EvidenceSyncState.entries.singleOrNull { it.value == this }
+        ?: throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED)
+
+private fun String.toPhotoUploadState(): PhotoUploadState =
+    PhotoUploadState.entries.singleOrNull { it.value == this }
+        ?: throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED)

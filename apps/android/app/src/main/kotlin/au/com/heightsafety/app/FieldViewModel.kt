@@ -6,7 +6,11 @@ import au.com.heightsafety.domain.FieldGatewayException
 import au.com.heightsafety.domain.FieldSession
 import au.com.heightsafety.domain.FieldSessionExpiredException
 import au.com.heightsafety.domain.GatewayFailureReason
+import au.com.heightsafety.domain.AnchorEvidenceService
+import au.com.heightsafety.domain.AnchorInspectionDraft
+import au.com.heightsafety.domain.CaptureValidationIssue
 import au.com.heightsafety.domain.InspectorJob
+import au.com.heightsafety.domain.JobPackAnchor
 import au.com.heightsafety.domain.JobPackAccessException
 import au.com.heightsafety.domain.JobPackAccessFailure
 import au.com.heightsafety.domain.JobPackService
@@ -23,10 +27,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 enum class SyncState {
     SYNCHRONISING,
     SYNCHRONISED,
+    FAILED,
+}
+
+enum class EvidenceSaveState {
+    EDITING,
+    SAVING,
+    SAVED_LOCALLY,
     FAILED,
 }
 
@@ -70,6 +82,20 @@ sealed interface FieldUiState {
         val jobs: List<InspectorJob>,
         val job: InspectorJob,
         val opened: OpenedJobPack,
+        val evidence: List<AnchorInspectionDraft> = emptyList(),
+    ) : FieldUiState
+
+    data class AnchorCapture(
+        val account: AccountSummary,
+        val jobs: List<InspectorJob>,
+        val job: InspectorJob,
+        val opened: OpenedJobPack,
+        val anchor: JobPackAnchor,
+        val draft: AnchorInspectionDraft,
+        val evidence: List<AnchorInspectionDraft>,
+        val saveState: EvidenceSaveState = EvidenceSaveState.EDITING,
+        val validationIssues: List<CaptureValidationIssue> = emptyList(),
+        val saveError: String? = null,
     ) : FieldUiState
 
     data class JobPackError(
@@ -98,9 +124,11 @@ class FieldViewModel(
     private val providerAccessTokenSource: ProviderAccessTokenSource,
     private val scope: CoroutineScope,
     private val jobPackService: JobPackService? = null,
+    private val anchorEvidenceService: AnchorEvidenceService? = null,
     private val nowEpochMillis: () -> Long = { System.currentTimeMillis() },
     private val deviceAuthenticationGate: DeviceAuthenticationGate =
         DeviceAuthenticationGate { true },
+    private val inspectionIdGenerator: () -> String = { UUID.randomUUID().toString() },
 ) {
     private val _uiState = MutableStateFlow<FieldUiState>(FieldUiState.SignedOut)
     val uiState: StateFlow<FieldUiState> = _uiState.asStateFlow()
@@ -224,11 +252,13 @@ class FieldViewModel(
                     authorisedJob = claimJob(currentSession, selectedJob)
                 }
                 val opened = service.openOrDownload(currentSession, authorisedJob)
+                val evidence = anchorEvidenceService?.loadDrafts(currentSession, opened).orEmpty()
                 _uiState.value = FieldUiState.JobPackOpened(
                     account = account,
                     jobs = lastJobs,
                     job = authorisedJob,
                     opened = opened,
+                    evidence = evidence,
                 )
             } catch (error: CancellationException) {
                 throw error
@@ -246,6 +276,128 @@ class FieldViewModel(
                 }
             }
         }
+    }
+
+    fun openAnchor(anchor: JobPackAnchor) {
+        val current = _uiState.value as? FieldUiState.JobPackOpened ?: return
+        val currentSession = session ?: run {
+            _uiState.value = FieldUiState.SignedOut
+            return
+        }
+        val service = anchorEvidenceService
+        if (service == null) {
+            _uiState.value = FieldUiState.JobPackError(
+                account = current.account,
+                jobs = current.jobs,
+                job = current.job,
+                message = "Evidence storage is not configured for this build.",
+                canRetry = false,
+            )
+            return
+        }
+
+        try {
+            val draft = current.evidence.firstOrNull {
+                it.expectedAnchorId == anchor.anchorId
+            } ?: service.newExpectedDraft(
+                session = currentSession,
+                opened = current.opened,
+                anchor = anchor,
+                inspectionId = inspectionIdGenerator(),
+            )
+            _uiState.value = FieldUiState.AnchorCapture(
+                account = current.account,
+                jobs = current.jobs,
+                job = current.job,
+                opened = current.opened,
+                anchor = anchor,
+                draft = draft,
+                evidence = current.evidence,
+            )
+        } catch (error: Throwable) {
+            if (error.isSessionExpired()) {
+                expireSession()
+            } else {
+                _uiState.value = FieldUiState.JobPackError(
+                    account = current.account,
+                    jobs = current.jobs,
+                    job = current.job,
+                    message = "Unable to open anchor evidence. Try again.",
+                    canRetry = true,
+                )
+            }
+        }
+    }
+
+    fun updateAnchorDraft(draft: AnchorInspectionDraft) {
+        val current = _uiState.value as? FieldUiState.AnchorCapture ?: return
+        _uiState.value = current.copy(
+            draft = draft,
+            saveState = EvidenceSaveState.EDITING,
+            validationIssues = emptyList(),
+            saveError = null,
+        )
+    }
+
+    fun saveAnchorDraft() {
+        val current = _uiState.value as? FieldUiState.AnchorCapture ?: return
+        val currentSession = session ?: run {
+            _uiState.value = FieldUiState.SignedOut
+            return
+        }
+        val service = anchorEvidenceService ?: run {
+            _uiState.value = current.copy(
+                saveState = EvidenceSaveState.FAILED,
+                saveError = "Evidence storage is not configured for this build.",
+            )
+            return
+        }
+
+        activeRequest?.cancel()
+        _uiState.value = current.copy(
+            saveState = EvidenceSaveState.SAVING,
+            saveError = null,
+        )
+        activeRequest = scope.launch {
+            try {
+                val saved = service.saveDraft(
+                    session = currentSession,
+                    opened = current.opened,
+                    draft = current.draft,
+                )
+                val evidence = current.evidence.replaceDraft(saved)
+                _uiState.value = current.copy(
+                    draft = saved,
+                    evidence = evidence,
+                    saveState = EvidenceSaveState.SAVED_LOCALLY,
+                    validationIssues = service.validateForCompletion(current.opened, saved),
+                    saveError = null,
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                if (error.isSessionExpired()) {
+                    expireSession()
+                } else {
+                    _uiState.value = current.copy(
+                        saveState = EvidenceSaveState.FAILED,
+                        saveError = "Unable to save evidence locally. Try again.",
+                    )
+                }
+            }
+        }
+    }
+
+    fun closeAnchor() {
+        val current = _uiState.value as? FieldUiState.AnchorCapture ?: return
+        activeRequest?.cancel()
+        _uiState.value = FieldUiState.JobPackOpened(
+            account = current.account,
+            jobs = current.jobs,
+            job = current.job,
+            opened = current.opened,
+            evidence = current.evidence,
+        )
     }
 
     fun closeJobPack() {
@@ -441,3 +593,9 @@ class FieldViewModel(
         role = role,
     )
 }
+
+private fun List<AnchorInspectionDraft>.replaceDraft(
+    draft: AnchorInspectionDraft,
+): List<AnchorInspectionDraft> = filterNot { existing ->
+    existing.inspectionId == draft.inspectionId
+} + draft

@@ -1,11 +1,11 @@
 # Current Status
 
-Last update: 2026-09-02
+Last update: 2026-09-03
 
 ## Active stage
 
 Stage 3B — anchor vertical slice; `3A-01` through `3A-05` are Done.
-`3B-01` and `3B-02` are Done. G-03 is Done as D-027.
+`3B-01` and `3B-02` are Done. `3B-03` is In progress. G-03 is Done as D-027.
 
 ## Completed
 
@@ -189,6 +189,10 @@ Stage 3B — anchor vertical slice; `3A-01` through `3A-05` are Done.
 
 ## In progress
 
+- `3B-03` first slice adds domain-owned anchor evidence validation and the
+  encrypted local draft/photo-reference boundary. Camera hardware capture,
+  submission and synchronisation remain bounded follow-on slices in this
+  ticket.
 - `3B-01` and `3B-02` checks pass. Compose UI tests and encrypted job-pack
   adapter tests pass on the local
   `Pixel_5_API_30` emulator. Runtime persistence, durable audit, identity
@@ -200,7 +204,7 @@ Stage 3B — anchor vertical slice; `3A-01` through `3A-05` are Done.
 
 ## Next recommended task
 
-Start `3B-03` anchor evidence capture. Do not add Kotlin
+Continue `3B-03` anchor evidence capture. Do not add Kotlin
 Multiplatform, an iOS target or deferred standards candidates. Authentication
 vendor selection and the durable identity/runtime adapters remain deferred.
 Production provider/native backup configuration, retention/RPO/RTO and strict
@@ -299,6 +303,18 @@ no issues. The full `tools/verify.sh` root gate stopped at its required
 `TEST_POSTGRES_URL` prerequisite in this environment; the scoped checks above
 passed. Connected UI execution passed 7/7 tests on the local
 `Pixel_5_API_30` emulator (API 30).
+
+The first `3B-03` slice then passed the Kotlin/JVM domain and app suites, Room
+schema drift checking, six encrypted evidence-adapter tests and eight Compose
+instrumented app tests on the same emulator. A pack-refresh regression also
+confirmed evidence from the prior pack version remains readable.
+
+On 2026-09-03, a debug-build-only interactive demo activity was added for
+physical-device review. It uses synthetic NSW and Queensland jobs with the
+real encrypted local job-pack and anchor-evidence path; it does not call the
+API or alter release authentication behavior.
+Manual physical-device review was reported passed on the Pixel 10 Pro,
+including opening the demo job and reaching the anchor-capture flow.
 
 ## Relevant files
 

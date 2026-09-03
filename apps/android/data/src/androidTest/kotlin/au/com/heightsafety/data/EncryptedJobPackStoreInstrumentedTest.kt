@@ -3,11 +3,15 @@ package au.com.heightsafety.data
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteException
 import androidx.test.core.app.ApplicationProvider
+import au.com.heightsafety.domain.AnchorEvidencePhoto
+import au.com.heightsafety.domain.AnchorInspectionDraft
+import au.com.heightsafety.domain.EvidenceSyncState
 import au.com.heightsafety.domain.FieldJobPack
 import au.com.heightsafety.domain.FieldSession
 import au.com.heightsafety.domain.JobPackAnchor
 import au.com.heightsafety.domain.OfflineAuthorizationLease
 import au.com.heightsafety.domain.ProductRole
+import au.com.heightsafety.domain.RecordedOutcome
 import au.com.heightsafety.domain.SupportedJurisdiction
 import java.io.File
 import java.security.KeyStore
@@ -88,6 +92,98 @@ class EncryptedJobPackStoreInstrumentedTest {
         assertEquals(second, loaded.pack)
         assertEquals("anchor-new", loaded.pack.anchors.single().anchorId)
         assertEquals(2_000L, loaded.lease.issuedAtEpochMillis)
+    }
+
+    @Test
+    fun replacingPackPreservesEvidenceFromPreviousPackVersion() = runBlocking<Unit> {
+        val store = fixture.store()
+        val first = pack("company-a", version = 1L, anchorId = "anchor-old")
+        val second = pack("company-a", version = 2L, anchorId = "anchor-new")
+        store.save(first, lease("company-a", "inspector-a", first.jobId), 1_000L)
+        store.saveEvidence(
+            AnchorInspectionDraft(
+                companyId = first.companyId,
+                jobId = first.jobId,
+                jobPackVersion = first.jobPackVersion,
+                inspectionId = "inspection-old",
+                expectedAnchorId = "anchor-old",
+                createdAtEpochMillis = 1_000L,
+            ),
+        )
+
+        store.save(second, lease("company-a", "inspector-a", second.jobId, 2_000L), 2_000L)
+
+        assertEquals(
+            "inspection-old",
+            store.loadEvidence("company-a", first.jobId, first.jobPackVersion)
+                .single()
+                .inspectionId,
+        )
+        assertTrue(store.loadEvidence("company-a", second.jobId, second.jobPackVersion).isEmpty())
+    }
+
+    @Test
+    fun evidenceDraftAndPhotoAssociationSurviveStoreRestart() = runBlocking<Unit> {
+        val store = fixture.store()
+        val pack = pack("company-a", version = 3L)
+        store.save(pack, lease("company-a", "inspector-a", pack.jobId), 1_000L)
+        val draft = AnchorInspectionDraft(
+            companyId = "company-a",
+            jobId = pack.jobId,
+            jobPackVersion = pack.jobPackVersion,
+            inspectionId = "inspection-001",
+            expectedAnchorId = pack.anchors.single().anchorId,
+            identityConfirmed = true,
+            locationConfirmed = true,
+            location = "North roof",
+            observations = "Recorded observation.",
+            recordedOutcome = RecordedOutcome.SERVICEABLE,
+            syncState = EvidenceSyncState.LOCAL,
+            createdAtEpochMillis = 1_000L,
+            updatedAtEpochMillis = 2_000L,
+            photos = listOf(
+                AnchorEvidencePhoto(
+                    companyId = "company-a",
+                    jobId = pack.jobId,
+                    anchorInspectionId = "inspection-001",
+                    localId = "photo-001",
+                    storageReference = "local/photo-001.jpg",
+                    capturedAtEpochMillis = 1_500L,
+                    checksum = "sha256-photo-001",
+                ),
+            ),
+        )
+        store.saveEvidence(draft)
+
+        val restarted = fixture.store()
+        val loaded = restarted.loadEvidence("company-a", pack.jobId, pack.jobPackVersion)
+
+        assertEquals(listOf(draft), loaded)
+        assertEquals("inspection-001", loaded.single().photos.single().anchorInspectionId)
+        assertEquals("photo-001", loaded.single().photos.single().localId)
+    }
+
+    @Test
+    fun evidenceReadsAreTenantAndPackVersionScoped() = runBlocking<Unit> {
+        val store = fixture.store()
+        val packA = pack("company-a", version = 1L)
+        val packB = pack("company-b", version = 1L)
+        store.save(packA, lease("company-a", "inspector-a", packA.jobId), 1_000L)
+        store.save(packB, lease("company-b", "inspector-b", packB.jobId), 1_000L)
+        store.saveEvidence(
+            AnchorInspectionDraft(
+                companyId = "company-a",
+                jobId = packA.jobId,
+                jobPackVersion = 1L,
+                inspectionId = "inspection-a",
+                expectedAnchorId = packA.anchors.single().anchorId,
+                createdAtEpochMillis = 1_000L,
+            ),
+        )
+
+        assertEquals(1, store.loadEvidence("company-a", packA.jobId, 1L).size)
+        assertTrue(store.loadEvidence("company-a", packA.jobId, 2L).isEmpty())
+        assertTrue(store.loadEvidence("company-b", packB.jobId, 1L).isEmpty())
     }
 
     private class Fixture : AutoCloseable {

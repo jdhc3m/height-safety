@@ -1,5 +1,8 @@
 package au.com.heightsafety.app
 
+import au.com.heightsafety.domain.AnchorEvidenceService
+import au.com.heightsafety.domain.AnchorEvidenceStore
+import au.com.heightsafety.domain.AnchorInspectionDraft
 import au.com.heightsafety.domain.FieldGateway
 import au.com.heightsafety.domain.FieldGatewayException
 import au.com.heightsafety.domain.FieldJobPack
@@ -248,21 +251,91 @@ class FieldViewModelTest {
         assertEquals(0, gateway.downloadPackCallCount)
     }
 
+    @Test
+    fun anchorCaptureLoadsDraftAndSavesLocally() = runTest {
+        val job = job(
+            "assigned",
+            jobId = "job-001",
+            assignment = assignment("company-a", "job-001", "inspector-a"),
+        )
+        val gateway = FakeGateway(jobs = listOf(job))
+        val packStore = FakeJobPackStore()
+        val evidenceStore = FakeEvidenceStore()
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            jobPackService = JobPackService(
+                gateway = gateway,
+                store = packStore,
+                nowEpochMillis = { 1_000L },
+                elapsedRealtimeMillis = { 500L },
+            ),
+            anchorEvidenceService = AnchorEvidenceService(evidenceStore) { 2_000L },
+            inspectionIdGenerator = { "inspection-001" },
+        )
+
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+        viewModel.openJobPack(job)
+        advanceUntilIdle()
+        val opened = viewModel.uiState.value as FieldUiState.JobPackOpened
+        viewModel.openAnchor(opened.opened.stored.pack.anchors.single())
+
+        val capture = viewModel.uiState.value as FieldUiState.AnchorCapture
+        viewModel.updateAnchorDraft(
+            capture.draft.copy(
+                identityConfirmed = true,
+                locationConfirmed = true,
+                observations = "Recorded observation.",
+            ),
+        )
+        viewModel.saveAnchorDraft()
+        advanceUntilIdle()
+
+        val saved = viewModel.uiState.value as FieldUiState.AnchorCapture
+        assertEquals(EvidenceSaveState.SAVED_LOCALLY, saved.saveState)
+        assertEquals("inspection-001", evidenceStore.drafts.single().inspectionId)
+        assertEquals("Recorded observation.", evidenceStore.drafts.single().observations)
+    }
+
     private fun viewModel(
         gateway: FakeGateway,
         scope: CoroutineScope,
         jobPackService: JobPackService? = null,
+        anchorEvidenceService: AnchorEvidenceService? = null,
         nowEpochMillis: () -> Long = { 1_000L },
         deviceAuthenticationGate: DeviceAuthenticationGate =
             DeviceAuthenticationGate { true },
+        inspectionIdGenerator: () -> String = { "inspection-generated" },
     ) = FieldViewModel(
         gateway = gateway,
         providerAccessTokenSource = ProviderAccessTokenSource { "provider-token" },
         scope = scope,
         nowEpochMillis = nowEpochMillis,
         jobPackService = jobPackService,
+        anchorEvidenceService = anchorEvidenceService,
         deviceAuthenticationGate = deviceAuthenticationGate,
+        inspectionIdGenerator = inspectionIdGenerator,
     )
+
+    private class FakeEvidenceStore : AnchorEvidenceStore {
+        val drafts = mutableListOf<AnchorInspectionDraft>()
+
+        override suspend fun loadEvidence(
+            companyId: String,
+            jobId: String,
+            jobPackVersion: Long,
+        ): List<AnchorInspectionDraft> = drafts.filter {
+            it.companyId == companyId &&
+                it.jobId == jobId &&
+                it.jobPackVersion == jobPackVersion
+        }
+
+        override suspend fun saveEvidence(draft: AnchorInspectionDraft) {
+            drafts.removeIf { it.inspectionId == draft.inspectionId }
+            drafts += draft
+        }
+    }
 
     private class FakeGateway(
         private val jobs: List<InspectorJob> = emptyList(),
