@@ -14,6 +14,12 @@ import au.com.heightsafety.domain.ProductRole
 import au.com.heightsafety.domain.RecordedOutcome
 import au.com.heightsafety.domain.InspectionSubmissionIntent
 import au.com.heightsafety.domain.SupportedJurisdiction
+import au.com.heightsafety.domain.SyncMutationDelivery
+import au.com.heightsafety.domain.SyncMutationState
+import au.com.heightsafety.domain.MutationOutboxDrainer
+import au.com.heightsafety.domain.PhotoUploadQueueState
+import au.com.heightsafety.domain.SyncMutation
+import au.com.heightsafety.domain.SyncMutationTransport
 import java.io.File
 import java.security.KeyStore
 import java.util.UUID
@@ -21,6 +27,7 @@ import kotlinx.coroutines.runBlocking
 import net.zetetic.database.sqlcipher.SQLiteDatabase as CipherDatabase
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -422,6 +429,119 @@ class EncryptedJobPackStoreInstrumentedTest {
     }
 
     @Test
+    fun durablePhotoQueueAndPrivateContentSurviveStoreRestart() = runBlocking<Unit> {
+        val store = fixture.store()
+        val pack = pack("company-a", version = 6L)
+        store.save(pack, lease("company-a", "inspector-a", pack.jobId), 1_000L)
+        val photoStorage = LocalAnchorPhotoStorage(fixture.context, fixture.directoryName)
+        val photoBytes = byteArrayOf(0x01, 0x02, 0x03, 0x04)
+        photoStorage.photoFile("photo-queue").writeBytes(photoBytes)
+        val metadata = photoStorage.describe("photo-queue", 1_500L)
+        val draft = evidenceDraft(pack, "Recorded with a durable photo.").copy(
+            photos = listOf(
+                AnchorEvidencePhoto(
+                    companyId = pack.companyId,
+                    jobId = pack.jobId,
+                    anchorInspectionId = "inspection-shared",
+                    localId = metadata.localId,
+                    storageReference = metadata.storageReference,
+                    capturedAtEpochMillis = metadata.capturedAtEpochMillis,
+                    checksum = metadata.checksum,
+                    contentType = metadata.contentType,
+                    byteSize = metadata.byteSize,
+                ),
+            ),
+        )
+        store.saveEvidence(draft)
+        val packB = pack("company-b", version = 6L)
+        store.save(packB, lease("company-b", "inspector-b", packB.jobId), 1_000L)
+        store.saveEvidence(evidenceDraft(packB, "Company B photo reference."))
+
+        val queued = store.loadPhotoUploads("company-a").single()
+        assertEquals("photo-queue", queued.mediaId)
+        assertEquals(PhotoUploadQueueState.PENDING, queued.state)
+        assertEquals(metadata.byteSize, queued.byteSize)
+        assertEquals("inspection-shared", queued.anchorInspectionId)
+
+        val restarted = fixture.store()
+        val restartedQueue = restarted.loadPhotoUploads("company-a").single()
+        val contentSource = LocalAnchorPhotoUploadContentSource(photoStorage)
+        val descriptor = contentSource.describe(restartedQueue)
+        val bytes = contentSource.read(restartedQueue, offset = 0L, maxBytes = 16)
+
+        assertEquals(4L, descriptor.byteSize)
+        assertEquals(metadata.checksum, descriptor.checksum)
+        assertArrayEquals(photoBytes, bytes)
+        assertEquals(1, restarted.loadPhotoUploads("company-b").size)
+        assertEquals(0, restarted.loadPhotoUploads("company-c").size)
+
+        restarted.saveEvidence(draft.copy(photos = emptyList(), updatedAtEpochMillis = 2_000L))
+        assertTrue(restarted.loadPhotoUploads("company-a").isEmpty())
+    }
+
+    @Test
+    fun photoProgressRecoveryKeepsAssociationAndVisibleFailure() = runBlocking<Unit> {
+        val store = fixture.store()
+        val pack = pack("company-a", version = 7L)
+        store.save(pack, lease("company-a", "inspector-a", pack.jobId), 1_000L)
+        val draft = evidenceDraft(pack, "Recorded before photo upload.").copy(
+            photos = listOf(
+                AnchorEvidencePhoto(
+                    companyId = pack.companyId,
+                    jobId = pack.jobId,
+                    anchorInspectionId = "inspection-shared",
+                    localId = "photo-progress",
+                    storageReference = "anchor-photos/photo-progress.jpg",
+                    capturedAtEpochMillis = 1_500L,
+                    checksum = "checksum-progress",
+                    contentType = "image/jpeg",
+                    byteSize = 4L,
+                ),
+            ),
+        )
+        store.saveEvidence(draft)
+        val queued = store.loadPhotoUploads("company-a").single()
+        val started = queued
+            .beginUpload(2_000L)
+            .withContentDescriptor(
+                descriptor = au.com.heightsafety.domain.PhotoUploadContentDescriptor(
+                    byteSize = 4L,
+                    checksum = "checksum-progress",
+                    contentType = "image/jpeg",
+                ),
+                nowEpochMillis = 2_000L,
+            )
+            .acceptChunk(nowEpochMillis = 2_000L, nextOffset = 2L)
+        store.savePhotoUpload(started)
+
+        assertEquals(
+            au.com.heightsafety.domain.PhotoUploadQueueState.UPLOADING,
+            store.loadPhotoUploads("company-a").single().state,
+        )
+        assertEquals(
+            au.com.heightsafety.domain.PhotoUploadState.PENDING_UPLOAD,
+            store.loadEvidence("company-a", pack.jobId, pack.jobPackVersion)
+                .single().photos.single().uploadState,
+        )
+
+        val restarted = fixture.store()
+        restarted.recoverInterruptedPhotoUploads(3_000L)
+
+        val recovered = restarted.loadPhotoUploads("company-a").single()
+        assertEquals(2L, recovered.uploadedBytes)
+        assertEquals(1, recovered.attemptCount)
+        assertEquals(
+            au.com.heightsafety.domain.PhotoUploadQueueState.FAILED,
+            recovered.state,
+        )
+        assertEquals(
+            au.com.heightsafety.domain.PhotoUploadState.FAILED,
+            restarted.loadEvidence("company-a", pack.jobId, pack.jobPackVersion)
+                .single().photos.single().uploadState,
+        )
+    }
+
+    @Test
     fun queuedSubmissionAndFrozenEvidenceSurviveStoreRestart() = runBlocking<Unit> {
         val store = fixture.store()
         val pack = pack("company-a", version = 4L)
@@ -500,6 +620,79 @@ class EncryptedJobPackStoreInstrumentedTest {
     }
 
     @Test
+    fun mutationOutboxReplayKeepsOneIdentityAndMirrorsVisibleState() = runBlocking<Unit> {
+        val store = fixture.store()
+        val pack = pack("company-a", version = 5L)
+        store.save(pack, lease("company-a", "inspector-a", pack.jobId), 1_000L)
+        val draft = evidenceDraft(
+            pack = pack,
+            observations = "Recorded before synchronisation.",
+        ).copy(
+            syncState = EvidenceSyncState.PENDING,
+            submissionId = "submission-001",
+        )
+        val intent = InspectionSubmissionIntent(
+            companyId = pack.companyId,
+            jobId = pack.jobId,
+            jobPackVersion = pack.jobPackVersion,
+            submissionId = "submission-001",
+            mutationId = "mutation-001",
+            inspectorUserId = "inspector-a",
+            sessionId = "session-001",
+            createdAtEpochMillis = 2_000L,
+        )
+        store.queueSubmission(intent, listOf(draft))
+
+        val pending = store.loadMutations("company-a").single()
+        assertEquals("mutation-001", pending.idempotencyKey)
+        assertEquals(SyncMutationState.PENDING, pending.state)
+        assertEquals(1, store.loadMutations("company-a").size)
+
+        val synchronising = pending.beginSynchronisation(3_000L)
+        store.saveMutation(synchronising)
+        assertEquals(
+            EvidenceSyncState.SYNCHRONISING,
+            store.loadSubmission("company-a", pack.jobId, pack.jobPackVersion)?.syncState,
+        )
+        assertEquals(
+            EvidenceSyncState.SYNCHRONISING,
+            store.loadEvidence("company-a", pack.jobId, pack.jobPackVersion).single().syncState,
+        )
+
+        val restarted = fixture.store()
+        restarted.recoverInterruptedMutations(4_000L)
+        val recovered = restarted.loadMutations("company-a").single()
+        assertEquals(SyncMutationState.FAILED, recovered.state)
+        assertEquals(1, recovered.attemptCount)
+        assertEquals(
+            EvidenceSyncState.FAILED,
+            restarted.loadSubmission("company-a", pack.jobId, pack.jobPackVersion)?.syncState,
+        )
+
+        val transport = RecordingTransport(SyncMutationDelivery.Acknowledged)
+        val result = MutationOutboxDrainer(
+            store = restarted,
+            transport = transport,
+            nowEpochMillis = { 5_000L },
+        ).drain()
+
+        assertEquals(1, result.acknowledged)
+        assertEquals(SyncMutationState.SYNCHRONISED, restarted.loadMutations("company-a").single().state)
+        assertEquals(
+            EvidenceSyncState.SYNCHRONISED,
+            restarted.loadSubmission("company-a", pack.jobId, pack.jobPackVersion)?.syncState,
+        )
+        assertEquals(listOf("mutation-001"), transport.mutationIds)
+        assertEquals(listOf("mutation-001"), transport.idempotencyKeys)
+
+        val replayed = restarted.enqueueMutation(
+            pending.copy(state = SyncMutationState.PENDING),
+        )
+        assertEquals(SyncMutationState.SYNCHRONISED, replayed.state)
+        assertEquals(1, restarted.loadMutations("company-a").size)
+    }
+
+    @Test
     fun evidenceReadsAreTenantAndPackVersionScoped() = runBlocking<Unit> {
         val store = fixture.store()
         val packA = pack("company-a", version = 1L)
@@ -540,6 +733,7 @@ class EncryptedJobPackStoreInstrumentedTest {
                 metadata.checksum,
             )
             assertEquals("image/jpeg", metadata.contentType)
+            assertEquals(3L, metadata.byteSize)
         } finally {
             storage.delete("photo-001")
         }
@@ -667,6 +861,19 @@ class EncryptedJobPackStoreInstrumentedTest {
         const val SENSITIVE_NOTE = "Restricted north roof access"
         val SQLITE_HEADER = "SQLite format 3\u0000".toByteArray()
         val SENSITIVE_NOTE_BYTES = SENSITIVE_NOTE.toByteArray()
+    }
+
+    private class RecordingTransport(
+        private val delivery: SyncMutationDelivery,
+    ) : SyncMutationTransport {
+        val mutationIds = mutableListOf<String>()
+        val idempotencyKeys = mutableListOf<String>()
+
+        override suspend fun send(mutation: SyncMutation): SyncMutationDelivery {
+            mutationIds += mutation.mutationId
+            idempotencyKeys += mutation.idempotencyKey
+            return delivery
+        }
     }
 }
 

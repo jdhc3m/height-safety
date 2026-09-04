@@ -46,6 +46,7 @@ import au.com.heightsafety.domain.RecordedDisposition
 import au.com.heightsafety.domain.RecordedOutcome
 import au.com.heightsafety.domain.RecordedProofTest
 import au.com.heightsafety.domain.ReconciliationProposal
+import au.com.heightsafety.domain.PhotoUploadState
 import au.com.heightsafety.domain.SubmissionReviewIssue
 import java.text.DateFormat
 import java.util.Date
@@ -1201,6 +1202,15 @@ private fun AnchorCaptureContent(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(stringResource(R.string.photos_attached, draft.photos.size))
+                Text(
+                    text = stringResource(
+                        R.string.photos_upload_state,
+                        draft.photos.count { it.uploadState == PhotoUploadState.PENDING_UPLOAD },
+                        draft.photos.count { it.uploadState == PhotoUploadState.UPLOADED },
+                        draft.photos.count { it.uploadState == PhotoUploadState.FAILED },
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                )
                 Text(
                     text = stringResource(R.string.photos_association_note),
                     style = MaterialTheme.typography.bodySmall,

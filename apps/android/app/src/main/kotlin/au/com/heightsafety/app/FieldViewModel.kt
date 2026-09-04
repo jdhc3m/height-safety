@@ -151,6 +151,8 @@ class FieldViewModel(
     private val jobPackService: JobPackService? = null,
     private val anchorEvidenceService: AnchorEvidenceService? = null,
     private val submissionService: AnchorSubmissionService? = null,
+    private val scheduleMutationSync: () -> Unit = {},
+    private val schedulePhotoUpload: () -> Unit = {},
     private val nowEpochMillis: () -> Long = { System.currentTimeMillis() },
     private val deviceAuthenticationGate: DeviceAuthenticationGate,
     private val inspectionIdGenerator: () -> String = { UUID.randomUUID().toString() },
@@ -607,6 +609,22 @@ class FieldViewModel(
         activeRequest = scope.launch {
             try {
                 service.queue(currentSession, current.opened)
+                if (current.review.evidence.any { it.photos.isNotEmpty() }) {
+                    try {
+                        schedulePhotoUpload()
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        // The local photo queue is durable; a later app event can reschedule it.
+                    }
+                }
+                try {
+                    scheduleMutationSync()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    // The local queue is durable; a later app event can reschedule the drain.
+                }
                 val review = service.review(currentSession, current.opened)
                 _uiState.value = current.copy(
                     review = review,
@@ -707,6 +725,15 @@ class FieldViewModel(
                     draft = current.draft,
                 )
                 val evidence = current.evidence.replaceDraft(saved)
+                if (saved.photos.isNotEmpty()) {
+                    try {
+                        schedulePhotoUpload()
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        // The local photo queue is durable; a later app event can reschedule it.
+                    }
+                }
                 _uiState.value = current.copy(
                     draft = saved,
                     evidence = evidence,
@@ -767,6 +794,7 @@ class FieldViewModel(
                     capturedAtEpochMillis = photo.capturedAtEpochMillis,
                     checksum = photo.checksum,
                     contentType = photo.contentType,
+                    byteSize = photo.byteSize,
                 ),
             ),
         )

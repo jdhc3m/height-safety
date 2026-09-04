@@ -13,6 +13,8 @@ import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import au.com.heightsafety.domain.INSPECTION_SUBMISSION_ENTITY_TYPE
+import au.com.heightsafety.domain.SyncMutationOperation
 
 @Entity(
     tableName = "job_pack",
@@ -153,6 +155,48 @@ internal data class AnchorEvidencePhotoEntity(
     val checksum: String,
     val uploadState: String,
     val contentType: String?,
+    val byteSize: Long?,
+)
+
+@Entity(
+    tableName = "photo_upload",
+    primaryKeys = ["companyId", "jobId", "jobPackVersion", "inspectionId", "localId"],
+    indices = [Index(value = ["companyId", "state", "createdAtEpochMillis"])],
+    foreignKeys = [
+        ForeignKey(
+            entity = AnchorEvidencePhotoEntity::class,
+            parentColumns = [
+                "companyId",
+                "jobId",
+                "jobPackVersion",
+                "inspectionId",
+                "localId",
+            ],
+            childColumns = [
+                "companyId",
+                "jobId",
+                "jobPackVersion",
+                "inspectionId",
+                "localId",
+            ],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+)
+internal data class PhotoUploadEntity(
+    val companyId: String,
+    val jobId: String,
+    val jobPackVersion: Long,
+    val inspectionId: String,
+    val localId: String,
+    val mediaId: String,
+    val state: String,
+    val byteSize: Long?,
+    val uploadedBytes: Long,
+    val attemptCount: Int,
+    val lastError: String?,
+    val createdAtEpochMillis: Long,
+    val updatedAtEpochMillis: Long,
 )
 
 @Entity(
@@ -181,6 +225,31 @@ internal data class InspectionSubmissionEntity(
     val updatedAtEpochMillis: Long,
 )
 
+@Entity(
+    tableName = "sync_mutation",
+    primaryKeys = ["companyId", "mutationId"],
+    indices = [
+        Index(value = ["companyId", "idempotencyKey"], unique = true),
+        Index(value = ["companyId", "state", "createdAtEpochMillis"]),
+    ],
+)
+internal data class SyncMutationEntity(
+    val companyId: String,
+    val mutationId: String,
+    val idempotencyKey: String,
+    val operation: String,
+    val entityType: String,
+    val entityId: String,
+    val entityVersion: Long,
+    val actorUserId: String,
+    val sessionId: String,
+    val state: String,
+    val attemptCount: Int,
+    val lastError: String?,
+    val createdAtEpochMillis: Long,
+    val updatedAtEpochMillis: Long,
+)
+
 internal data class JobPackStorageSnapshot(
     val pack: JobPackEntity,
     val anchors: List<JobPackAnchorEntity>,
@@ -190,6 +259,11 @@ internal data class JobPackStorageSnapshot(
 internal data class AnchorInspectionStorageSnapshot(
     val inspection: AnchorInspectionEntity,
     val photos: List<AnchorEvidencePhotoEntity>,
+)
+
+internal data class PhotoUploadStorageSnapshot(
+    val upload: PhotoUploadEntity,
+    val photo: AnchorEvidencePhotoEntity,
 )
 
 @Dao
@@ -206,16 +280,34 @@ internal abstract class JobPackDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     protected abstract fun replaceLease(lease: OfflineAuthorizationLeaseEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    protected abstract fun replaceInspection(inspection: AnchorInspectionEntity)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract fun insertInspectionIfMissing(inspection: AnchorInspectionEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    protected abstract fun replacePhotos(photos: List<AnchorEvidencePhotoEntity>)
+    @Update
+    protected abstract fun updateInspection(inspection: AnchorInspectionEntity): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract fun insertPhotoIfMissing(photo: AnchorEvidencePhotoEntity): Long
+
+    @Update
+    protected abstract fun updatePhoto(photo: AnchorEvidencePhotoEntity): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract fun insertPhotoUploadIfMissing(upload: PhotoUploadEntity): Long
+
+    @Update
+    protected abstract fun updatePhotoUpload(upload: PhotoUploadEntity): Int
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract fun insertSubmissionIfMissing(
         submission: InspectionSubmissionEntity,
     ): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract fun insertMutationIfMissing(mutation: SyncMutationEntity): Long
+
+    @Update
+    protected abstract fun updateMutation(mutation: SyncMutationEntity): Int
 
     @Query(
         "DELETE FROM job_pack_anchor " +
@@ -232,13 +324,15 @@ internal abstract class JobPackDao {
     @Query(
         "DELETE FROM anchor_evidence_photo " +
             "WHERE companyId = :companyId AND jobId = :jobId " +
-            "AND jobPackVersion = :jobPackVersion AND inspectionId = :inspectionId",
+            "AND jobPackVersion = :jobPackVersion AND inspectionId = :inspectionId " +
+            "AND localId = :localId",
     )
-    protected abstract fun deletePhotos(
+    protected abstract fun deletePhoto(
         companyId: String,
         jobId: String,
         jobPackVersion: Long,
         inspectionId: String,
+        localId: String,
     )
 
     @Query("SELECT * FROM job_pack WHERE companyId = :companyId AND jobId = :jobId")
@@ -281,6 +375,20 @@ internal abstract class JobPackDao {
     ): List<AnchorEvidencePhotoEntity>
 
     @Query(
+        "SELECT * FROM anchor_evidence_photo " +
+            "WHERE companyId = :companyId AND jobId = :jobId " +
+            "AND jobPackVersion = :jobPackVersion AND inspectionId = :inspectionId " +
+            "AND localId = :localId",
+    )
+    protected abstract fun findPhoto(
+        companyId: String,
+        jobId: String,
+        jobPackVersion: Long,
+        inspectionId: String,
+        localId: String,
+    ): AnchorEvidencePhotoEntity?
+
+    @Query(
         "SELECT * FROM anchor_inspection " +
             "WHERE companyId = :companyId AND jobId = :jobId " +
             "AND jobPackVersion = :jobPackVersion AND inspectionId = :inspectionId",
@@ -303,11 +411,326 @@ internal abstract class JobPackDao {
         jobPackVersion: Long,
     ): InspectionSubmissionEntity?
 
+    @Query(
+        "SELECT * FROM sync_mutation " +
+            "WHERE companyId = :companyId AND mutationId = :mutationId",
+    )
+    protected abstract fun findMutation(
+        companyId: String,
+        mutationId: String,
+    ): SyncMutationEntity?
+
+    @Query(
+        "SELECT * FROM sync_mutation " +
+            "WHERE companyId = :companyId AND state IN ('pending', 'failed') " +
+            "ORDER BY createdAtEpochMillis, mutationId LIMIT 1",
+    )
+    protected abstract fun findNextEligibleMutation(companyId: String): SyncMutationEntity?
+
+    @Query(
+        "SELECT * FROM sync_mutation " +
+            "WHERE state IN ('pending', 'failed') " +
+            "ORDER BY createdAtEpochMillis, companyId, mutationId LIMIT 1",
+    )
+    protected abstract fun findNextEligibleMutationForAnyCompany(): SyncMutationEntity?
+
+    @Query(
+        "SELECT * FROM sync_mutation " +
+            "WHERE companyId = :companyId ORDER BY createdAtEpochMillis, mutationId",
+    )
+    protected abstract fun findMutations(companyId: String): List<SyncMutationEntity>
+
+    @Query(
+        "SELECT * FROM sync_mutation " +
+            "WHERE state = 'synchronising' ORDER BY companyId, mutationId",
+    )
+    protected abstract fun findInterruptedMutations(): List<SyncMutationEntity>
+
+    @Query(
+        "SELECT * FROM photo_upload " +
+            "WHERE state IN ('pending_upload', 'failed') " +
+            "ORDER BY createdAtEpochMillis, companyId, jobId, jobPackVersion, inspectionId, localId " +
+            "LIMIT 1",
+    )
+    protected abstract fun findNextEligiblePhotoUpload(): PhotoUploadEntity?
+
+    @Query(
+        "SELECT * FROM photo_upload " +
+            "WHERE companyId = :companyId " +
+            "ORDER BY createdAtEpochMillis, jobId, jobPackVersion, inspectionId, localId",
+    )
+    protected abstract fun findPhotoUploads(companyId: String): List<PhotoUploadEntity>
+
+    @Query("SELECT * FROM photo_upload WHERE state = 'uploading'")
+    protected abstract fun findInterruptedPhotoUploads(): List<PhotoUploadEntity>
+
+    @Query(
+        "SELECT * FROM photo_upload " +
+            "WHERE companyId = :companyId AND jobId = :jobId " +
+            "AND jobPackVersion = :jobPackVersion AND inspectionId = :inspectionId " +
+            "AND localId = :localId",
+    )
+    protected abstract fun findPhotoUpload(
+        companyId: String,
+        jobId: String,
+        jobPackVersion: Long,
+        inspectionId: String,
+        localId: String,
+    ): PhotoUploadEntity?
+
+    @Query(
+        "UPDATE anchor_evidence_photo SET uploadState = :uploadState, byteSize = :byteSize " +
+            "WHERE companyId = :companyId AND jobId = :jobId " +
+            "AND jobPackVersion = :jobPackVersion AND inspectionId = :inspectionId " +
+            "AND localId = :localId",
+    )
+    protected abstract fun updateVisiblePhotoUploadState(
+        companyId: String,
+        jobId: String,
+        jobPackVersion: Long,
+        inspectionId: String,
+        localId: String,
+        uploadState: String,
+        byteSize: Long?,
+    ): Int
+
+    @Query(
+        "UPDATE inspection_submission SET syncState = :state, " +
+            "updatedAtEpochMillis = :updatedAtEpochMillis " +
+            "WHERE companyId = :companyId AND mutationId = :mutationId",
+    )
+    protected abstract fun updateSubmissionSyncState(
+        companyId: String,
+        mutationId: String,
+        state: String,
+        updatedAtEpochMillis: Long,
+    )
+
+    @Query(
+        "UPDATE anchor_inspection SET syncState = :state, " +
+            "updatedAtEpochMillis = :updatedAtEpochMillis " +
+            "WHERE companyId = :companyId AND submissionId = " +
+            "(SELECT submissionId FROM inspection_submission " +
+            "WHERE companyId = :companyId AND mutationId = :mutationId)",
+    )
+    protected abstract fun updateEvidenceSyncState(
+        companyId: String,
+        mutationId: String,
+        state: String,
+        updatedAtEpochMillis: Long,
+    )
+
     fun submission(
         companyId: String,
         jobId: String,
         jobPackVersion: Long,
     ): InspectionSubmissionEntity? = findSubmission(companyId, jobId, jobPackVersion)
+
+    fun nextEligibleMutation(companyId: String): SyncMutationEntity? =
+        findNextEligibleMutation(companyId)
+
+    fun nextEligibleMutationForAnyCompany(): SyncMutationEntity? =
+        findNextEligibleMutationForAnyCompany()
+
+    fun mutation(companyId: String, mutationId: String): SyncMutationEntity? =
+        findMutation(companyId, mutationId)
+
+    fun mutations(companyId: String): List<SyncMutationEntity> = findMutations(companyId)
+
+    @Transaction
+    open fun nextEligiblePhotoUpload(): PhotoUploadStorageSnapshot? {
+        val upload = findNextEligiblePhotoUpload() ?: return null
+        val photo = findPhoto(
+            companyId = upload.companyId,
+            jobId = upload.jobId,
+            jobPackVersion = upload.jobPackVersion,
+            inspectionId = upload.inspectionId,
+            localId = upload.localId,
+        ) ?: error("photo upload has no associated evidence photo")
+        return PhotoUploadStorageSnapshot(upload = upload, photo = photo)
+    }
+
+    fun photo(
+        companyId: String,
+        jobId: String,
+        jobPackVersion: Long,
+        inspectionId: String,
+        localId: String,
+    ): AnchorEvidencePhotoEntity? = findPhoto(
+        companyId = companyId,
+        jobId = jobId,
+        jobPackVersion = jobPackVersion,
+        inspectionId = inspectionId,
+        localId = localId,
+    )
+
+    @Transaction
+    open fun photoUploads(companyId: String): List<PhotoUploadStorageSnapshot> =
+        findPhotoUploads(companyId).map { upload ->
+            val photo = findPhoto(
+                companyId = upload.companyId,
+                jobId = upload.jobId,
+                jobPackVersion = upload.jobPackVersion,
+                inspectionId = upload.inspectionId,
+                localId = upload.localId,
+            ) ?: error("photo upload has no associated evidence photo")
+            PhotoUploadStorageSnapshot(upload = upload, photo = photo)
+        }
+
+    @Transaction
+    open fun recoverInterruptedPhotoUploads(
+        nowEpochMillis: Long,
+        error: String,
+    ) {
+        findInterruptedPhotoUploads().forEach { upload ->
+            val recovered = upload.copy(
+                state = "failed",
+                lastError = error,
+                updatedAtEpochMillis = nowEpochMillis,
+            )
+            updatePhotoUpload(recovered)
+            updateVisiblePhotoUploadState(
+                companyId = recovered.companyId,
+                jobId = recovered.jobId,
+                jobPackVersion = recovered.jobPackVersion,
+                inspectionId = recovered.inspectionId,
+                localId = recovered.localId,
+                uploadState = recovered.state.toVisiblePhotoUploadState(),
+                byteSize = recovered.byteSize ?: findPhoto(
+                    companyId = recovered.companyId,
+                    jobId = recovered.jobId,
+                    jobPackVersion = recovered.jobPackVersion,
+                    inspectionId = recovered.inspectionId,
+                    localId = recovered.localId,
+                )?.byteSize,
+            )
+        }
+    }
+
+    @Transaction
+    open fun savePhotoUpload(upload: PhotoUploadEntity) {
+        val photo = findPhoto(
+            companyId = upload.companyId,
+            jobId = upload.jobId,
+            jobPackVersion = upload.jobPackVersion,
+            inspectionId = upload.inspectionId,
+            localId = upload.localId,
+        ) ?: error("photo upload must have an associated evidence photo")
+        check(upload.mediaId == photo.localId) {
+            "photo upload media identity does not match evidence photo"
+        }
+        val existing = findPhotoUpload(
+            companyId = upload.companyId,
+            jobId = upload.jobId,
+            jobPackVersion = upload.jobPackVersion,
+            inspectionId = upload.inspectionId,
+            localId = upload.localId,
+        )
+        if (existing == null) {
+            insertPhotoUploadIfMissing(upload)
+        } else {
+            check(existing.sameIdentityAs(upload)) {
+                "photo upload identity collision"
+            }
+            check(updatePhotoUpload(upload) == 1) {
+                "photo upload update was not applied"
+            }
+        }
+        val stored = findPhotoUpload(
+            companyId = upload.companyId,
+            jobId = upload.jobId,
+            jobPackVersion = upload.jobPackVersion,
+            inspectionId = upload.inspectionId,
+            localId = upload.localId,
+        ) ?: error("photo upload was not stored")
+        check(stored.sameIdentityAs(upload)) {
+            "photo upload identity collision"
+        }
+        updateVisiblePhotoUploadState(
+            companyId = stored.companyId,
+            jobId = stored.jobId,
+            jobPackVersion = stored.jobPackVersion,
+            inspectionId = stored.inspectionId,
+            localId = stored.localId,
+            uploadState = stored.state.toVisiblePhotoUploadState(),
+            byteSize = stored.byteSize ?: photo.byteSize,
+        )
+    }
+
+    @Transaction
+    open fun enqueueMutation(mutation: SyncMutationEntity): SyncMutationEntity {
+        findMutation(mutation.companyId, mutation.mutationId)?.let { existing ->
+            check(existing.sameIdentityAs(mutation)) {
+                "mutation identity collision"
+            }
+            return existing
+        }
+        insertMutationIfMissing(mutation)
+        val stored = findMutation(mutation.companyId, mutation.mutationId)
+            ?: error("mutation was not stored")
+        check(stored.sameIdentityAs(mutation)) {
+            "mutation identity collision"
+        }
+        updateVisibleMutationState(stored)
+        return stored
+    }
+
+    @Transaction
+    open fun recoverInterruptedMutations(
+        nowEpochMillis: Long,
+        error: String,
+    ) {
+        findInterruptedMutations().forEach { mutation ->
+            val recovered = mutation.copy(
+                state = "failed",
+                lastError = error,
+                updatedAtEpochMillis = nowEpochMillis,
+            )
+            updateMutation(recovered)
+            updateVisibleMutationState(recovered)
+        }
+    }
+
+    @Transaction
+    open fun saveMutation(mutation: SyncMutationEntity) {
+        val existing = findMutation(mutation.companyId, mutation.mutationId)
+        if (existing == null) {
+            insertMutationIfMissing(mutation)
+        } else {
+            check(existing.sameIdentityAs(mutation)) {
+                "mutation identity collision"
+            }
+            check(updateMutation(mutation) == 1) {
+                "mutation update was not applied"
+            }
+        }
+        val stored = findMutation(mutation.companyId, mutation.mutationId)
+            ?: error("mutation was not stored")
+        check(stored.sameIdentityAs(mutation)) {
+            "mutation identity collision"
+        }
+        updateVisibleMutationState(stored)
+    }
+
+    private fun updateVisibleMutationState(mutation: SyncMutationEntity) {
+        if (
+            mutation.entityType == INSPECTION_SUBMISSION_ENTITY_TYPE &&
+            mutation.operation == SyncMutationOperation.SUBMIT_INSPECTION.value
+        ) {
+            updateSubmissionSyncState(
+                companyId = mutation.companyId,
+                mutationId = mutation.mutationId,
+                state = mutation.state,
+                updatedAtEpochMillis = mutation.updatedAtEpochMillis,
+            )
+            updateEvidenceSyncState(
+                companyId = mutation.companyId,
+                mutationId = mutation.mutationId,
+                state = mutation.state,
+                updatedAtEpochMillis = mutation.updatedAtEpochMillis,
+            )
+        }
+    }
 
     @Transaction
     open fun replaceJobPack(
@@ -348,14 +771,23 @@ internal abstract class JobPackDao {
         ) {
             error("submitted local evidence is immutable")
         }
-        deletePhotos(
+        saveInspection(inspection)
+        val incomingKeys = photos.map { it.photoKey() }.toSet()
+        findPhotos(
             companyId = inspection.companyId,
             jobId = inspection.jobId,
             jobPackVersion = inspection.jobPackVersion,
             inspectionId = inspection.inspectionId,
-        )
-        replaceInspection(inspection)
-        replacePhotos(photos)
+        ).filterNot { it.photoKey() in incomingKeys }.forEach { photo ->
+            deletePhoto(
+                companyId = photo.companyId,
+                jobId = photo.jobId,
+                jobPackVersion = photo.jobPackVersion,
+                inspectionId = photo.inspectionId,
+                localId = photo.localId,
+            )
+        }
+        photos.forEach(::saveEvidencePhoto)
     }
 
     @Transaction
@@ -384,6 +816,7 @@ internal abstract class JobPackDao {
         submission: InspectionSubmissionEntity,
         frozenEvidence: List<AnchorInspectionEntity>,
         frozenPhotos: List<AnchorEvidencePhotoEntity>,
+        mutation: SyncMutationEntity,
     ): InspectionSubmissionEntity {
         findSubmission(
             companyId = submission.companyId,
@@ -400,14 +833,144 @@ internal abstract class JobPackDao {
             stored.submissionId == submission.submissionId &&
             stored.mutationId == submission.mutationId
         ) {
-            frozenEvidence.forEach(::replaceInspection)
-            replacePhotos(frozenPhotos)
+            insertMutationIfMissing(mutation)
+            val storedMutation = findMutation(mutation.companyId, mutation.mutationId)
+                ?: error("queued mutation was not stored")
+            check(storedMutation.sameIdentityAs(mutation)) {
+                "mutation identity collision"
+            }
+            frozenEvidence.forEach(::saveInspection)
+            frozenPhotos.groupBy { it.photoKey() }.values.forEach { photoVersions ->
+                saveEvidencePhoto(photoVersions.single())
+            }
         }
         return stored
     }
 
+    private fun saveInspection(inspection: AnchorInspectionEntity) {
+        val existing = findInspection(
+            companyId = inspection.companyId,
+            jobId = inspection.jobId,
+            jobPackVersion = inspection.jobPackVersion,
+            inspectionId = inspection.inspectionId,
+        )
+        if (existing == null) {
+            insertInspectionIfMissing(inspection)
+        } else {
+            check(updateInspection(inspection) == 1) {
+                "inspection update was not applied"
+            }
+        }
+    }
+
+    private fun saveEvidencePhoto(photo: AnchorEvidencePhotoEntity) {
+        val existing = findPhoto(
+            companyId = photo.companyId,
+            jobId = photo.jobId,
+            jobPackVersion = photo.jobPackVersion,
+            inspectionId = photo.inspectionId,
+            localId = photo.localId,
+        )
+        val upload = findPhotoUpload(
+            companyId = photo.companyId,
+            jobId = photo.jobId,
+            jobPackVersion = photo.jobPackVersion,
+            inspectionId = photo.inspectionId,
+            localId = photo.localId,
+        )
+        val visiblePhoto = photo.copy(
+            uploadState = upload?.state.toVisiblePhotoUploadState(),
+            byteSize = upload?.byteSize ?: photo.byteSize,
+        )
+        if (existing == null) {
+            insertPhotoIfMissing(visiblePhoto)
+        } else {
+            check(existing.sameIdentityAs(photo)) {
+                "photo identity collision"
+            }
+            check(updatePhoto(visiblePhoto) == 1) {
+                "photo update was not applied"
+            }
+        }
+        if (upload == null) {
+            savePhotoUpload(
+                PhotoUploadEntity(
+                    companyId = photo.companyId,
+                    jobId = photo.jobId,
+                    jobPackVersion = photo.jobPackVersion,
+                    inspectionId = photo.inspectionId,
+                    localId = photo.localId,
+                    mediaId = photo.localId,
+                    state = "pending_upload",
+                    byteSize = photo.byteSize,
+                    uploadedBytes = 0L,
+                    attemptCount = 0,
+                    lastError = null,
+                    createdAtEpochMillis = photo.capturedAtEpochMillis,
+                    updatedAtEpochMillis = photo.capturedAtEpochMillis,
+                ),
+            )
+        } else {
+            if (photo.byteSize != null && upload.byteSize != null) {
+                check(photo.byteSize == upload.byteSize) {
+                    "photo content size changed for stable media identity"
+                }
+            }
+            updateVisiblePhotoUploadState(
+                companyId = upload.companyId,
+                jobId = upload.jobId,
+                jobPackVersion = upload.jobPackVersion,
+                inspectionId = upload.inspectionId,
+                localId = upload.localId,
+                uploadState = upload.state.toVisiblePhotoUploadState(),
+                byteSize = upload.byteSize ?: photo.byteSize,
+            )
+        }
+    }
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract fun saveLease(lease: OfflineAuthorizationLeaseEntity)
+}
+
+private fun SyncMutationEntity.sameIdentityAs(other: SyncMutationEntity): Boolean =
+    companyId == other.companyId &&
+        mutationId == other.mutationId &&
+        idempotencyKey == other.idempotencyKey &&
+        operation == other.operation &&
+        entityType == other.entityType &&
+        entityId == other.entityId &&
+        entityVersion == other.entityVersion &&
+        actorUserId == other.actorUserId &&
+        sessionId == other.sessionId
+
+private fun PhotoUploadEntity.sameIdentityAs(other: PhotoUploadEntity): Boolean =
+    companyId == other.companyId &&
+        jobId == other.jobId &&
+        jobPackVersion == other.jobPackVersion &&
+        inspectionId == other.inspectionId &&
+        localId == other.localId &&
+        mediaId == other.mediaId
+
+private fun AnchorEvidencePhotoEntity.photoKey(): String =
+    listOf(companyId, jobId, jobPackVersion, inspectionId, localId).joinToString("\u0000")
+
+private fun AnchorEvidencePhotoEntity.sameIdentityAs(
+    other: AnchorEvidencePhotoEntity,
+): Boolean =
+    companyId == other.companyId &&
+        jobId == other.jobId &&
+        jobPackVersion == other.jobPackVersion &&
+        inspectionId == other.inspectionId &&
+        localId == other.localId &&
+        storageReference == other.storageReference &&
+        capturedAtEpochMillis == other.capturedAtEpochMillis &&
+        checksum == other.checksum &&
+        contentType == other.contentType
+
+private fun String?.toVisiblePhotoUploadState(): String = when (this) {
+    "uploaded" -> "uploaded"
+    "failed" -> "failed"
+    else -> "pending_upload"
 }
 
 internal val JOB_PACK_MIGRATION_1_2 = object : Migration(1, 2) {
@@ -674,6 +1237,161 @@ internal val JOB_PACK_MIGRATION_3_4 = object : Migration(3, 4) {
     }
 }
 
+internal val JOB_PACK_MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE sync_mutation (
+                companyId TEXT NOT NULL,
+                mutationId TEXT NOT NULL,
+                idempotencyKey TEXT NOT NULL,
+                operation TEXT NOT NULL,
+                entityType TEXT NOT NULL,
+                entityId TEXT NOT NULL,
+                entityVersion INTEGER NOT NULL,
+                actorUserId TEXT NOT NULL,
+                sessionId TEXT NOT NULL,
+                state TEXT NOT NULL,
+                attemptCount INTEGER NOT NULL,
+                lastError TEXT,
+                createdAtEpochMillis INTEGER NOT NULL,
+                updatedAtEpochMillis INTEGER NOT NULL,
+                PRIMARY KEY(companyId, mutationId)
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX index_sync_mutation_companyId_idempotencyKey " +
+                "ON sync_mutation(companyId, idempotencyKey)",
+        )
+        db.execSQL(
+            "CREATE INDEX index_sync_mutation_companyId_state_createdAtEpochMillis " +
+                "ON sync_mutation(companyId, state, createdAtEpochMillis)",
+        )
+        db.execSQL(
+            """
+            INSERT INTO sync_mutation (
+                companyId,
+                mutationId,
+                idempotencyKey,
+                operation,
+                entityType,
+                entityId,
+                entityVersion,
+                actorUserId,
+                sessionId,
+                state,
+                attemptCount,
+                lastError,
+                createdAtEpochMillis,
+                updatedAtEpochMillis
+            )
+            SELECT
+                companyId,
+                mutationId,
+                mutationId,
+                'submit_inspection',
+                'inspection_submission',
+                submissionId,
+                jobPackVersion,
+                inspectorUserId,
+                sessionId,
+                syncState,
+                0,
+                NULL,
+                createdAtEpochMillis,
+                updatedAtEpochMillis
+            FROM inspection_submission
+            """.trimIndent(),
+        )
+    }
+}
+
+internal val JOB_PACK_MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE anchor_evidence_photo ADD COLUMN byteSize INTEGER")
+        db.execSQL(
+            """
+            CREATE TABLE photo_upload (
+                companyId TEXT NOT NULL,
+                jobId TEXT NOT NULL,
+                jobPackVersion INTEGER NOT NULL,
+                inspectionId TEXT NOT NULL,
+                localId TEXT NOT NULL,
+                mediaId TEXT NOT NULL,
+                state TEXT NOT NULL,
+                byteSize INTEGER,
+                uploadedBytes INTEGER NOT NULL,
+                attemptCount INTEGER NOT NULL,
+                lastError TEXT,
+                createdAtEpochMillis INTEGER NOT NULL,
+                updatedAtEpochMillis INTEGER NOT NULL,
+                PRIMARY KEY(companyId, jobId, jobPackVersion, inspectionId, localId),
+                FOREIGN KEY(
+                    companyId,
+                    jobId,
+                    jobPackVersion,
+                    inspectionId,
+                    localId
+                ) REFERENCES anchor_evidence_photo(
+                    companyId,
+                    jobId,
+                    jobPackVersion,
+                    inspectionId,
+                    localId
+                ) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX index_photo_upload_companyId_state_createdAtEpochMillis " +
+                "ON photo_upload(companyId, state, createdAtEpochMillis)",
+        )
+        db.execSQL(
+            "UPDATE anchor_evidence_photo SET uploadState = " +
+                "CASE WHEN uploadState = 'failed' THEN 'failed' ELSE 'pending_upload' END",
+        )
+        db.execSQL(
+            """
+            INSERT INTO photo_upload (
+                companyId,
+                jobId,
+                jobPackVersion,
+                inspectionId,
+                localId,
+                mediaId,
+                state,
+                byteSize,
+                uploadedBytes,
+                attemptCount,
+                lastError,
+                createdAtEpochMillis,
+                updatedAtEpochMillis
+            )
+            SELECT
+                companyId,
+                jobId,
+                jobPackVersion,
+                inspectionId,
+                localId,
+                localId,
+                CASE WHEN uploadState = 'failed' THEN 'failed' ELSE 'pending_upload' END,
+                byteSize,
+                0,
+                0,
+                CASE
+                    WHEN uploadState = 'failed'
+                        THEN 'Photo upload state migrated before retry metadata existed.'
+                    ELSE NULL
+                END,
+                capturedAtEpochMillis,
+                capturedAtEpochMillis
+            FROM anchor_evidence_photo
+            """.trimIndent(),
+        )
+    }
+}
+
 @Database(
     entities = [
         JobPackEntity::class,
@@ -682,8 +1400,10 @@ internal val JOB_PACK_MIGRATION_3_4 = object : Migration(3, 4) {
         AnchorInspectionEntity::class,
         AnchorEvidencePhotoEntity::class,
         InspectionSubmissionEntity::class,
+        SyncMutationEntity::class,
+        PhotoUploadEntity::class,
     ],
-    version = 4,
+    version = 6,
     exportSchema = true,
 )
 internal abstract class JobPackDatabase : RoomDatabase() {

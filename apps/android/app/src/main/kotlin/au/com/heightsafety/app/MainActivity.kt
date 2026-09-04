@@ -78,6 +78,12 @@ class MainActivity : ComponentActivity() {
                         submissionIdGenerator = { UUID.randomUUID().toString() },
                         mutationIdGenerator = { UUID.randomUUID().toString() },
                     ),
+                    scheduleMutationSync = {
+                        MutationOutboxWork.enqueue(applicationContext)
+                    },
+                    schedulePhotoUpload = {
+                        PhotoUploadWork.enqueue(applicationContext)
+                    },
                     deviceAuthenticationGate = DeviceAuthenticationGate {
                         authenticateWithDeviceCredential()
                     },

@@ -60,6 +60,7 @@ public data class AnchorEvidencePhoto(
     public val checksum: String,
     public val uploadState: PhotoUploadState = PhotoUploadState.PENDING_UPLOAD,
     public val contentType: String? = null,
+    public val byteSize: Long? = null,
 ) {
     init {
         require(companyId.isNotBlank()) { "photo companyId is required" }
@@ -73,7 +74,14 @@ public data class AnchorEvidencePhoto(
             "photo capturedAtEpochMillis must not be negative"
         }
         require(checksum.isNotBlank()) { "photo checksum is required" }
+        require(byteSize == null || byteSize >= 0) {
+            "photo byteSize must not be negative"
+        }
     }
+
+    /** Stable media identity used by the later server upload contract. */
+    public val mediaId: String
+        get() = localId
 }
 
 public enum class CaptureValidationCode {

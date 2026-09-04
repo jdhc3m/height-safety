@@ -47,6 +47,7 @@ public data class CapturedAnchorPhoto(
     val capturedAtEpochMillis: Long,
     val checksum: String,
     val contentType: String,
+    val byteSize: Long? = null,
 ) {
     init {
         require(companyId.isNotBlank())
@@ -62,6 +63,7 @@ public data class CapturedAnchorPhoto(
         require(capturedAtEpochMillis >= 0)
         require(checksum.isNotBlank())
         require(contentType == "image/jpeg")
+        require(byteSize == null || byteSize > 0L)
     }
 }
 
@@ -75,6 +77,7 @@ public object CameraCaptureIntent {
     private const val EXTRA_CAPTURED_AT = "au.com.heightsafety.camera.CAPTURED_AT"
     private const val EXTRA_CHECKSUM = "au.com.heightsafety.camera.CHECKSUM"
     private const val EXTRA_CONTENT_TYPE = "au.com.heightsafety.camera.CONTENT_TYPE"
+    private const val EXTRA_BYTE_SIZE = "au.com.heightsafety.camera.BYTE_SIZE"
     private const val EXTRA_RESULT_MARKER = "au.com.heightsafety.camera.RESULT"
 
     public fun create(
@@ -122,6 +125,7 @@ public object CameraCaptureIntent {
         putExtra(EXTRA_CAPTURED_AT, photo.capturedAtEpochMillis)
         putExtra(EXTRA_CHECKSUM, photo.checksum)
         putExtra(EXTRA_CONTENT_TYPE, photo.contentType)
+        photo.byteSize?.let { putExtra(EXTRA_BYTE_SIZE, it) }
     }
 
     internal fun resultIntent(photo: CapturedAnchorPhoto): Intent = Intent().apply {
@@ -134,6 +138,7 @@ public object CameraCaptureIntent {
         putExtra(EXTRA_CAPTURED_AT, photo.capturedAtEpochMillis)
         putExtra(EXTRA_CHECKSUM, photo.checksum)
         putExtra(EXTRA_CONTENT_TYPE, photo.contentType)
+        photo.byteSize?.let { putExtra(EXTRA_BYTE_SIZE, it) }
     }
 
     public fun capturedPhoto(intent: Intent?): CapturedAnchorPhoto? {
@@ -148,6 +153,7 @@ public object CameraCaptureIntent {
                 capturedAtEpochMillis = intent.getLongExtra(EXTRA_CAPTURED_AT, -1L),
                 checksum = intent.getStringExtra(EXTRA_CHECKSUM).orEmpty(),
                 contentType = intent.getStringExtra(EXTRA_CONTENT_TYPE).orEmpty(),
+                byteSize = intent.getLongExtra(EXTRA_BYTE_SIZE, -1L).takeIf { it > 0L },
             )
         }.getOrNull()
     }
@@ -269,6 +275,7 @@ public class CameraCaptureActivity : ComponentActivity() {
                                 capturedAtEpochMillis = metadata.capturedAtEpochMillis,
                                 checksum = metadata.checksum,
                                 contentType = metadata.contentType,
+                                byteSize = metadata.byteSize,
                             )
                         }
                         withContext(Dispatchers.Main.immediate) {

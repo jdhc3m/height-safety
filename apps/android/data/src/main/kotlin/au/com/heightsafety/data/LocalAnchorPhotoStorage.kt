@@ -24,6 +24,11 @@ public class LocalAnchorPhotoStorage(
         return File(photosDirectory, "$localId.jpg")
     }
 
+    public fun storageReference(localId: String): String {
+        require(isSafeLocalId(localId)) { "photo localId is not a safe file name" }
+        return "$PHOTOS_DIRECTORY/$localId.jpg"
+    }
+
     public fun describe(
         localId: String,
         capturedAtEpochMillis: Long,
@@ -35,14 +40,25 @@ public class LocalAnchorPhotoStorage(
         require(file.isFile && file.length() > 0L) {
             "captured photo file is missing or empty"
         }
-        val checksum = MessageDigest.getInstance("SHA-256").digest(file.readBytes())
+        val checksum = MessageDigest.getInstance("SHA-256").let { digest ->
+            file.inputStream().use { input ->
+                val buffer = ByteArray(16 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    if (read > 0) digest.update(buffer, 0, read)
+                }
+                digest.digest()
+            }
+        }
             .joinToString(separator = "") { byte -> "%02x".format(byte) }
         return LocalAnchorPhotoMetadata(
             localId = localId,
-            storageReference = "$PHOTOS_DIRECTORY/$localId.jpg",
+            storageReference = storageReference(localId),
             capturedAtEpochMillis = capturedAtEpochMillis,
             checksum = checksum,
             contentType = "image/jpeg",
+            byteSize = file.length(),
         )
     }
 
@@ -67,4 +83,5 @@ public data class LocalAnchorPhotoMetadata(
     public val capturedAtEpochMillis: Long,
     public val checksum: String,
     public val contentType: String,
+    public val byteSize: Long,
 )

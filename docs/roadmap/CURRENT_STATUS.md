@@ -4,10 +4,12 @@ Last update: 2026-09-04
 
 ## Active stage
 
-Stage 3B — anchor vertical slice; `3A-01` through `3A-05` are Done.
-`3B-01`, `3B-02` and the bounded local-capture acceptance for `3B-03` are Done.
-`3B-04` bounded local review/queue slice is Done; server synchronisation remains
-separate `3C` work.
+Stage 3C — offline and synchronisation; `3A-01` through `3A-05` are Done.
+`3B-01`, `3B-02`, the bounded local-capture acceptance for `3B-03` and
+`3B-04` bounded local review/queue slice are Done. `3C-01` durable mutation
+outbox implementation is started in this workspace; review and server
+transport remain open. `3C-02` durable photo upload queue is implemented for
+its bounded local/provider-neutral slice; server transport remains open.
 G-03 is Done as D-027.
 
 ## Completed
@@ -206,13 +208,29 @@ G-03 is Done as D-027.
   corrections. The UI states that server submission is not confirmed; upload,
   retry, acknowledgement, conflict handling and background draining remain
   `3C` work.
+- `3C-01` implementation slice adds domain-owned mutation identity and state
+  transitions, durable encrypted Room outbox persistence with a version-4 to
+  version-5 migration, visible submission/evidence state mirroring and a
+  WorkManager-connected drain seam. Retry, restart, duplicate-enqueue and
+  conflict behavior are covered; server transport is deliberately unconfigured
+  until the API sync contract is implemented.
+- `3C-02` adds stable media IDs, an encrypted Room photo-upload queue with a
+  version-5 to version-6 migration, durable byte offsets/attempts/failures,
+  restart recovery, private no-backup content reads, provider-neutral chunk
+  delivery and network-constrained WorkManager scheduling. Queue rows require
+  their evidence-photo parent, and pending/uploaded/failed states remain
+  visible without claiming server acknowledgement; provider/server transport,
+  conflict handling and cleanup remain open.
 
 ## In progress
 
-- `3C` synchronisation is next: durable idempotent mutation outbox, photo
-  upload queue and retry states, server acknowledgements, conflict visibility,
-  logout/lease expiry/revocation safety and bounded offline recovery remain
-  unimplemented.
+- `3C-01` is in review: durable idempotent mutation outbox and background
+  drain seam are implemented, while server acknowledgements, conflict
+  protocol, logout/lease expiry/revocation safety and bounded offline recovery
+  remain separate work.
+- `3C-02` bounded implementation is complete for the local/provider-neutral
+  queue slice; its transport is deliberately unconfigured, so no server upload
+  or acknowledgement is claimed.
 - Scoped `3B-04` JVM, lint, Compose and encrypted-storage checks pass; an API 30
   emulator passes 15 app and 11 data instrumented tests. Runtime persistence,
   durable audit, identity membership, pack-update/sync/recovery workflows and
@@ -224,7 +242,8 @@ G-03 is Done as D-027.
 
 ## Next recommended task
 
-Start `3C` synchronisation.
+Continue `3C` with `3C-03` conflict and server-acknowledgement handling after
+the `3C-01` review.
 Do not add Kotlin
 Multiplatform, an iOS target or deferred standards candidates. Authentication
 vendor selection and the durable identity/runtime adapters remain deferred.
@@ -344,6 +363,25 @@ passed on the `Pixel_5_API_30` emulator. The checks cover blocker/warning
 separation, local queue readiness, stable replay, immutable queued evidence,
 restart-safe encrypted submission intent and photograph association. Server
 submission and synchronisation were not claimed or exercised.
+
+The first `3C-01` slice then passed the domain and app unit suites, Room schema
+drift/build/lint checks, the full root gate against disposable PostgreSQL 17,
+12 encrypted data instrumented tests and 15 Compose app instrumented tests on
+`Pixel_5_API_31` (API 31). The tests cover stable mutation identity,
+duplicate enqueue, retry, interrupted-work recovery, visible failed/conflict
+states, migration and submission/evidence state mirroring. No server
+acknowledgement or production sync transport is claimed.
+
+On 2026-09-04, the bounded `3C-02` slice passed the Kotlin/JVM domain and app
+unit suites, Android data/app compilation, Room schema drift/build/lint checks,
+fourteen encrypted data instrumented tests and fifteen Compose app instrumented
+tests on `Pixel_5_API_31` (API 31). The tests cover stable media identity,
+resumable chunk retry, completion checksum verification, permanent-failure
+visibility, interrupted-work recovery, private-content reads, migration and
+evidence-photo cascade cleanup. The repository root gate stopped at its
+required `TEST_POSTGRES_URL` prerequisite in this environment; scoped gates
+passed. Server upload, acknowledgement, conflict handling and production
+transport are not claimed.
 
 ## Relevant files
 

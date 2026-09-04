@@ -93,6 +93,10 @@ class FieldSubmissionTest {
         assertEquals(EvidenceSyncState.PENDING, queued.syncState)
         assertEquals("submission-001", frozen.submissionId)
         assertEquals(EvidenceSyncState.PENDING, frozen.syncState)
+        assertEquals("mutation-001", store.mutations.single().mutationId)
+        assertEquals("mutation-001", store.mutations.single().idempotencyKey)
+        assertEquals("submission-001", store.mutations.single().entityId)
+        assertEquals(SyncMutationState.PENDING, store.mutations.single().state)
         assertEquals(1, generatedSubmissions)
         assertEquals(1, generatedMutations)
 
@@ -209,6 +213,7 @@ class FieldSubmissionTest {
     private class FakeSubmissionStore : AnchorEvidenceSubmissionStore {
         val drafts = mutableListOf<AnchorInspectionDraft>()
         var intent: InspectionSubmissionIntent? = null
+        val mutations = mutableListOf<SyncMutation>()
 
         override suspend fun loadEvidence(
             companyId: String,
@@ -238,9 +243,11 @@ class FieldSubmissionTest {
         override suspend fun queueSubmission(
             intent: InspectionSubmissionIntent,
             frozenEvidence: List<AnchorInspectionDraft>,
+            mutation: SyncMutation,
         ): InspectionSubmissionIntent {
             this.intent?.let { return it }
             this.intent = intent
+            mutations += mutation
             drafts.removeAll {
                 it.companyId == intent.companyId &&
                     it.jobId == intent.jobId &&

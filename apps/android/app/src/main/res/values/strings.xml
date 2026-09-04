@@ -74,6 +74,7 @@
     <string name="proof_test_equipment_label">Equipment reference</string>
     <string name="photos_label">Photos</string>
     <string name="photos_attached">Photos attached: %1$d</string>
+    <string name="photos_upload_state">Upload state — pending: %1$d, uploaded: %2$d, failed: %3$d</string>
     <string name="photos_association_note">Photo capture will retain this anchor association.</string>
     <string name="capture_photo">Capture photo</string>
     <string name="capture_still_needs">Still needed before submission:</string>
@@ -99,7 +100,7 @@
     <string name="submission_coverage_missing">Coverage: missing</string>
     <string name="submission_coverage_recorded">Coverage: recorded</string>
     <string name="submission_outcome">Recorded outcome: %1$s</string>
-    <string name="submission_photo_state_note">Captured photographs remain associated with anchor evidence. Upload and server acknowledgement are later synchronisation work.</string>
+    <string name="submission_photo_state_note">Captured photographs remain associated with anchor evidence. Upload is queued locally; server acknowledgement remains later synchronisation work.</string>
     <string name="queue_submission_locally">Queue submission locally</string>
     <string name="queueing_submission">Queueing locally…</string>
     <string name="submission_already_queued">Submission already queued</string>

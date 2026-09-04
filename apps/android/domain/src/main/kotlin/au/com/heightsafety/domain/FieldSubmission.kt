@@ -159,6 +159,7 @@ public interface AnchorEvidenceSubmissionStore : AnchorEvidenceStore {
     public suspend fun queueSubmission(
         intent: InspectionSubmissionIntent,
         frozenEvidence: List<AnchorInspectionDraft>,
+        mutation: SyncMutation,
     ): InspectionSubmissionIntent
 }
 
@@ -216,6 +217,18 @@ public class AnchorSubmissionService(
             sessionId = session.sessionId,
             createdAtEpochMillis = now,
         )
+        val mutation = SyncMutation(
+            companyId = intent.companyId,
+            mutationId = intent.mutationId,
+            idempotencyKey = intent.mutationId,
+            operation = SyncMutationOperation.SUBMIT_INSPECTION,
+            entityType = INSPECTION_SUBMISSION_ENTITY_TYPE,
+            entityId = intent.submissionId,
+            entityVersion = intent.jobPackVersion,
+            actorUserId = intent.inspectorUserId,
+            sessionId = intent.sessionId,
+            createdAtEpochMillis = intent.createdAtEpochMillis,
+        )
         val frozenEvidence = review.evidence.map { draft ->
             draft.copy(
                 submissionId = intent.submissionId,
@@ -223,7 +236,7 @@ public class AnchorSubmissionService(
                 updatedAtEpochMillis = maxOf(draft.updatedAtEpochMillis, now),
             )
         }
-        return store.queueSubmission(intent, frozenEvidence)
+        return store.queueSubmission(intent, frozenEvidence, mutation)
     }
 }
 

@@ -96,6 +96,9 @@ class DebugDemoActivity : ComponentActivity() {
                     jobPackService = jobPackService,
                     anchorEvidenceService = anchorEvidenceService,
                     submissionService = submissionService,
+                    schedulePhotoUpload = {
+                        PhotoUploadWork.enqueue(applicationContext)
+                    },
                     deviceAuthenticationGate = DeviceAuthenticationGate {
                         authenticateWithDeviceCredential()
                     },

@@ -8,15 +8,23 @@ import au.com.heightsafety.domain.AnchorInspectionDraft
 import au.com.heightsafety.domain.FieldJobPack
 import au.com.heightsafety.domain.FieldJobPackStore
 import au.com.heightsafety.domain.JobPackAnchor
+import au.com.heightsafety.domain.INSPECTION_SUBMISSION_ENTITY_TYPE
+import au.com.heightsafety.domain.MutationOutboxStore
 import au.com.heightsafety.domain.OfflineAuthorizationLease
 import au.com.heightsafety.domain.EvidenceSyncState
 import au.com.heightsafety.domain.InspectionExceptionReason
 import au.com.heightsafety.domain.InspectionSubmissionIntent
 import au.com.heightsafety.domain.PhotoUploadState
+import au.com.heightsafety.domain.PhotoUpload
+import au.com.heightsafety.domain.PhotoUploadQueueState
+import au.com.heightsafety.domain.PhotoUploadQueueStore
 import au.com.heightsafety.domain.RecordedDisposition
 import au.com.heightsafety.domain.RecordedOutcome
 import au.com.heightsafety.domain.RecordedProofTest
 import au.com.heightsafety.domain.ReconciliationProposal
+import au.com.heightsafety.domain.SyncMutation
+import au.com.heightsafety.domain.SyncMutationOperation
+import au.com.heightsafety.domain.SyncMutationState
 import au.com.heightsafety.domain.StoredJobPack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,7 +33,7 @@ public class EncryptedJobPackStore(
     context: Context,
     directoryName: String = DEFAULT_DIRECTORY_NAME,
     keyAlias: String = DEFAULT_KEY_ALIAS,
-) : FieldJobPackStore, AnchorEvidenceSubmissionStore {
+) : FieldJobPackStore, AnchorEvidenceSubmissionStore, MutationOutboxStore, PhotoUploadQueueStore {
     private val files = JobPackStorageFiles(context.applicationContext, directoryName)
     private val opener = EncryptedJobPackDatabaseOpener(
         context = context.applicationContext,
@@ -112,9 +120,13 @@ public class EncryptedJobPackStore(
     override suspend fun queueSubmission(
         intent: InspectionSubmissionIntent,
         frozenEvidence: List<AnchorInspectionDraft>,
+        mutation: SyncMutation,
     ): InspectionSubmissionIntent = withContext(Dispatchers.IO) {
         require(intent.syncState == EvidenceSyncState.PENDING) {
             "queued submission must start in pending state"
+        }
+        require(mutation.isFor(intent)) {
+            "submission mutation must match submission intent"
         }
         require(frozenEvidence.all { it.isFor(intent) }) {
             "submission evidence must match submission scope"
@@ -126,9 +138,120 @@ public class EncryptedJobPackStore(
                 frozenPhotos = frozenEvidence.flatMap { draft ->
                     draft.photos.map { it.toEntity(draft.jobPackVersion) }
                 },
+                mutation = mutation.toEntity(),
             ).toDomain()
         }
     }
+
+    /** Compatibility overload for direct adapter tests and existing local callers. */
+    public suspend fun queueSubmission(
+        intent: InspectionSubmissionIntent,
+        frozenEvidence: List<AnchorInspectionDraft>,
+    ): InspectionSubmissionIntent = queueSubmission(
+        intent = intent,
+        frozenEvidence = frozenEvidence,
+        mutation = intent.toMutation(),
+    )
+
+    override suspend fun enqueueMutation(mutation: SyncMutation): SyncMutation =
+        withContext(Dispatchers.IO) {
+            opener.open().use { handle ->
+                handle.database.jobPackDao()
+                    .enqueueMutation(mutation.toEntity())
+                    .toDomain()
+            }
+        }
+
+    override suspend fun loadNextEligibleMutation(): SyncMutation? =
+        withContext(Dispatchers.IO) {
+            opener.open().use { handle ->
+                handle.database.jobPackDao()
+                    .nextEligibleMutationForAnyCompany()
+                    ?.toDomain()
+            }
+        }
+
+    override suspend fun saveMutation(mutation: SyncMutation) = withContext(Dispatchers.IO) {
+        opener.open().use { handle ->
+            handle.database.jobPackDao().saveMutation(mutation.toEntity())
+        }
+    }
+
+    override suspend fun recoverInterruptedMutations(nowEpochMillis: Long) =
+        withContext(Dispatchers.IO) {
+            require(nowEpochMillis >= 0) {
+                "mutation recovery time must not be negative"
+            }
+            opener.open().use { handle ->
+                handle.database.jobPackDao().recoverInterruptedMutations(
+                    nowEpochMillis = nowEpochMillis,
+                    error = "Synchronisation interrupted before server acknowledgement.",
+                )
+            }
+        }
+
+    override suspend fun loadMutations(companyId: String): List<SyncMutation> =
+        withContext(Dispatchers.IO) {
+            require(companyId.isNotBlank()) { "companyId must not be blank" }
+            opener.open().use { handle ->
+                handle.database.jobPackDao().mutations(companyId).map { it.toDomain() }
+            }
+        }
+
+    override suspend fun loadNextEligiblePhotoUpload(): PhotoUpload? =
+        withContext(Dispatchers.IO) {
+            opener.open().use { handle ->
+                handle.database.jobPackDao()
+                    .nextEligiblePhotoUpload()
+                    ?.toDomain()
+            }
+        }
+
+    override suspend fun savePhotoUpload(upload: PhotoUpload) = withContext(Dispatchers.IO) {
+        require(upload.mediaId == upload.localId) {
+            "photo upload media identity must match localId"
+        }
+        opener.open().use { handle ->
+            val dao = handle.database.jobPackDao()
+            val photo = dao.photo(
+                companyId = upload.companyId,
+                jobId = upload.jobId,
+                jobPackVersion = upload.jobPackVersion,
+                inspectionId = upload.anchorInspectionId,
+                localId = upload.localId,
+            ) ?: error("photo upload must have an associated evidence photo")
+            check(
+                photo.storageReference == upload.storageReference &&
+                    photo.capturedAtEpochMillis == upload.capturedAtEpochMillis &&
+                    photo.checksum == upload.checksum &&
+                    photo.contentType == upload.contentType,
+            ) {
+                "photo upload metadata does not match evidence photo"
+            }
+            dao.savePhotoUpload(upload.toEntity())
+        }
+    }
+
+    override suspend fun recoverInterruptedPhotoUploads(nowEpochMillis: Long) =
+        withContext(Dispatchers.IO) {
+            require(nowEpochMillis >= 0) {
+                "photo upload recovery time must not be negative"
+            }
+            opener.open().use { handle ->
+                handle.database.jobPackDao().recoverInterruptedPhotoUploads(
+                    nowEpochMillis = nowEpochMillis,
+                    error = "Photo upload interrupted before server acknowledgement.",
+                )
+            }
+        }
+
+    override suspend fun loadPhotoUploads(companyId: String): List<PhotoUpload> =
+        withContext(Dispatchers.IO) {
+            require(companyId.isNotBlank()) { "companyId must not be blank" }
+            opener.open().use { handle ->
+                handle.database.jobPackDao().photoUploads(companyId).map { it.toDomain() }
+            }
+        }
 
     private companion object {
         const val DEFAULT_DIRECTORY_NAME = "job-pack"
@@ -284,6 +407,66 @@ private fun InspectionSubmissionIntent.toEntity(): InspectionSubmissionEntity =
         updatedAtEpochMillis = updatedAtEpochMillis,
     )
 
+private fun InspectionSubmissionIntent.toMutation(): SyncMutation = SyncMutation(
+    companyId = companyId,
+    mutationId = mutationId,
+    idempotencyKey = mutationId,
+    operation = SyncMutationOperation.SUBMIT_INSPECTION,
+    entityType = INSPECTION_SUBMISSION_ENTITY_TYPE,
+    entityId = submissionId,
+    entityVersion = jobPackVersion,
+    actorUserId = inspectorUserId,
+    sessionId = sessionId,
+    createdAtEpochMillis = createdAtEpochMillis,
+    updatedAtEpochMillis = updatedAtEpochMillis,
+    state = intentSyncStateToMutationState(syncState),
+)
+
+private fun intentSyncStateToMutationState(state: EvidenceSyncState): SyncMutationState =
+    when (state) {
+        EvidenceSyncState.LOCAL -> SyncMutationState.PENDING
+        EvidenceSyncState.PENDING -> SyncMutationState.PENDING
+        EvidenceSyncState.SYNCHRONISING -> SyncMutationState.SYNCHRONISING
+        EvidenceSyncState.SYNCHRONISED -> SyncMutationState.SYNCHRONISED
+        EvidenceSyncState.FAILED -> SyncMutationState.FAILED
+        EvidenceSyncState.CONFLICT -> SyncMutationState.CONFLICT
+    }
+
+private fun SyncMutation.toEntity(): SyncMutationEntity =
+    SyncMutationEntity(
+        companyId = companyId,
+        mutationId = mutationId,
+        idempotencyKey = idempotencyKey,
+        operation = operation.value,
+        entityType = entityType,
+        entityId = entityId,
+        entityVersion = entityVersion,
+        actorUserId = actorUserId,
+        sessionId = sessionId,
+        state = state.value,
+        attemptCount = attemptCount,
+        lastError = lastError,
+        createdAtEpochMillis = createdAtEpochMillis,
+        updatedAtEpochMillis = updatedAtEpochMillis,
+    )
+
+private fun SyncMutationEntity.toDomain(): SyncMutation = SyncMutation(
+    companyId = companyId,
+    mutationId = mutationId,
+    idempotencyKey = idempotencyKey,
+    operation = operation.toSyncMutationOperation(),
+    entityType = entityType,
+    entityId = entityId,
+    entityVersion = entityVersion,
+    actorUserId = actorUserId,
+    sessionId = sessionId,
+    state = state.toSyncMutationState(),
+    attemptCount = attemptCount,
+    lastError = lastError,
+    createdAtEpochMillis = createdAtEpochMillis,
+    updatedAtEpochMillis = updatedAtEpochMillis,
+)
+
 private fun AnchorEvidencePhoto.toEntity(jobPackVersion: Long): AnchorEvidencePhotoEntity =
     AnchorEvidencePhotoEntity(
         companyId = companyId,
@@ -296,6 +479,7 @@ private fun AnchorEvidencePhoto.toEntity(jobPackVersion: Long): AnchorEvidencePh
         checksum = checksum,
         uploadState = uploadState.value,
         contentType = contentType,
+        byteSize = byteSize,
     )
 
 private fun AnchorInspectionStorageSnapshot.toDomain(): AnchorInspectionDraft {
@@ -367,7 +551,49 @@ private fun AnchorEvidencePhotoEntity.toDomain(): AnchorEvidencePhoto =
         checksum = checksum,
         uploadState = uploadState.toPhotoUploadState(),
         contentType = contentType,
+        byteSize = byteSize,
     )
+
+private fun PhotoUpload.toEntity(): PhotoUploadEntity =
+    PhotoUploadEntity(
+        companyId = companyId,
+        jobId = jobId,
+        jobPackVersion = jobPackVersion,
+        inspectionId = anchorInspectionId,
+        localId = localId,
+        mediaId = mediaId,
+        state = state.value,
+        byteSize = byteSize,
+        uploadedBytes = uploadedBytes,
+        attemptCount = attemptCount,
+        lastError = lastError,
+        createdAtEpochMillis = createdAtEpochMillis,
+        updatedAtEpochMillis = updatedAtEpochMillis,
+    )
+
+private fun PhotoUploadStorageSnapshot.toDomain(): PhotoUpload {
+    check(upload.mediaId == upload.localId) {
+        "photo upload media identity is invalid"
+    }
+    return PhotoUpload(
+        companyId = upload.companyId,
+        jobId = upload.jobId,
+        jobPackVersion = upload.jobPackVersion,
+        anchorInspectionId = upload.inspectionId,
+        localId = upload.localId,
+        storageReference = photo.storageReference,
+        capturedAtEpochMillis = photo.capturedAtEpochMillis,
+        checksum = photo.checksum,
+        createdAtEpochMillis = upload.createdAtEpochMillis,
+        contentType = photo.contentType,
+        byteSize = upload.byteSize,
+        state = upload.state.toPhotoUploadQueueState(),
+        uploadedBytes = upload.uploadedBytes,
+        attemptCount = upload.attemptCount,
+        lastError = upload.lastError,
+        updatedAtEpochMillis = upload.updatedAtEpochMillis,
+    )
+}
 
 private fun String.toRecordedOutcome(): RecordedOutcome =
     toStoredEnum(RecordedOutcome.entries, RecordedOutcome::value)
@@ -384,8 +610,17 @@ private fun String.toRecordedDisposition(): RecordedDisposition =
 private fun String.toEvidenceSyncState(): EvidenceSyncState =
     toStoredEnum(EvidenceSyncState.entries, EvidenceSyncState::value)
 
+private fun String.toSyncMutationOperation(): SyncMutationOperation =
+    toStoredEnum(SyncMutationOperation.entries, SyncMutationOperation::value)
+
+private fun String.toSyncMutationState(): SyncMutationState =
+    toStoredEnum(SyncMutationState.entries, SyncMutationState::value)
+
 private fun String.toPhotoUploadState(): PhotoUploadState =
     toStoredEnum(PhotoUploadState.entries, PhotoUploadState::value)
+
+private fun String.toPhotoUploadQueueState(): PhotoUploadQueueState =
+    toStoredEnum(PhotoUploadQueueState.entries, PhotoUploadQueueState::value)
 
 private fun <T> String.toStoredEnum(
     values: Iterable<T>,
@@ -399,3 +634,17 @@ private fun AnchorInspectionDraft.isFor(intent: InspectionSubmissionIntent): Boo
         jobPackVersion == intent.jobPackVersion &&
         submissionId == intent.submissionId &&
         syncState == EvidenceSyncState.PENDING
+
+private fun SyncMutation.isFor(intent: InspectionSubmissionIntent): Boolean =
+    companyId == intent.companyId &&
+        mutationId == intent.mutationId &&
+        idempotencyKey == intent.mutationId &&
+        operation == SyncMutationOperation.SUBMIT_INSPECTION &&
+        entityType == INSPECTION_SUBMISSION_ENTITY_TYPE &&
+        entityId == intent.submissionId &&
+        entityVersion == intent.jobPackVersion &&
+        actorUserId == intent.inspectorUserId &&
+        sessionId == intent.sessionId &&
+        createdAtEpochMillis == intent.createdAtEpochMillis &&
+        updatedAtEpochMillis == intent.updatedAtEpochMillis &&
+        state == intentSyncStateToMutationState(intent.syncState)

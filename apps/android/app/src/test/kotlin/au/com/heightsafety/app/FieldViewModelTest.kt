@@ -25,6 +25,7 @@ import au.com.heightsafety.domain.RecordedOutcome
 import au.com.heightsafety.domain.ReconciliationProposal
 import au.com.heightsafety.domain.StoredJobPack
 import au.com.heightsafety.domain.SupportedJurisdiction
+import au.com.heightsafety.domain.SyncMutation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -433,6 +434,7 @@ class FieldViewModelTest {
         )
         val gateway = FakeGateway(jobs = listOf(job))
         val evidenceStore = FakeEvidenceStore()
+        var scheduledPhotoUploads = 0
         val viewModel = viewModel(
             gateway = gateway,
             scope = this,
@@ -447,6 +449,7 @@ class FieldViewModelTest {
                 nowEpochMillis = { 2_000L },
                 elapsedRealtimeMillis = { 2_000L },
             ),
+            schedulePhotoUpload = { scheduledPhotoUploads += 1 },
             inspectionIdGenerator = { "inspection-001" },
         )
 
@@ -482,6 +485,7 @@ class FieldViewModelTest {
             "inspection-001",
             evidenceStore.drafts.single().photos.single().anchorInspectionId,
         )
+        assertEquals(1, scheduledPhotoUploads)
     }
 
     @Test
@@ -565,6 +569,7 @@ class FieldViewModelTest {
             nowEpochMillis = { 2_000L },
             elapsedRealtimeMillis = { 2_000L },
         )
+        var scheduledSyncCount = 0
         val viewModel = viewModel(
             gateway = gateway,
             scope = this,
@@ -582,6 +587,10 @@ class FieldViewModelTest {
                 submissionIdGenerator = { "submission-001" },
                 mutationIdGenerator = { "mutation-001" },
             ),
+            scheduleMutationSync = {
+                scheduledSyncCount += 1
+                error("scheduler unavailable")
+            },
         )
 
         viewModel.signIn("company-a")
@@ -597,6 +606,7 @@ class FieldViewModelTest {
         assertNotNull(queued.review.intent)
         assertEquals(EvidenceSyncState.PENDING, queued.review.intent?.syncState)
         assertEquals("submission-001", evidenceStore.drafts.single().submissionId)
+        assertEquals(1, scheduledSyncCount)
 
         viewModel.closeSubmissionReview()
         val opened = viewModel.uiState.value as FieldUiState.JobPackOpened
@@ -612,6 +622,8 @@ class FieldViewModelTest {
         jobPackService: JobPackService? = null,
         anchorEvidenceService: AnchorEvidenceService? = null,
         submissionService: AnchorSubmissionService? = null,
+        scheduleMutationSync: () -> Unit = {},
+        schedulePhotoUpload: () -> Unit = {},
         nowEpochMillis: () -> Long = { 1_000L },
         deviceAuthenticationGate: DeviceAuthenticationGate =
             DeviceAuthenticationGate { true },
@@ -625,6 +637,8 @@ class FieldViewModelTest {
         jobPackService = jobPackService,
         anchorEvidenceService = anchorEvidenceService,
         submissionService = submissionService,
+        scheduleMutationSync = scheduleMutationSync,
+        schedulePhotoUpload = schedulePhotoUpload,
         deviceAuthenticationGate = deviceAuthenticationGate,
         inspectionIdGenerator = inspectionIdGenerator,
         provisionalAnchorIdGenerator = provisionalAnchorIdGenerator,
@@ -667,6 +681,7 @@ class FieldViewModelTest {
         override suspend fun queueSubmission(
             intent: InspectionSubmissionIntent,
             frozenEvidence: List<AnchorInspectionDraft>,
+            mutation: SyncMutation,
         ): InspectionSubmissionIntent {
             submission?.let { return it }
             submission = intent
