@@ -26,11 +26,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import au.com.heightsafety.data.EncryptedJobPackStore
 import au.com.heightsafety.domain.AnchorEvidenceService
+import au.com.heightsafety.domain.AnchorSubmissionService
 import au.com.heightsafety.domain.JobPackService
 import au.com.heightsafety.domain.ProviderAccessTokenSource
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.UUID
 
 /** Debug-only interactive field flow backed by synthetic data. */
 class DebugDemoActivity : ComponentActivity() {
@@ -74,6 +76,13 @@ class DebugDemoActivity : ComponentActivity() {
             nowEpochMillis = { System.currentTimeMillis() },
             elapsedRealtimeMillis = { SystemClock.elapsedRealtime() },
         )
+        val submissionService = AnchorSubmissionService(
+            evidenceService = anchorEvidenceService,
+            store = localStore,
+            nowEpochMillis = { System.currentTimeMillis() },
+            submissionIdGenerator = { UUID.randomUUID().toString() },
+            mutationIdGenerator = { UUID.randomUUID().toString() },
+        )
 
         setContent {
             val scope = rememberCoroutineScope()
@@ -86,6 +95,7 @@ class DebugDemoActivity : ComponentActivity() {
                     scope = scope,
                     jobPackService = jobPackService,
                     anchorEvidenceService = anchorEvidenceService,
+                    submissionService = submissionService,
                     deviceAuthenticationGate = DeviceAuthenticationGate {
                         authenticateWithDeviceCredential()
                     },
@@ -134,6 +144,9 @@ class DebugDemoActivity : ComponentActivity() {
                             onCloseAnchor = viewModel::closeAnchor,
                             onUpdateAnchorDraft = viewModel::updateAnchorDraft,
                             onSaveAnchorDraft = viewModel::saveAnchorDraft,
+                            onOpenSubmissionReview = viewModel::openSubmissionReview,
+                            onCloseSubmissionReview = viewModel::closeSubmissionReview,
+                            onQueueSubmission = viewModel::queueSubmission,
                             onCapturePhoto = {
                                 val capture = viewModel.uiState.value as? FieldUiState.AnchorCapture
                                 capture?.let {

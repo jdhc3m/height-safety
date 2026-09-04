@@ -9,9 +9,11 @@ import au.com.heightsafety.domain.GatewayFailureReason
 import au.com.heightsafety.domain.AnchorEvidenceService
 import au.com.heightsafety.domain.AnchorInspectionDraft
 import au.com.heightsafety.domain.AnchorEvidencePhoto
+import au.com.heightsafety.domain.AnchorSubmissionService
 import au.com.heightsafety.domain.CaptureValidationIssue
 import au.com.heightsafety.domain.FieldJobPack
 import au.com.heightsafety.domain.InspectorJob
+import au.com.heightsafety.domain.InspectionSubmissionIntent
 import au.com.heightsafety.domain.JobPackAnchor
 import au.com.heightsafety.domain.JobPackAccessException
 import au.com.heightsafety.domain.JobPackAccessFailure
@@ -21,6 +23,8 @@ import au.com.heightsafety.domain.ProductRole
 import au.com.heightsafety.domain.ProviderAccessTokenException
 import au.com.heightsafety.domain.ProviderAccessTokenSource
 import au.com.heightsafety.domain.ReconciliationProposal
+import au.com.heightsafety.domain.SubmissionNotReadyException
+import au.com.heightsafety.domain.SubmissionReviewResult
 import au.com.heightsafety.domain.requireInspectorSession
 import au.com.heightsafety.domain.visibleJobsForInspector
 import kotlinx.coroutines.CancellationException
@@ -86,6 +90,24 @@ sealed interface FieldUiState {
         val job: InspectorJob,
         val opened: OpenedJobPack,
         val evidence: List<AnchorInspectionDraft> = emptyList(),
+        val submissionIntent: InspectionSubmissionIntent? = null,
+    ) : FieldUiState
+
+    data class OpeningSubmissionReview(
+        val account: AccountSummary,
+        val jobs: List<InspectorJob>,
+        val job: InspectorJob,
+        val opened: OpenedJobPack,
+    ) : FieldUiState
+
+    data class SubmissionReview(
+        val account: AccountSummary,
+        val jobs: List<InspectorJob>,
+        val job: InspectorJob,
+        val opened: OpenedJobPack,
+        val review: SubmissionReviewResult,
+        val isQueueing: Boolean = false,
+        val queueError: String? = null,
     ) : FieldUiState
 
     data class AnchorCapture(
@@ -128,6 +150,7 @@ class FieldViewModel(
     private val scope: CoroutineScope,
     private val jobPackService: JobPackService? = null,
     private val anchorEvidenceService: AnchorEvidenceService? = null,
+    private val submissionService: AnchorSubmissionService? = null,
     private val nowEpochMillis: () -> Long = { System.currentTimeMillis() },
     private val deviceAuthenticationGate: DeviceAuthenticationGate,
     private val inspectionIdGenerator: () -> String = { UUID.randomUUID().toString() },
@@ -257,13 +280,16 @@ class FieldViewModel(
                     authorisedJob = claimJob(currentSession, selectedJob)
                 }
                 val opened = service.openOrDownload(currentSession, authorisedJob)
-                val evidence = anchorEvidenceService?.loadDrafts(currentSession, opened).orEmpty()
+                val submissionReview = submissionService?.review(currentSession, opened)
+                val evidence = submissionReview?.evidence
+                    ?: anchorEvidenceService?.loadDrafts(currentSession, opened).orEmpty()
                 _uiState.value = FieldUiState.JobPackOpened(
                     account = account,
                     jobs = lastJobs,
                     job = authorisedJob,
                     opened = opened,
                     evidence = evidence,
+                    submissionIntent = submissionReview?.intent,
                 )
             } catch (error: CancellationException) {
                 throw error
@@ -302,6 +328,13 @@ class FieldViewModel(
         }
 
         try {
+            val savedEvidence = current.evidence.firstOrNull {
+                it.expectedAnchorId == anchor.anchorId
+            }
+            if (current.submissionIntent != null || savedEvidence?.submissionId != null) {
+                openSubmissionReview()
+                return
+            }
             val canonicalAnchor = current.opened.stored.pack.anchors.singleOrNull {
                 it.anchorId == anchor.anchorId
             } ?: throw IllegalArgumentException(
@@ -370,6 +403,10 @@ class FieldViewModel(
             )
             return
         }
+        if (current.submissionIntent != null) {
+            openSubmissionReview()
+            return
+        }
 
         try {
             val draft = service.newProvisionalDraft(
@@ -425,6 +462,10 @@ class FieldViewModel(
                 message = "Evidence storage is not configured for this build.",
                 canRetry = false,
             )
+            return
+        }
+        if (current.submissionIntent != null || draft.submissionId != null) {
+            openSubmissionReview()
             return
         }
 
@@ -486,8 +527,144 @@ class FieldViewModel(
         }
     }
 
+    fun openSubmissionReview() {
+        val current = _uiState.value as? FieldUiState.JobPackOpened ?: return
+        val currentSession = session ?: run {
+            _uiState.value = FieldUiState.SignedOut
+            return
+        }
+        val service = submissionService
+        if (service == null) {
+            _uiState.value = FieldUiState.JobPackError(
+                account = current.account,
+                jobs = current.jobs,
+                job = current.job,
+                message = "Submission storage is not configured for this build.",
+                canRetry = false,
+            )
+            return
+        }
+
+        activeRequest?.cancel()
+        _uiState.value = FieldUiState.OpeningSubmissionReview(
+            account = current.account,
+            jobs = current.jobs,
+            job = current.job,
+            opened = current.opened,
+        )
+        activeRequest = scope.launch {
+            try {
+                val review = service.review(currentSession, current.opened)
+                _uiState.value = FieldUiState.SubmissionReview(
+                    account = current.account,
+                    jobs = current.jobs,
+                    job = current.job,
+                    opened = current.opened,
+                    review = review,
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                if (error.isSessionExpired()) {
+                    expireSession()
+                } else if (error is JobPackAccessException) {
+                    _uiState.value = FieldUiState.JobPackError(
+                        account = current.account,
+                        jobs = current.jobs,
+                        job = current.job,
+                        message = jobPackMessage(error),
+                        canRetry = canRetryJobPack(error),
+                    )
+                } else {
+                    _uiState.value = FieldUiState.JobPackError(
+                        account = current.account,
+                        jobs = current.jobs,
+                        job = current.job,
+                        message = "Unable to prepare submission review. Try again.",
+                        canRetry = true,
+                    )
+                }
+            }
+        }
+    }
+
+    fun queueSubmission() {
+        val current = _uiState.value as? FieldUiState.SubmissionReview ?: return
+        if (current.review.intent != null || current.isQueueing) return
+        val currentSession = session ?: run {
+            _uiState.value = FieldUiState.SignedOut
+            return
+        }
+        val service = submissionService ?: run {
+            _uiState.value = current.copy(
+                queueError = "Submission storage is not configured for this build.",
+            )
+            return
+        }
+
+        activeRequest?.cancel()
+        _uiState.value = current.copy(isQueueing = true, queueError = null)
+        activeRequest = scope.launch {
+            try {
+                service.queue(currentSession, current.opened)
+                val review = service.review(currentSession, current.opened)
+                _uiState.value = current.copy(
+                    review = review,
+                    isQueueing = false,
+                    queueError = null,
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: SubmissionNotReadyException) {
+                _uiState.value = current.copy(
+                    review = current.review.copy(readiness = error.readiness),
+                    isQueueing = false,
+                    queueError = null,
+                )
+            } catch (error: Throwable) {
+                if (error.isSessionExpired()) {
+                    expireSession()
+                } else if (error is JobPackAccessException) {
+                    _uiState.value = FieldUiState.JobPackError(
+                        account = current.account,
+                        jobs = current.jobs,
+                        job = current.job,
+                        message = jobPackMessage(error),
+                        canRetry = canRetryJobPack(error),
+                    )
+                } else {
+                    _uiState.value = current.copy(
+                        isQueueing = false,
+                        queueError = "Unable to queue submission locally. Try again.",
+                    )
+                }
+            }
+        }
+    }
+
+    fun closeSubmissionReview() {
+        val current = _uiState.value as? FieldUiState.SubmissionReview ?: return
+        if (current.isQueueing) return
+        activeRequest?.cancel()
+        _uiState.value = FieldUiState.JobPackOpened(
+            account = current.account,
+            jobs = current.jobs,
+            job = current.job,
+            opened = current.opened,
+            evidence = current.review.evidence,
+            submissionIntent = current.review.intent,
+        )
+    }
+
     fun updateAnchorDraft(draft: AnchorInspectionDraft) {
         val current = _uiState.value as? FieldUiState.AnchorCapture ?: return
+        if (current.draft.submissionId != null || draft.submissionId != null) {
+            _uiState.value = current.copy(
+                saveState = EvidenceSaveState.FAILED,
+                saveError = "Submitted local evidence is immutable.",
+            )
+            return
+        }
         if (!draft.isBoundTo(current)) {
             _uiState.value = current.copy(
                 saveState = EvidenceSaveState.FAILED,

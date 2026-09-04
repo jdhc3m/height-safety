@@ -1,12 +1,14 @@
 # Current Status
 
-Last update: 2026-09-03
+Last update: 2026-09-04
 
 ## Active stage
 
 Stage 3B — anchor vertical slice; `3A-01` through `3A-05` are Done.
 `3B-01`, `3B-02` and the bounded local-capture acceptance for `3B-03` are Done.
-`3B-04` is the next implementation slice. G-03 is Done as D-027.
+`3B-04` bounded local review/queue slice is Done; server synchronisation remains
+separate `3C` work.
+G-03 is Done as D-027.
 
 ## Completed
 
@@ -195,24 +197,34 @@ Stage 3B — anchor vertical slice; `3A-01` through `3A-05` are Done.
   restart and CameraX stores durable app-private JPEG evidence with a checksum.
   Submission, upload/retry and synchronisation remain separate `3B-04`/`3C`
   work.
+- `3B-04` is Done for the bounded local review/queue slice. It separates hard
+  capture/coverage blockers from office-review warnings, preserves explicit NSW
+  or Queensland context, and queues a durable local inspection-submission
+  intent with stable IDs. The encrypted Room transaction freezes the local
+  evidence revision and keeps photograph associations. Fresh independent
+  review found no actionable issue after submission-lock and duplicate-coverage
+  corrections. The UI states that server submission is not confirmed; upload,
+  retry, acknowledgement, conflict handling and background draining remain
+  `3C` work.
 
 ## In progress
 
-- `3B-04` review and queue-submission work is next: distinguish blockers from
-  warnings and create durable local submission intent without claiming server
-  success.
-- Scoped `3B-03` JVM, lint, Compose and encrypted-storage checks pass; the
-  `Pixel_5_API_30` emulator passes 13 app and 10 data instrumented tests.
-  Runtime persistence, durable audit, identity membership, pack-update/sync/
-  recovery workflows and production deployment adapters remain deliberately
-  unconfigured and are separate work.
+- `3C` synchronisation is next: durable idempotent mutation outbox, photo
+  upload queue and retry states, server acknowledgements, conflict visibility,
+  logout/lease expiry/revocation safety and bounded offline recovery remain
+  unimplemented.
+- Scoped `3B-04` JVM, lint, Compose and encrypted-storage checks pass; an API 30
+  emulator passes 15 app and 11 data instrumented tests. Runtime persistence,
+  durable audit, identity membership, pack-update/sync/recovery workflows and
+  production deployment adapters remain deliberately unconfigured and are
+  separate work.
 - Production provider selection, runtime deployment-role configuration and later
   feature APIs remain separate work from the completed `3A-02` boundary.
 - Keep design-partner outreach ready; practitioner validation still open.
 
 ## Next recommended task
 
-Continue with `3B-04` review and queue submission, then `3C` synchronisation.
+Start `3C` synchronisation.
 Do not add Kotlin
 Multiplatform, an iOS target or deferred standards candidates. Authentication
 vendor selection and the durable identity/runtime adapters remain deferred.
@@ -324,6 +336,14 @@ real encrypted local job-pack and anchor-evidence path; it does not call the
 API or alter release authentication behavior.
 Manual physical-device review was reported passed on the Pixel 10 Pro,
 including opening the demo job and reaching the anchor-capture flow.
+
+On 2026-09-04, the `3B-04` Kotlin/JVM domain and Android app unit suites,
+Android data/app compilation and lint, Room schema drift check, eleven
+encrypted data instrumented tests and fifteen Compose app instrumented tests
+passed on the `Pixel_5_API_30` emulator. The checks cover blocker/warning
+separation, local queue readiness, stable replay, immutable queued evidence,
+restart-safe encrypted submission intent and photograph association. Server
+submission and synchronisation were not claimed or exercised.
 
 ## Relevant files
 

@@ -1,6 +1,7 @@
 package au.com.heightsafety.app
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -44,6 +46,7 @@ import au.com.heightsafety.domain.RecordedDisposition
 import au.com.heightsafety.domain.RecordedOutcome
 import au.com.heightsafety.domain.RecordedProofTest
 import au.com.heightsafety.domain.ReconciliationProposal
+import au.com.heightsafety.domain.SubmissionReviewIssue
 import java.text.DateFormat
 import java.util.Date
 
@@ -63,6 +66,9 @@ fun FieldScreen(
     onUpdateAnchorDraft: (AnchorInspectionDraft) -> Unit = {},
     onSaveAnchorDraft: () -> Unit = {},
     onCapturePhoto: () -> Unit = {},
+    onOpenSubmissionReview: () -> Unit = {},
+    onCloseSubmissionReview: () -> Unit = {},
+    onQueueSubmission: () -> Unit = {},
 ) {
     MaterialTheme {
         Scaffold { innerPadding ->
@@ -122,6 +128,13 @@ fun FieldScreen(
                             onOpenAnchor = onOpenAnchor,
                             onOpenEvidence = onOpenEvidence,
                             onAddDiscoveredAnchor = onAddDiscoveredAnchor,
+                            onOpenSubmissionReview = onOpenSubmissionReview,
+                        )
+                        is FieldUiState.OpeningSubmissionReview -> SubmissionReviewLoadingContent()
+                        is FieldUiState.SubmissionReview -> SubmissionReviewContent(
+                            state = state,
+                            onClose = onCloseSubmissionReview,
+                            onQueue = onQueueSubmission,
                         )
                         is FieldUiState.AnchorCapture -> AnchorCaptureContent(
                             state = state,
@@ -360,6 +373,54 @@ private fun SyncStatusLabel(syncState: SyncState) {
 }
 
 @Composable
+private fun SubmissionQueueSummary(
+    isQueued: Boolean,
+    onOpenReview: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(
+                    if (isQueued) {
+                        R.string.submission_queued_locally
+                    } else {
+                        R.string.submission_review_title
+                    },
+                ),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stringResource(
+                    if (isQueued) {
+                        R.string.submission_server_not_confirmed
+                    } else {
+                        R.string.submission_review_detail
+                    },
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onOpenReview,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    stringResource(
+                        if (isQueued) {
+                            R.string.view_queued_submission
+                        } else {
+                            R.string.review_before_submission
+                        },
+                    ),
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun JobList(
     modifier: Modifier = Modifier,
     jobs: List<InspectorJob>,
@@ -422,6 +483,7 @@ private fun JobPackContent(
     onOpenAnchor: (JobPackAnchor) -> Unit,
     onOpenEvidence: (AnchorInspectionDraft) -> Unit,
     onAddDiscoveredAnchor: () -> Unit,
+    onOpenSubmissionReview: () -> Unit,
 ) {
     val pack = state.opened.stored.pack
     val discoveredEvidence = state.evidence.filter {
@@ -472,6 +534,11 @@ private fun JobPackContent(
         Spacer(modifier = Modifier.height(16.dp))
         HorizontalDivider()
         Spacer(modifier = Modifier.height(12.dp))
+        SubmissionQueueSummary(
+            isQueued = state.submissionIntent != null,
+            onOpenReview = onOpenSubmissionReview,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
         Text(
             stringResource(R.string.expected_anchor_count, pack.anchors.size),
             style = MaterialTheme.typography.titleMedium,
@@ -521,6 +588,7 @@ private fun JobPackContent(
                 Button(
                     onClick = onAddDiscoveredAnchor,
                     modifier = Modifier.fillMaxWidth(),
+                    enabled = state.submissionIntent == null,
                 ) {
                     Text(stringResource(R.string.record_discovered_anchor))
                 }
@@ -561,7 +629,15 @@ private fun JobPackAnchorRow(
                 onClick = { onOpenAnchor(anchor) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(stringResource(R.string.capture_anchor_evidence))
+                Text(
+                    stringResource(
+                        if (evidence?.submissionId != null) {
+                            R.string.view_submitted_evidence
+                        } else {
+                            R.string.capture_anchor_evidence
+                        },
+                    ),
+                )
             }
         }
     }
@@ -592,7 +668,269 @@ private fun DiscoveredAnchorRow(
                 onClick = { onOpenEvidence(evidence) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(stringResource(R.string.capture_anchor_evidence))
+                Text(
+                    stringResource(
+                        if (evidence.submissionId != null) {
+                            R.string.view_submitted_evidence
+                        } else {
+                            R.string.capture_anchor_evidence
+                        },
+                    ),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubmissionReviewLoadingContent() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        CircularProgressIndicator()
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(stringResource(R.string.preparing_submission_review))
+    }
+}
+
+@Composable
+private fun SubmissionReviewContent(
+    state: FieldUiState.SubmissionReview,
+    onClose: () -> Unit,
+    onQueue: () -> Unit,
+) {
+    val pack = state.opened.stored.pack
+    val review = state.review
+    val submissionIntent = review.intent
+    val discoveredEvidence = review.evidence.filter { it.expectedAnchorId == null }
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 720.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onClose, enabled = !state.isQueueing) {
+                    Text(stringResource(R.string.back_to_job_pack))
+                }
+                Text(
+                    text = stringResource(R.string.submission_review_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item {
+                    Text(
+                        text = pack.reference,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(stringResource(R.string.site_value, pack.siteName))
+                    Text(stringResource(R.string.jurisdiction_value, pack.jurisdiction.value))
+                    Text(stringResource(R.string.job_pack_value, pack.jobPackVersion))
+                }
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = stringResource(
+                                    if (submissionIntent == null) {
+                                        if (review.readiness.isReadyForQueue) {
+                                            R.string.submission_ready_to_queue
+                                        } else {
+                                            R.string.submission_blocked
+                                        }
+                                    } else {
+                                        R.string.submission_queued_locally
+                                    },
+                                ),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            if (submissionIntent == null) {
+                                Text(
+                                    stringResource(
+                                        R.string.submission_counts,
+                                        review.readiness.blockers.size,
+                                        review.readiness.warnings.size,
+                                    ),
+                                )
+                            } else {
+                                Text(stringResource(R.string.submission_server_not_confirmed))
+                                Text(
+                                    stringResource(
+                                        R.string.submission_mutation_state,
+                                        displayStatus(submissionIntent.syncState.value),
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+                if (review.readiness.blockers.isNotEmpty()) {
+                    item {
+                        SubmissionIssueCard(
+                            title = stringResource(R.string.submission_blockers),
+                            issues = review.readiness.blockers,
+                            isBlocker = true,
+                        )
+                    }
+                }
+                if (review.readiness.warnings.isNotEmpty()) {
+                    item {
+                        SubmissionIssueCard(
+                            title = stringResource(R.string.submission_warnings),
+                            issues = review.readiness.warnings,
+                            isBlocker = false,
+                        )
+                    }
+                }
+                item {
+                    Text(
+                        text = stringResource(R.string.submission_coverage),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                items(pack.anchors, key = JobPackAnchor::anchorId) { anchor ->
+                    val evidence = review.evidence.firstOrNull {
+                        it.expectedAnchorId == anchor.anchorId
+                    }
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = anchor.label ?: anchor.registerId ?: anchor.anchorId,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                stringResource(
+                                    if (evidence == null) {
+                                        R.string.submission_coverage_missing
+                                    } else {
+                                        R.string.submission_coverage_recorded
+                                    },
+                                ),
+                            )
+                            evidence?.recordedOutcome?.let { outcome ->
+                                Text(stringResource(R.string.submission_outcome, outcomeLabel(outcome)))
+                            }
+                        }
+                    }
+                }
+                if (discoveredEvidence.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.discovered_anchor_records),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                    items(
+                        discoveredEvidence,
+                        key = { evidence -> "submission-discovered-${evidence.inspectionId}" },
+                    ) { evidence ->
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = evidence.provisionalAnchorId ?: evidence.inspectionId,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(stringResource(R.string.newly_discovered_record))
+                                evidence.recordedOutcome?.let { outcome ->
+                                    Text(stringResource(R.string.submission_outcome, outcomeLabel(outcome)))
+                                }
+                            }
+                        }
+                    }
+                }
+                item {
+                    Text(
+                        text = stringResource(R.string.submission_photo_state_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    state.queueError?.let { error ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(error, color = MaterialTheme.colorScheme.error)
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Button(
+                        onClick = onQueue,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = submissionIntent == null &&
+                            review.readiness.isReadyForQueue &&
+                            !state.isQueueing,
+                    ) {
+                        if (state.isQueueing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(modifier = Modifier.size(8.dp))
+                        }
+                        Text(
+                            stringResource(
+                                if (state.isQueueing) {
+                                    R.string.queueing_submission
+                                } else if (submissionIntent == null) {
+                                    R.string.queue_submission_locally
+                                } else {
+                                    R.string.submission_already_queued
+                                },
+                            ),
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubmissionIssueCard(
+    title: String,
+    issues: List<SubmissionReviewIssue>,
+    isBlocker: Boolean,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isBlocker) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.tertiary
+                },
+            )
+            issues.forEach { issue ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "• ${issue.anchorReference?.let { "$it: " }.orEmpty()}${issue.message}",
+                    color = if (isBlocker) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                )
             }
         }
     }
@@ -1098,6 +1436,13 @@ private fun displayStatus(status: String): String = status
     .joinToString(" ") { word ->
         word.replaceFirstChar { character -> character.uppercase() }
     }
+
+private fun outcomeLabel(outcome: RecordedOutcome): String = when (outcome) {
+    RecordedOutcome.SERVICEABLE -> "Serviceable"
+    RecordedOutcome.DEFECTIVE -> "Defective"
+    RecordedOutcome.NOT_INSPECTED -> "Not inspected"
+    RecordedOutcome.FURTHER_ASSESSMENT_REQUIRED -> "Further assessment required"
+}
 
 private fun displayAssignment(job: InspectorJob): String {
     val assignment = job.assignment

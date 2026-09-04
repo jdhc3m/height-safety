@@ -400,7 +400,11 @@ internal class EncryptedJobPackDatabaseOpener(
                     files.database.absolutePath,
                 )
                     .openHelperFactory(SupportOpenHelperFactory(passphrase, null, true))
-                    .addMigrations(JOB_PACK_MIGRATION_1_2, JOB_PACK_MIGRATION_2_3)
+                    .addMigrations(
+                        JOB_PACK_MIGRATION_1_2,
+                        JOB_PACK_MIGRATION_2_3,
+                        JOB_PACK_MIGRATION_3_4,
+                    )
                     .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                     .build()
                 database.openHelper.writableDatabase

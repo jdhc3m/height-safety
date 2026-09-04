@@ -1,8 +1,10 @@
 package au.com.heightsafety.app
 
 import au.com.heightsafety.domain.AnchorEvidenceService
-import au.com.heightsafety.domain.AnchorEvidenceStore
+import au.com.heightsafety.domain.AnchorEvidenceSubmissionStore
 import au.com.heightsafety.domain.AnchorInspectionDraft
+import au.com.heightsafety.domain.AnchorSubmissionService
+import au.com.heightsafety.domain.EvidenceSyncState
 import au.com.heightsafety.domain.FieldGateway
 import au.com.heightsafety.domain.FieldGatewayException
 import au.com.heightsafety.domain.FieldJobPack
@@ -11,6 +13,8 @@ import au.com.heightsafety.domain.FieldSession
 import au.com.heightsafety.domain.GatewayFailureReason
 import au.com.heightsafety.domain.InspectorAssignment
 import au.com.heightsafety.domain.InspectorJob
+import au.com.heightsafety.domain.InspectionExceptionReason
+import au.com.heightsafety.domain.InspectionSubmissionIntent
 import au.com.heightsafety.domain.JobPackGateway
 import au.com.heightsafety.domain.JobPackOpenSource
 import au.com.heightsafety.domain.JobPackService
@@ -27,6 +31,8 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -478,11 +484,134 @@ class FieldViewModelTest {
         )
     }
 
+    @Test
+    fun submissionReviewKeepsCaptureBlockersSeparateAndDoesNotQueue() = runTest {
+        val job = job(
+            "assigned",
+            jobId = "job-001",
+            assignment = assignment("company-a", "job-001", "inspector-a"),
+        )
+        val gateway = FakeGateway(jobs = listOf(job))
+        val evidenceStore = FakeEvidenceStore()
+        val evidenceService = AnchorEvidenceService(
+            store = evidenceStore,
+            nowEpochMillis = { 2_000L },
+            elapsedRealtimeMillis = { 2_000L },
+        )
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            jobPackService = JobPackService(
+                gateway = gateway,
+                store = FakeJobPackStore(),
+                nowEpochMillis = { 1_000L },
+                elapsedRealtimeMillis = { 500L },
+            ),
+            anchorEvidenceService = evidenceService,
+            submissionService = AnchorSubmissionService(
+                evidenceService = evidenceService,
+                store = evidenceStore,
+                nowEpochMillis = { 2_000L },
+                submissionIdGenerator = { "submission-001" },
+                mutationIdGenerator = { "mutation-001" },
+            ),
+        )
+
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+        viewModel.openJobPack(job)
+        advanceUntilIdle()
+        viewModel.openSubmissionReview()
+        advanceUntilIdle()
+
+        val review = viewModel.uiState.value as FieldUiState.SubmissionReview
+        assertFalse(review.review.readiness.isReadyForQueue)
+        assertTrue(
+            review.review.readiness.blockers.any {
+                it.code.name == "MISSING_EXPECTED_ANCHOR_COVERAGE"
+            },
+        )
+
+        viewModel.queueSubmission()
+        advanceUntilIdle()
+
+        val stillBlocked = viewModel.uiState.value as FieldUiState.SubmissionReview
+        assertNull(stillBlocked.review.intent)
+        assertFalse(stillBlocked.isQueueing)
+        assertNull(stillBlocked.queueError)
+    }
+
+    @Test
+    fun readySubmissionQueuesLocallyAndQueuedEvidenceCannotReopenCapture() = runTest {
+        val job = job(
+            "assigned",
+            jobId = "job-001",
+            assignment = assignment("company-a", "job-001", "inspector-a"),
+        )
+        val gateway = FakeGateway(jobs = listOf(job))
+        val evidenceStore = FakeEvidenceStore()
+        evidenceStore.drafts += AnchorInspectionDraft(
+            companyId = "company-a",
+            jobId = "job-001",
+            jobPackVersion = 3L,
+            inspectionId = "inspection-001",
+            expectedAnchorId = "anchor-job-001",
+            recordedOutcome = RecordedOutcome.NOT_INSPECTED,
+            exceptionReason = InspectionExceptionReason.INACCESSIBLE,
+            createdAtEpochMillis = 1_000L,
+        )
+        val evidenceService = AnchorEvidenceService(
+            store = evidenceStore,
+            nowEpochMillis = { 2_000L },
+            elapsedRealtimeMillis = { 2_000L },
+        )
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            jobPackService = JobPackService(
+                gateway = gateway,
+                store = FakeJobPackStore(),
+                nowEpochMillis = { 1_000L },
+                elapsedRealtimeMillis = { 500L },
+            ),
+            anchorEvidenceService = evidenceService,
+            submissionService = AnchorSubmissionService(
+                evidenceService = evidenceService,
+                store = evidenceStore,
+                nowEpochMillis = { 2_000L },
+                submissionIdGenerator = { "submission-001" },
+                mutationIdGenerator = { "mutation-001" },
+            ),
+        )
+
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+        viewModel.openJobPack(job)
+        advanceUntilIdle()
+        viewModel.openSubmissionReview()
+        advanceUntilIdle()
+        viewModel.queueSubmission()
+        advanceUntilIdle()
+
+        val queued = viewModel.uiState.value as FieldUiState.SubmissionReview
+        assertNotNull(queued.review.intent)
+        assertEquals(EvidenceSyncState.PENDING, queued.review.intent?.syncState)
+        assertEquals("submission-001", evidenceStore.drafts.single().submissionId)
+
+        viewModel.closeSubmissionReview()
+        val opened = viewModel.uiState.value as FieldUiState.JobPackOpened
+        viewModel.openAnchor(opened.opened.stored.pack.anchors.single())
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value is FieldUiState.SubmissionReview)
+    }
+
     private fun viewModel(
         gateway: FakeGateway,
         scope: CoroutineScope,
         jobPackService: JobPackService? = null,
         anchorEvidenceService: AnchorEvidenceService? = null,
+        submissionService: AnchorSubmissionService? = null,
         nowEpochMillis: () -> Long = { 1_000L },
         deviceAuthenticationGate: DeviceAuthenticationGate =
             DeviceAuthenticationGate { true },
@@ -495,13 +624,15 @@ class FieldViewModelTest {
         nowEpochMillis = nowEpochMillis,
         jobPackService = jobPackService,
         anchorEvidenceService = anchorEvidenceService,
+        submissionService = submissionService,
         deviceAuthenticationGate = deviceAuthenticationGate,
         inspectionIdGenerator = inspectionIdGenerator,
         provisionalAnchorIdGenerator = provisionalAnchorIdGenerator,
     )
 
-    private class FakeEvidenceStore : AnchorEvidenceStore {
+    private class FakeEvidenceStore : AnchorEvidenceSubmissionStore {
         val drafts = mutableListOf<AnchorInspectionDraft>()
+        var submission: InspectionSubmissionIntent? = null
 
         override suspend fun loadEvidence(
             companyId: String,
@@ -521,6 +652,31 @@ class FieldViewModelTest {
                     it.inspectionId == draft.inspectionId
             }
             drafts += draft
+        }
+
+        override suspend fun loadSubmission(
+            companyId: String,
+            jobId: String,
+            jobPackVersion: Long,
+        ): InspectionSubmissionIntent? = submission?.takeIf {
+            it.companyId == companyId &&
+                it.jobId == jobId &&
+                it.jobPackVersion == jobPackVersion
+        }
+
+        override suspend fun queueSubmission(
+            intent: InspectionSubmissionIntent,
+            frozenEvidence: List<AnchorInspectionDraft>,
+        ): InspectionSubmissionIntent {
+            submission?.let { return it }
+            submission = intent
+            drafts.removeAll {
+                it.companyId == intent.companyId &&
+                    it.jobId == intent.jobId &&
+                    it.jobPackVersion == intent.jobPackVersion
+            }
+            drafts += frozenEvidence
+            return intent
         }
     }
 

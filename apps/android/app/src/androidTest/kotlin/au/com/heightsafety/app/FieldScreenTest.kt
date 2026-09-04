@@ -23,6 +23,8 @@ import au.com.heightsafety.domain.RecordedOutcome
 import au.com.heightsafety.domain.ReconciliationProposal
 import au.com.heightsafety.domain.SupportedJurisdiction
 import au.com.heightsafety.domain.StoredJobPack
+import au.com.heightsafety.domain.SubmissionReadiness
+import au.com.heightsafety.domain.SubmissionReviewResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -474,6 +476,83 @@ class FieldScreenTest {
         )
     }
 
+    @Test
+    fun submissionReviewShowsBlockersAndWarningsSeparately() {
+        val pack = submissionPack()
+        val draft = submissionDraft(pack).copy(
+            recordedOutcome = RecordedOutcome.SERVICEABLE,
+        )
+        val review = SubmissionReviewResult(
+            evidence = listOf(draft),
+            readiness = SubmissionReadiness.evaluate(pack, listOf(draft)),
+            intent = null,
+        )
+        composeTestRule.setContent {
+            FieldScreen(
+                state = FieldUiState.SubmissionReview(
+                    account = account(),
+                    jobs = listOf(job()),
+                    job = job(),
+                    opened = OpenedJobPack(
+                        StoredJobPack(pack, submissionLease()),
+                        JobPackOpenSource.CACHED,
+                    ),
+                    review = review,
+                ),
+                onSignIn = {},
+                onRetry = {},
+                onRefresh = {},
+                onSignOut = {},
+            )
+        }
+
+        composeTestRule.onNodeWithText("Submission blocked").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Blockers").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Warnings for office review").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Blockers: 3. Warnings: 2.").assertIsDisplayed()
+    }
+
+    @Test
+    fun readySubmissionReviewOffersLocalQueue() {
+        val pack = submissionPack()
+        val draft = submissionDraft(pack).copy(
+            recordedOutcome = RecordedOutcome.NOT_INSPECTED,
+            exceptionReason = au.com.heightsafety.domain.InspectionExceptionReason.INACCESSIBLE,
+        )
+        val review = SubmissionReviewResult(
+            evidence = listOf(draft),
+            readiness = SubmissionReadiness.evaluate(pack, listOf(draft)),
+            intent = null,
+        )
+        var queueClicked = false
+        composeTestRule.setContent {
+            FieldScreen(
+                state = FieldUiState.SubmissionReview(
+                    account = account(),
+                    jobs = listOf(job()),
+                    job = job(),
+                    opened = OpenedJobPack(
+                        StoredJobPack(pack, submissionLease()),
+                        JobPackOpenSource.CACHED,
+                    ),
+                    review = review,
+                ),
+                onSignIn = {},
+                onRetry = {},
+                onRefresh = {},
+                onSignOut = {},
+                onQueueSubmission = { queueClicked = true },
+            )
+        }
+
+        composeTestRule.onNodeWithText("Ready to queue").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Queue submission locally")
+            .performScrollTo()
+            .performClick()
+
+        assertTrue(queueClicked)
+    }
+
     private fun setContent(state: FieldUiState) {
         composeTestRule.setContent {
             FieldScreen(
@@ -515,5 +594,56 @@ class FieldScreenTest {
             assignedAtEpochMillis = 1L,
             claimedAtEpochMillis = 2L,
         ),
+    )
+
+    private fun submissionPack() = FieldJobPack(
+        companyId = "company-a",
+        jobId = "job-001",
+        siteId = "site-001",
+        jurisdiction = SupportedJurisdiction.NSW,
+        reference = "JOB-001",
+        plannedDate = "2026-09-15",
+        workflowStatus = "in_progress",
+        jobPackVersion = 7L,
+        siteName = "Site A",
+        siteAddress = "1 Example Street",
+        siteReference = "SITE-A",
+        accessNotes = null,
+        anchors = listOf(
+            JobPackAnchor(
+                companyId = "company-a",
+                anchorId = "anchor-001",
+                siteId = "site-001",
+                label = "A-001",
+                registerId = "REG-001",
+                location = "North roof",
+                anchorType = "single_point",
+                manufacturer = null,
+                model = null,
+                installContext = null,
+                registerStatus = "active",
+                notes = null,
+                createdAtEpochMillis = 1L,
+                updatedAtEpochMillis = 2L,
+            ),
+        ),
+    )
+
+    private fun submissionDraft(pack: FieldJobPack) = AnchorInspectionDraft(
+        companyId = pack.companyId,
+        jobId = pack.jobId,
+        jobPackVersion = pack.jobPackVersion,
+        inspectionId = "inspection-001",
+        expectedAnchorId = pack.anchors.single().anchorId,
+        createdAtEpochMillis = 1_000L,
+    )
+
+    private fun submissionLease() = OfflineAuthorizationLease(
+        companyId = "company-a",
+        userId = "inspector-a",
+        jobId = "job-001",
+        issuedAtEpochMillis = 1_000L,
+        expiresAtEpochMillis = 86_401_000L,
+        issuedAtElapsedRealtimeMillis = 500L,
     )
 }

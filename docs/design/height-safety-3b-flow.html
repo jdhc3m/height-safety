@@ -201,7 +201,7 @@
       <div class="rounds">
         <button class="round selected" data-round="1"><b>Built baseline</b><span>Matches current Android screens</span></button>
         <button class="round" data-round="2"><b>3B-03 capture</b><span>2B evidence controls in one workspace</span></button>
-        <button class="round" data-round="3"><b>Next slice</b><span>Review and sync direction only</span></button>
+        <button class="round" data-round="3"><b>3B-04 local review</b><span>Review/queue behavior; sync remains future</span></button>
       </div>
       <div class="side-note">Stage 2B is workflow source of truth. Fictional values mirror the debug build. NSW/QLD stay recorded site context only.</div>
     </aside>
@@ -426,8 +426,8 @@
             </div>
 
             <div class="screen" data-screen="future-review">
-              <div class="screen-header"><div class="header-leading"><div class="icon-box"><svg class="icon"><use href="#i-outcome"></use></svg></div><div><h2>Review &amp; submission</h2><p>Exact inspection revision</p></div></div><span class="chip amber">Future slice</span></div>
-              <div class="card future"><div class="future-label"><svg class="icon"><use href="#i-info"></use></svg> Not built in current app</div><h3>Review before submission</h3><p>Design direction for 3B-04. Show coverage, conditional-field issues, photo/mutation states, conflicts and requested changes before freezing a local submitted revision.</p></div>
+              <div class="screen-header"><div class="header-leading"><div class="icon-box"><svg class="icon"><use href="#i-outcome"></use></svg></div><div><h2>Review &amp; submission</h2><p>Exact inspection revision</p></div></div><span class="chip amber">3B-04 local slice</span></div>
+              <div class="card future"><div class="future-label"><svg class="icon"><use href="#i-info"></use></svg> Bounded local behavior</div><h3>Review before submission</h3><p>The Android 3B-04 slice shows coverage and conditional-field issues, preserves photo association, freezes a local pending revision and states that server submission is not confirmed. Upload, acknowledgement, conflicts and requested changes remain later work.</p></div>
               <div class="section-title"><h3>Hard blockers</h3><span>Cannot be waived</span></div>
               <div class="card">
                 <div class="info-row"><svg class="icon" style="color:var(--red)"><use href="#i-warning"></use></svg><span>Expected anchor has no coverage record.</span></div>
@@ -469,7 +469,7 @@
               <div class="flow-arrow">↓</div>
               <button class="flow-node" data-flow="capture">Anchor capture <small>3B-03</small></button>
               <div class="flow-arrow">↓</div>
-              <button class="flow-node future-node" data-flow="future-review">Review &amp; submission <small>future</small></button>
+              <button class="flow-node" data-flow="future-review">Review &amp; submission <small>3B-04 local</small></button>
               <div class="flow-arrow">↓</div>
               <button class="flow-node future-node" data-flow="future-sync">Sync states <small>future</small></button>
             </div>
@@ -506,10 +506,10 @@
         gain: 'Reconciliation, outcome, exception, disposition, proof-test and photo association stay visible together.'
       },
       3: {
-        title: 'Next slice',
-        description: 'Review/submission and complete sync states remain a clearly labelled direction for later tickets.',
-        better: 'Premature implementation: keeps current behavior honest and leaves review authority explicit.',
-        gain: 'Owner can validate future wording without mistaking it for current Android behavior.'
+        title: '3B-04 local review',
+        description: 'The bounded Android slice reviews coverage and conditional evidence, then queues a local pending revision.',
+        better: 'Server acknowledgement, photo upload, conflicts and office review remain explicit later boundaries.',
+        gain: 'The field user sees what is blocked, what needs office review and that server submission is not confirmed.'
       }
     };
     const screens = [...document.querySelectorAll('[data-screen]')];

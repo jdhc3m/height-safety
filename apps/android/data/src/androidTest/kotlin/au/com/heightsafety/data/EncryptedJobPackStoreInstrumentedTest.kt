@@ -12,6 +12,7 @@ import au.com.heightsafety.domain.JobPackAnchor
 import au.com.heightsafety.domain.OfflineAuthorizationLease
 import au.com.heightsafety.domain.ProductRole
 import au.com.heightsafety.domain.RecordedOutcome
+import au.com.heightsafety.domain.InspectionSubmissionIntent
 import au.com.heightsafety.domain.SupportedJurisdiction
 import java.io.File
 import java.security.KeyStore
@@ -418,6 +419,84 @@ class EncryptedJobPackStoreInstrumentedTest {
         assertEquals(listOf(draft), loaded)
         assertEquals("inspection-001", loaded.single().photos.single().anchorInspectionId)
         assertEquals("photo-001", loaded.single().photos.single().localId)
+    }
+
+    @Test
+    fun queuedSubmissionAndFrozenEvidenceSurviveStoreRestart() = runBlocking<Unit> {
+        val store = fixture.store()
+        val pack = pack("company-a", version = 4L)
+        store.save(pack, lease("company-a", "inspector-a", pack.jobId), 1_000L)
+        val draft = evidenceDraft(
+            pack = pack,
+            observations = "Recorded before local submission.",
+        ).copy(
+            syncState = EvidenceSyncState.PENDING,
+            submissionId = "submission-001",
+        )
+        val intent = InspectionSubmissionIntent(
+            companyId = pack.companyId,
+            jobId = pack.jobId,
+            jobPackVersion = pack.jobPackVersion,
+            submissionId = "submission-001",
+            mutationId = "mutation-001",
+            inspectorUserId = "inspector-a",
+            sessionId = "session-001",
+            createdAtEpochMillis = 2_000L,
+        )
+
+        store.queueSubmission(intent, listOf(draft))
+
+        val restarted = fixture.store()
+        val loadedIntent = restarted.loadSubmission(
+            pack.companyId,
+            pack.jobId,
+            pack.jobPackVersion,
+        )
+        val loadedEvidence = restarted.loadEvidence(
+            pack.companyId,
+            pack.jobId,
+            pack.jobPackVersion,
+        )
+
+        assertEquals(intent, loadedIntent)
+        assertEquals(listOf(draft), loadedEvidence)
+        assertEquals("submission-001", loadedEvidence.single().submissionId)
+        assertEquals("photo-shared", loadedEvidence.single().photos.single().localId)
+
+        val replayed = restarted.queueSubmission(
+            intent.copy(
+                submissionId = "different-submission",
+                mutationId = "different-mutation",
+            ),
+            listOf(
+                draft.copy(
+                    submissionId = "different-submission",
+                ),
+            ),
+        )
+        assertEquals(intent, replayed)
+        assertEquals(
+            "submission-001",
+            restarted.loadEvidence(pack.companyId, pack.jobId, pack.jobPackVersion)
+                .single()
+                .submissionId,
+        )
+        assertEquals(
+            "Recorded before local submission.",
+            restarted.loadEvidence(pack.companyId, pack.jobId, pack.jobPackVersion)
+                .single()
+                .observations,
+        )
+        assertThrows(IllegalStateException::class.java) {
+            runBlocking {
+                restarted.saveEvidence(
+                    draft.copy(
+                        submissionId = null,
+                        observations = "Attempted submitted-evidence edit.",
+                    ),
+                )
+            }
+        }
     }
 
     @Test

@@ -80,14 +80,16 @@ Colour tokens carried from exploration:
 
 ## Future surfaces
 
-Review/submission and complete pending/uploaded/failed/conflict handling remain
-future design surfaces for 3B-04 and 3C. They are labelled as future in the
-clickable exploration and are not represented as built Android screens.
+The bounded 3B-04 local review/queue behavior is now represented by a built
+Android screen. It shows hard capture/coverage blockers and office-review
+warnings, freezes the local evidence revision, and states that server
+submission is not confirmed.
 
-Future review must show hard blockers, warnings requiring reviewer disposition,
-requested changes, exact snapshot approval and neutral draft-report handoff.
-It must not silently rewrite inspector evidence or claim certification,
-compliance, engineer approval or standards approval.
+Complete pending/uploaded/failed/conflict handling, server acknowledgement,
+requested changes, exact snapshot approval and neutral draft-report handoff
+remain future design surfaces for 3C and later. They must not silently rewrite
+inspector evidence or claim certification, compliance, engineer approval or
+standards approval.
 
 ## Owner review checklist
 

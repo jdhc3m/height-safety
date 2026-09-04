@@ -16,6 +16,7 @@ import androidx.compose.runtime.collectAsState
 import au.com.heightsafety.data.EncryptedJobPackStore
 import au.com.heightsafety.api.infrastructure.ApiClient
 import au.com.heightsafety.domain.AnchorEvidenceService
+import au.com.heightsafety.domain.AnchorSubmissionService
 import au.com.heightsafety.domain.JobPackService
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellableContinuation
@@ -54,6 +55,11 @@ class MainActivity : ComponentActivity() {
                 )
                 val gateway = OpenApiFieldGateway(apiClient)
                 val localStore = EncryptedJobPackStore(applicationContext)
+                val evidenceService = AnchorEvidenceService(
+                    store = localStore,
+                    nowEpochMillis = { System.currentTimeMillis() },
+                    elapsedRealtimeMillis = { SystemClock.elapsedRealtime() },
+                )
                 FieldViewModel(
                     gateway = gateway,
                     providerAccessTokenSource = UnconfiguredProviderAccessTokenSource(),
@@ -64,10 +70,13 @@ class MainActivity : ComponentActivity() {
                         nowEpochMillis = { System.currentTimeMillis() },
                         elapsedRealtimeMillis = { SystemClock.elapsedRealtime() },
                     ),
-                    anchorEvidenceService = AnchorEvidenceService(
+                    anchorEvidenceService = evidenceService,
+                    submissionService = AnchorSubmissionService(
+                        evidenceService = evidenceService,
                         store = localStore,
                         nowEpochMillis = { System.currentTimeMillis() },
-                        elapsedRealtimeMillis = { SystemClock.elapsedRealtime() },
+                        submissionIdGenerator = { UUID.randomUUID().toString() },
+                        mutationIdGenerator = { UUID.randomUUID().toString() },
                     ),
                     deviceAuthenticationGate = DeviceAuthenticationGate {
                         authenticateWithDeviceCredential()
@@ -89,6 +98,9 @@ class MainActivity : ComponentActivity() {
                 onCloseAnchor = viewModel::closeAnchor,
                 onUpdateAnchorDraft = viewModel::updateAnchorDraft,
                 onSaveAnchorDraft = viewModel::saveAnchorDraft,
+                onOpenSubmissionReview = viewModel::openSubmissionReview,
+                onCloseSubmissionReview = viewModel::closeSubmissionReview,
+                onQueueSubmission = viewModel::queueSubmission,
                 onCapturePhoto = {
                     val capture = viewModel.uiState.value as? FieldUiState.AnchorCapture
                     capture?.let {

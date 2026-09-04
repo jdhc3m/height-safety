@@ -3,6 +3,7 @@ package au.com.heightsafety.data
 import android.content.Context
 import au.com.heightsafety.domain.AnchorEvidencePhoto
 import au.com.heightsafety.domain.AnchorEvidenceStore
+import au.com.heightsafety.domain.AnchorEvidenceSubmissionStore
 import au.com.heightsafety.domain.AnchorInspectionDraft
 import au.com.heightsafety.domain.FieldJobPack
 import au.com.heightsafety.domain.FieldJobPackStore
@@ -10,6 +11,7 @@ import au.com.heightsafety.domain.JobPackAnchor
 import au.com.heightsafety.domain.OfflineAuthorizationLease
 import au.com.heightsafety.domain.EvidenceSyncState
 import au.com.heightsafety.domain.InspectionExceptionReason
+import au.com.heightsafety.domain.InspectionSubmissionIntent
 import au.com.heightsafety.domain.PhotoUploadState
 import au.com.heightsafety.domain.RecordedDisposition
 import au.com.heightsafety.domain.RecordedOutcome
@@ -23,7 +25,7 @@ public class EncryptedJobPackStore(
     context: Context,
     directoryName: String = DEFAULT_DIRECTORY_NAME,
     keyAlias: String = DEFAULT_KEY_ALIAS,
-) : FieldJobPackStore, AnchorEvidenceStore {
+) : FieldJobPackStore, AnchorEvidenceSubmissionStore {
     private val files = JobPackStorageFiles(context.applicationContext, directoryName)
     private val opener = EncryptedJobPackDatabaseOpener(
         context = context.applicationContext,
@@ -91,6 +93,42 @@ public class EncryptedJobPackStore(
                 )
             }
         }
+
+    override suspend fun loadSubmission(
+        companyId: String,
+        jobId: String,
+        jobPackVersion: Long,
+    ): InspectionSubmissionIntent? = withContext(Dispatchers.IO) {
+        require(companyId.isNotBlank()) { "companyId must not be blank" }
+        require(jobId.isNotBlank()) { "jobId must not be blank" }
+        require(jobPackVersion > 0) { "jobPackVersion must be positive" }
+        opener.open().use { handle ->
+            handle.database.jobPackDao()
+                .submission(companyId, jobId, jobPackVersion)
+                ?.toDomain()
+        }
+    }
+
+    override suspend fun queueSubmission(
+        intent: InspectionSubmissionIntent,
+        frozenEvidence: List<AnchorInspectionDraft>,
+    ): InspectionSubmissionIntent = withContext(Dispatchers.IO) {
+        require(intent.syncState == EvidenceSyncState.PENDING) {
+            "queued submission must start in pending state"
+        }
+        require(frozenEvidence.all { it.isFor(intent) }) {
+            "submission evidence must match submission scope"
+        }
+        opener.open().use { handle ->
+            handle.database.jobPackDao().queueSubmission(
+                submission = intent.toEntity(),
+                frozenEvidence = frozenEvidence.map { it.toEntity() },
+                frozenPhotos = frozenEvidence.flatMap { draft ->
+                    draft.photos.map { it.toEntity(draft.jobPackVersion) }
+                },
+            ).toDomain()
+        }
+    }
 
     private companion object {
         const val DEFAULT_DIRECTORY_NAME = "job-pack"
@@ -229,6 +267,21 @@ private fun AnchorInspectionDraft.toEntity(): AnchorInspectionEntity =
         syncState = syncState.value,
         createdAtEpochMillis = createdAtEpochMillis,
         updatedAtEpochMillis = updatedAtEpochMillis,
+        submissionId = submissionId,
+    )
+
+private fun InspectionSubmissionIntent.toEntity(): InspectionSubmissionEntity =
+    InspectionSubmissionEntity(
+        companyId = companyId,
+        jobId = jobId,
+        jobPackVersion = jobPackVersion,
+        submissionId = submissionId,
+        mutationId = mutationId,
+        inspectorUserId = inspectorUserId,
+        sessionId = sessionId,
+        syncState = syncState.value,
+        createdAtEpochMillis = createdAtEpochMillis,
+        updatedAtEpochMillis = updatedAtEpochMillis,
     )
 
 private fun AnchorEvidencePhoto.toEntity(jobPackVersion: Long): AnchorEvidencePhotoEntity =
@@ -285,8 +338,23 @@ private fun AnchorInspectionStorageSnapshot.toDomain(): AnchorInspectionDraft {
         syncState = inspection.syncState.toEvidenceSyncState(),
         createdAtEpochMillis = inspection.createdAtEpochMillis,
         updatedAtEpochMillis = inspection.updatedAtEpochMillis,
+        submissionId = inspection.submissionId,
     )
 }
+
+private fun InspectionSubmissionEntity.toDomain(): InspectionSubmissionIntent =
+    InspectionSubmissionIntent(
+        companyId = companyId,
+        jobId = jobId,
+        jobPackVersion = jobPackVersion,
+        submissionId = submissionId,
+        mutationId = mutationId,
+        inspectorUserId = inspectorUserId,
+        sessionId = sessionId,
+        syncState = syncState.toEvidenceSyncState(),
+        createdAtEpochMillis = createdAtEpochMillis,
+        updatedAtEpochMillis = updatedAtEpochMillis,
+    )
 
 private fun AnchorEvidencePhotoEntity.toDomain(): AnchorEvidencePhoto =
     AnchorEvidencePhoto(
@@ -324,3 +392,10 @@ private fun <T> String.toStoredEnum(
     value: (T) -> String,
 ): T = values.singleOrNull { value(it) == this }
         ?: throw StorageUnavailableException(StorageUnavailableReason.DATABASE_OPEN_FAILED)
+
+private fun AnchorInspectionDraft.isFor(intent: InspectionSubmissionIntent): Boolean =
+    companyId == intent.companyId &&
+        jobId == intent.jobId &&
+        jobPackVersion == intent.jobPackVersion &&
+        submissionId == intent.submissionId &&
+        syncState == EvidenceSyncState.PENDING

@@ -1,6 +1,6 @@
 # Deferred work and vendor-cost research
 
-**Date:** 2026-09-03
+**Date:** 2026-09-04
 **Status:** Research and indicative estimate; not a production-provider decision.
 
 This note answers which product work is still deferred and which external services
@@ -10,27 +10,25 @@ available. They are not an invoice or a commitment to deploy.
 
 ## What is still missing
 
-The bounded Android 3B-03 local anchor-capture slice is complete, but this is
-not a complete pilot. The remaining work is:
+The bounded Android 3B-03 local anchor-capture and 3B-04 local review/queue
+slices are implemented, but this is not a complete pilot. The remaining work
+is:
 
-1. **Finish 3B-04:** add submission readiness for the completed anchor
-   evidence flow, distinguish blockers from warnings and make queued submission
-   state visible without claiming server success.
-2. **Build 3C sync:** durable idempotent mutation outbox, photo upload queue and
+1. **Build 3C sync:** durable idempotent mutation outbox, photo upload queue and
    retry states, server acknowledgements, conflict visibility, logout/lease
    expiry/revocation safety, and the bounded offline recovery path.
-3. **Build 3D office review and reports:** change requests, reviewer decisions,
+2. **Build 3D office review and reports:** change requests, reviewer decisions,
    exact immutable approved snapshots, deterministic draft PDF revisions, audit
    export and controlled cleanup.
-4. **Configure production adapters:** managed invitation-only identity and
+3. **Configure production adapters:** managed invitation-only identity and
    membership, durable API/database persistence, durable audit, private object
    storage, deployment configuration and runtime role separation. The current
    scaffold deliberately leaves these adapters unconfigured.
-5. **Close operational controls:** backup and restore exercise, tenant export,
+4. **Close operational controls:** backup and restore exercise, tenant export,
    retention/deletion terms, RPO/RTO, data-residency decision, monitoring and
    cost alerts. These are prerequisites for real customer data, not merely
    hosting details.
-6. **Validate with people and evidence:** design-partner review of the offline
+5. **Validate with people and evidence:** design-partner review of the offline
    lease/recovery (G-05), real-data pilot terms (G-06), practitioner/legal/
    privacy review, and validation of NSW and Queensland terminology and report
    wording. Any licensed-standard or manufacturer-instruction review must remain

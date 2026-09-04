@@ -126,6 +126,7 @@ internal data class AnchorInspectionEntity(
     val syncState: String,
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
+    val submissionId: String?,
 )
 
 @Entity(
@@ -152,6 +153,32 @@ internal data class AnchorEvidencePhotoEntity(
     val checksum: String,
     val uploadState: String,
     val contentType: String?,
+)
+
+@Entity(
+    tableName = "inspection_submission",
+    primaryKeys = ["companyId", "jobId", "jobPackVersion"],
+    indices = [Index(value = ["companyId", "mutationId"], unique = true)],
+    foreignKeys = [
+        ForeignKey(
+            entity = JobPackEntity::class,
+            parentColumns = ["companyId", "jobId"],
+            childColumns = ["companyId", "jobId"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+    ],
+)
+internal data class InspectionSubmissionEntity(
+    val companyId: String,
+    val jobId: String,
+    val jobPackVersion: Long,
+    val submissionId: String,
+    val mutationId: String,
+    val inspectorUserId: String,
+    val sessionId: String,
+    val syncState: String,
+    val createdAtEpochMillis: Long,
+    val updatedAtEpochMillis: Long,
 )
 
 internal data class JobPackStorageSnapshot(
@@ -184,6 +211,11 @@ internal abstract class JobPackDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     protected abstract fun replacePhotos(photos: List<AnchorEvidencePhotoEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract fun insertSubmissionIfMissing(
+        submission: InspectionSubmissionEntity,
+    ): Long
 
     @Query(
         "DELETE FROM job_pack_anchor " +
@@ -248,6 +280,35 @@ internal abstract class JobPackDao {
         inspectionId: String,
     ): List<AnchorEvidencePhotoEntity>
 
+    @Query(
+        "SELECT * FROM anchor_inspection " +
+            "WHERE companyId = :companyId AND jobId = :jobId " +
+            "AND jobPackVersion = :jobPackVersion AND inspectionId = :inspectionId",
+    )
+    protected abstract fun findInspection(
+        companyId: String,
+        jobId: String,
+        jobPackVersion: Long,
+        inspectionId: String,
+    ): AnchorInspectionEntity?
+
+    @Query(
+        "SELECT * FROM inspection_submission " +
+            "WHERE companyId = :companyId AND jobId = :jobId " +
+            "AND jobPackVersion = :jobPackVersion",
+    )
+    protected abstract fun findSubmission(
+        companyId: String,
+        jobId: String,
+        jobPackVersion: Long,
+    ): InspectionSubmissionEntity?
+
+    fun submission(
+        companyId: String,
+        jobId: String,
+        jobPackVersion: Long,
+    ): InspectionSubmissionEntity? = findSubmission(companyId, jobId, jobPackVersion)
+
     @Transaction
     open fun replaceJobPack(
         pack: JobPackEntity,
@@ -277,6 +338,16 @@ internal abstract class JobPackDao {
         inspection: AnchorInspectionEntity,
         photos: List<AnchorEvidencePhotoEntity>,
     ) {
+        if (
+            findInspection(
+                companyId = inspection.companyId,
+                jobId = inspection.jobId,
+                jobPackVersion = inspection.jobPackVersion,
+                inspectionId = inspection.inspectionId,
+            )?.submissionId != null
+        ) {
+            error("submitted local evidence is immutable")
+        }
         deletePhotos(
             companyId = inspection.companyId,
             jobId = inspection.jobId,
@@ -296,7 +367,7 @@ internal abstract class JobPackDao {
         companyId = companyId,
         jobId = jobId,
         jobPackVersion = jobPackVersion,
-    ).map { inspection ->
+        ).map { inspection ->
         AnchorInspectionStorageSnapshot(
             inspection = inspection,
             photos = findPhotos(
@@ -306,6 +377,33 @@ internal abstract class JobPackDao {
                 inspection.inspectionId,
             ),
         )
+    }
+
+    @Transaction
+    open fun queueSubmission(
+        submission: InspectionSubmissionEntity,
+        frozenEvidence: List<AnchorInspectionEntity>,
+        frozenPhotos: List<AnchorEvidencePhotoEntity>,
+    ): InspectionSubmissionEntity {
+        findSubmission(
+            companyId = submission.companyId,
+            jobId = submission.jobId,
+            jobPackVersion = submission.jobPackVersion,
+        )?.let { return it }
+        insertSubmissionIfMissing(submission)
+        val stored = findSubmission(
+            companyId = submission.companyId,
+            jobId = submission.jobId,
+            jobPackVersion = submission.jobPackVersion,
+        ) ?: error("queued submission was not stored")
+        if (
+            stored.submissionId == submission.submissionId &&
+            stored.mutationId == submission.mutationId
+        ) {
+            frozenEvidence.forEach(::replaceInspection)
+            replacePhotos(frozenPhotos)
+        }
+        return stored
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -546,6 +644,36 @@ internal val JOB_PACK_MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
+internal val JOB_PACK_MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE anchor_inspection ADD COLUMN submissionId TEXT")
+        db.execSQL(
+            """
+            CREATE TABLE inspection_submission (
+                companyId TEXT NOT NULL,
+                jobId TEXT NOT NULL,
+                jobPackVersion INTEGER NOT NULL,
+                submissionId TEXT NOT NULL,
+                mutationId TEXT NOT NULL,
+                inspectorUserId TEXT NOT NULL,
+                sessionId TEXT NOT NULL,
+                syncState TEXT NOT NULL,
+                createdAtEpochMillis INTEGER NOT NULL,
+                updatedAtEpochMillis INTEGER NOT NULL,
+                PRIMARY KEY(companyId, jobId, jobPackVersion),
+                FOREIGN KEY(companyId, jobId)
+                    REFERENCES job_pack(companyId, jobId)
+                    ON UPDATE NO ACTION ON DELETE RESTRICT
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX index_inspection_submission_companyId_mutationId " +
+                "ON inspection_submission(companyId, mutationId)",
+        )
+    }
+}
+
 @Database(
     entities = [
         JobPackEntity::class,
@@ -553,8 +681,9 @@ internal val JOB_PACK_MIGRATION_2_3 = object : Migration(2, 3) {
         OfflineAuthorizationLeaseEntity::class,
         AnchorInspectionEntity::class,
         AnchorEvidencePhotoEntity::class,
+        InspectionSubmissionEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 internal abstract class JobPackDatabase : RoomDatabase() {

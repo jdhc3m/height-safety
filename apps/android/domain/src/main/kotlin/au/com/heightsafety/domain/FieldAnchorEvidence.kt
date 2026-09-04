@@ -125,6 +125,7 @@ public data class AnchorInspectionDraft(
     public val syncState: EvidenceSyncState = EvidenceSyncState.LOCAL,
     public val createdAtEpochMillis: Long,
     public val updatedAtEpochMillis: Long = createdAtEpochMillis,
+    public val submissionId: String? = null,
 ) {
     init {
         require(companyId.isNotBlank()) { "evidence companyId is required" }
@@ -463,6 +464,18 @@ public class AnchorEvidenceService(
         draft: AnchorInspectionDraft,
     ): AnchorInspectionDraft {
         val accessNow = requirePackAccess(session, opened)
+        requireSubmissionIsOpen(opened)
+        if (draft.submissionId != null) {
+            throw AnchorEvidenceSubmittedException()
+        }
+        val existing = store.loadEvidence(
+            companyId = opened.stored.pack.companyId,
+            jobId = opened.stored.pack.jobId,
+            jobPackVersion = opened.stored.pack.jobPackVersion,
+        ).singleOrNull { it.inspectionId == draft.inspectionId }
+        if (existing?.submissionId != null) {
+            throw AnchorEvidenceSubmittedException()
+        }
         val localIssues = draft.localSaveIssues(opened.stored.pack)
         if (localIssues.isNotEmpty()) {
             throw AnchorEvidenceValidationException(localIssues)
@@ -473,6 +486,19 @@ public class AnchorEvidenceService(
         )
         store.saveEvidence(saved)
         return saved
+    }
+
+    private suspend fun requireSubmissionIsOpen(opened: OpenedJobPack) {
+        val submissionStore = store as? AnchorEvidenceSubmissionStore ?: return
+        if (
+            submissionStore.loadSubmission(
+                companyId = opened.stored.pack.companyId,
+                jobId = opened.stored.pack.jobId,
+                jobPackVersion = opened.stored.pack.jobPackVersion,
+            ) != null
+        ) {
+            throw AnchorEvidenceSubmittedException()
+        }
     }
 
     public fun validateForCompletion(
@@ -531,5 +557,9 @@ public class AnchorEvidenceService(
         require(it >= 0) { "current elapsed time must not be negative" }
     }
 }
+
+public class AnchorEvidenceSubmittedException : IllegalStateException(
+    "submitted local evidence is immutable",
+)
 
 private fun hasText(value: String?): Boolean = !value.isNullOrBlank()

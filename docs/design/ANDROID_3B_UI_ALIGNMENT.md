@@ -77,10 +77,11 @@ model or standards material. `NSW` and `QLD` are recorded site context only.
 
 ## Proposed versus built
 
-`Sign in`, `Jobs`, `Job pack` and `Anchor capture` are alignment targets for the
-current app. Review/submission and complete upload/conflict handling are
-future design surfaces for `3B-04` and `3C`; they are visibly labelled as
-future in the exploration and must not be read as implemented behavior.
+`Sign in`, `Jobs`, `Job pack`, `Anchor capture` and the bounded local
+review/queue behavior are represented in the current app. Complete
+upload/conflict handling, server acknowledgement and office review remain
+future design surfaces for `3C` and later; they are visibly labelled as future
+in the exploration and must not be read as implemented behavior.
 
 The design deliberately does not add office review, draft-report generation,
 automatic compliance, certification, engineering approval, standards
