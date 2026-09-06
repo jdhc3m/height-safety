@@ -1,6 +1,6 @@
 # Current Status
 
-Last update: 2026-09-05
+Last update: 2026-09-06
 
 ## Active stage
 
@@ -14,6 +14,8 @@ its bounded local/provider-neutral slice; server transport remains open.
 for payload-aware service tests, encrypted-local payload reconstruction and a
 company-scoped process-memory authenticated worker seam; runtime persistence,
 media transport and durable session recovery remain open.
+`3C-04` initial Kotlin/JVM offline-authorisation state-machine slice is started;
+Android lifecycle wiring and durable state persistence remain open.
 G-03 is Done as D-027.
 
 ## Completed
@@ -233,6 +235,12 @@ G-03 is Done as D-027.
   Missing/expired session or missing frozen payload remains a visible local
   failure; the API runtime persistence/applier and photo media transport are
   deliberately unconfigured.
+- `3C-04` starts with a Kotlin/JVM product-domain state machine for the
+  D-025 capture lease, elapsed-runtime and clock-rollback locks, separate
+  server/device account state, device authentication, same-company
+  Administrator upload-only recovery, evidence-preserving logout/cleanup gates
+  and permanent Keystore-loss failure. The slice emits domain audit events and
+  has transition coverage without Android or persistence dependencies.
 
 ## In progress
 
@@ -252,6 +260,12 @@ G-03 is Done as D-027.
   requires server acknowledgement plus every recorded photo upload. Runtime
   server persistence/applier, media transport and durable session recovery
   remain open.
+- `3C-04` initial domain implementation is in progress. Product transitions
+  are tested for lease expiry, elapsed-runtime expiry, clock rollback,
+  revocation notification, unnotified revocation, device lock, recovery expiry,
+  same-company Administrator upload-only recovery, logout/cleanup gates and
+  Keystore-loss evidence preservation. Android lifecycle integration, encrypted
+  state persistence and recovery UI remain open.
 - Scoped `3B-04` JVM, lint, Compose and encrypted-storage checks pass; an API 30
   emulator passes 15 app and 11 data instrumented tests. Runtime persistence,
   durable audit, identity membership, pack-update/sync/recovery workflows and
@@ -263,10 +277,11 @@ G-03 is Done as D-027.
 
 ## Next recommended task
 
-Continue `3C-03` with runtime persistence and media transport after the
-`3C-01` review. Keep `3C-04` logout, lease-expiry and revocation safety next;
-do not treat the bounded protocol, payload-applier proof or process-memory
-worker seam as production synchronisation.
+Continue `3C-04` by persisting the domain state and wiring logout, lease
+refresh/expiry, revocation and upload-only recovery through Android adapters.
+Then return to `3C-03` runtime persistence and media transport after the
+`3C-01` review. Do not treat bounded protocol, payload-applier, process-memory
+worker or domain state-machine slices as production synchronisation.
 Do not add Kotlin
 Multiplatform, an iOS target or deferred standards candidates. Authentication
 vendor selection and the durable identity/runtime adapters remain deferred.
@@ -412,6 +427,10 @@ with the payload-aware synchronisation schemas. The Kotlin/JVM domain suite
 passed. Android data/app compilation was environment-blocked because no local
 Android SDK is configured; no Android runtime or production synchronisation
 claim is made.
+
+On 2026-09-06, the Kotlin/JVM domain suite passed 60 tests with the initial
+`3C-04` offline-authorisation state-machine coverage. Android lifecycle,
+encrypted state persistence and production recovery remain unimplemented.
 
 ## Relevant files
 

@@ -29,6 +29,14 @@ WorkManager seam supplies the bearer token and company scope. Media transport,
 durable server persistence, durable session recovery and `3C-04` safety remain
 open.
 
+The initial `3C-04` product-domain slice models the D-025 capture lease,
+elapsed-runtime and clock-rollback locks, separate server/device account state,
+device authentication, same-company Administrator upload-only recovery,
+evidence-preserving logout/cleanup gates and permanent Keystore-loss failure.
+It is a Kotlin/JVM state machine with audit events and no Android or persistence
+dependencies. Encrypted state persistence, application lifecycle wiring and
+recovery UI remain open.
+
 Visible states: local, pending, synchronising, synchronised, failed and
 conflict for mutations; pending-upload, uploaded and failed for photos. Office
 review cannot mark complete while required uploads or changes remain unresolved.
