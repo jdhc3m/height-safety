@@ -46,8 +46,13 @@ import au.com.heightsafety.domain.RecordedDisposition
 import au.com.heightsafety.domain.RecordedOutcome
 import au.com.heightsafety.domain.RecordedProofTest
 import au.com.heightsafety.domain.ReconciliationProposal
+import au.com.heightsafety.domain.EvidenceSyncState
 import au.com.heightsafety.domain.PhotoUploadState
+import au.com.heightsafety.domain.PhotoUploadQueueState
 import au.com.heightsafety.domain.SubmissionReviewIssue
+import au.com.heightsafety.domain.SubmissionSynchronization
+import au.com.heightsafety.domain.SubmissionSynchronizationBlocker
+import au.com.heightsafety.domain.SyncMutationState
 import java.text.DateFormat
 import java.util.Date
 
@@ -705,6 +710,14 @@ private fun SubmissionReviewContent(
     val pack = state.opened.stored.pack
     val review = state.review
     val submissionIntent = review.intent
+    val synchronization = submissionIntent?.let { intent ->
+        SubmissionSynchronization(
+            mutationState = intent.syncState.toSyncMutationState(),
+            photoStates = review.evidence
+                .flatMap { evidence -> evidence.photos }
+                .map { photo -> photo.uploadState.toQueueState() },
+        )
+    }
     val discoveredEvidence = review.evidence.filter { it.expectedAnchorId == null }
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -776,6 +789,20 @@ private fun SubmissionReviewContent(
                                         displayStatus(submissionIntent.syncState.value),
                                     ),
                                 )
+                                if (synchronization?.isReadyForReview == true) {
+                                    Text(stringResource(R.string.submission_sync_ready))
+                                } else {
+                                    Text(
+                                        stringResource(R.string.submission_sync_blocked),
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                    synchronization?.blockers?.forEach { blocker ->
+                                        Text(
+                                            stringResource(blocker.label()),
+                                            color = MaterialTheme.colorScheme.error,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -1446,6 +1473,29 @@ private fun displayStatus(status: String): String = status
     .joinToString(" ") { word ->
         word.replaceFirstChar { character -> character.uppercase() }
     }
+
+private fun EvidenceSyncState.toSyncMutationState(): SyncMutationState = when (this) {
+    EvidenceSyncState.LOCAL -> SyncMutationState.PENDING
+    EvidenceSyncState.PENDING -> SyncMutationState.PENDING
+    EvidenceSyncState.SYNCHRONISING -> SyncMutationState.SYNCHRONISING
+    EvidenceSyncState.SYNCHRONISED -> SyncMutationState.SYNCHRONISED
+    EvidenceSyncState.FAILED -> SyncMutationState.FAILED
+    EvidenceSyncState.CONFLICT -> SyncMutationState.CONFLICT
+}
+
+private fun PhotoUploadState.toQueueState(): PhotoUploadQueueState = when (this) {
+    PhotoUploadState.PENDING_UPLOAD -> PhotoUploadQueueState.PENDING
+    PhotoUploadState.UPLOADED -> PhotoUploadQueueState.UPLOADED
+    PhotoUploadState.FAILED -> PhotoUploadQueueState.FAILED
+}
+
+private fun SubmissionSynchronizationBlocker.label(): Int = when (this) {
+    SubmissionSynchronizationBlocker.SERVER_ACKNOWLEDGEMENT_REQUIRED ->
+        R.string.submission_sync_acknowledgement_required
+    SubmissionSynchronizationBlocker.SERVER_CONFLICT -> R.string.submission_sync_conflict
+    SubmissionSynchronizationBlocker.PHOTO_UPLOAD_PENDING -> R.string.submission_sync_photo_pending
+    SubmissionSynchronizationBlocker.PHOTO_UPLOAD_FAILED -> R.string.submission_sync_photo_failed
+}
 
 private fun outcomeLabel(outcome: RecordedOutcome): String = when (outcome) {
     RecordedOutcome.SERVICEABLE -> "Serviceable"

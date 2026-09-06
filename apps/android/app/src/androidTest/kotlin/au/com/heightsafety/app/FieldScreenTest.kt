@@ -12,6 +12,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import au.com.heightsafety.domain.AnchorInspectionDraft
+import au.com.heightsafety.domain.AnchorEvidencePhoto
+import au.com.heightsafety.domain.EvidenceSyncState
 import au.com.heightsafety.domain.FieldJobPack
 import au.com.heightsafety.domain.InspectorJob
 import au.com.heightsafety.domain.JobPackAnchor
@@ -21,6 +23,8 @@ import au.com.heightsafety.domain.ProductRole
 import au.com.heightsafety.domain.OpenedJobPack
 import au.com.heightsafety.domain.RecordedOutcome
 import au.com.heightsafety.domain.ReconciliationProposal
+import au.com.heightsafety.domain.InspectionSubmissionIntent
+import au.com.heightsafety.domain.PhotoUploadState
 import au.com.heightsafety.domain.SupportedJurisdiction
 import au.com.heightsafety.domain.StoredJobPack
 import au.com.heightsafety.domain.SubmissionReadiness
@@ -551,6 +555,67 @@ class FieldScreenTest {
             .performClick()
 
         assertTrue(queueClicked)
+    }
+
+    @Test
+    fun queuedSubmissionShowsConflictAndPhotoSynchronisationBlockers() {
+        val pack = submissionPack()
+        val draft = submissionDraft(pack).copy(
+            recordedOutcome = RecordedOutcome.NOT_INSPECTED,
+            exceptionReason = au.com.heightsafety.domain.InspectionExceptionReason.INACCESSIBLE,
+            syncState = EvidenceSyncState.CONFLICT,
+            photos = listOf(
+                AnchorEvidencePhoto(
+                    companyId = pack.companyId,
+                    jobId = pack.jobId,
+                    anchorInspectionId = "inspection-001",
+                    localId = "photo-001",
+                    storageReference = "private/photo-001.jpg",
+                    capturedAtEpochMillis = 1_100L,
+                    checksum = "sha256-photo-001",
+                    uploadState = PhotoUploadState.PENDING_UPLOAD,
+                ),
+            ),
+            submissionId = "submission-001",
+        )
+        val review = SubmissionReviewResult(
+            evidence = listOf(draft),
+            readiness = SubmissionReadiness.evaluate(pack, listOf(draft)),
+            intent = InspectionSubmissionIntent(
+                companyId = pack.companyId,
+                jobId = pack.jobId,
+                jobPackVersion = pack.jobPackVersion,
+                submissionId = "submission-001",
+                mutationId = "mutation-001",
+                inspectorUserId = "inspector-a",
+                sessionId = "session-001",
+                createdAtEpochMillis = 1_000L,
+                syncState = EvidenceSyncState.CONFLICT,
+            ),
+        )
+        composeTestRule.setContent {
+            FieldScreen(
+                state = FieldUiState.SubmissionReview(
+                    account = account(),
+                    jobs = listOf(job()),
+                    job = job(),
+                    opened = OpenedJobPack(
+                        StoredJobPack(pack, submissionLease()),
+                        JobPackOpenSource.CACHED,
+                    ),
+                    review = review,
+                ),
+                onSignIn = {},
+                onRetry = {},
+                onRefresh = {},
+                onSignOut = {},
+            )
+        }
+
+        composeTestRule.onNodeWithText("Synchronisation conflict is recorded and requires review; local evidence is preserved.")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Photo uploads remain pending.")
+            .assertIsDisplayed()
     }
 
     private fun setContent(state: FieldUiState) {

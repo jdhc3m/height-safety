@@ -69,6 +69,7 @@ All URIs are relative to */api/v1*
 | *SiteRegisterApi* | [**updateAnchor**](docs/SiteRegisterApi.md#updateanchor) | **PATCH** sites/{siteId}/anchors/{anchorId} | Update a registered anchor |
 | *SiteRegisterApi* | [**updateClient**](docs/SiteRegisterApi.md#updateclient) | **PATCH** clients/{clientId} | Update a company client |
 | *SiteRegisterApi* | [**updateSite**](docs/SiteRegisterApi.md#updatesite) | **PATCH** sites/{siteId} | Update a company site |
+| *SynchronisationApi* | [**submitSyncMutation**](docs/SynchronisationApi.md#submitsyncmutation) | **POST** sync/mutations | Submit one idempotent mutation envelope |
 | *SystemApi* | [**getHealth**](docs/SystemApi.md#gethealth) | **GET** health | Check API health |
 
 
@@ -95,6 +96,12 @@ All URIs are relative to */api/v1*
  - [au.com.heightsafety.api.models.SessionResponseDto](docs/SessionResponseDto.md)
  - [au.com.heightsafety.api.models.SessionRevokedResponseDto](docs/SessionRevokedResponseDto.md)
  - [au.com.heightsafety.api.models.SiteResponseDto](docs/SiteResponseDto.md)
+ - [au.com.heightsafety.api.models.SyncAnchorInspectionPayloadDto](docs/SyncAnchorInspectionPayloadDto.md)
+ - [au.com.heightsafety.api.models.SyncInspectionPhotoPayloadDto](docs/SyncInspectionPhotoPayloadDto.md)
+ - [au.com.heightsafety.api.models.SyncInspectionSubmissionPayloadDto](docs/SyncInspectionSubmissionPayloadDto.md)
+ - [au.com.heightsafety.api.models.SyncMutationConflictDto](docs/SyncMutationConflictDto.md)
+ - [au.com.heightsafety.api.models.SyncMutationRequestDto](docs/SyncMutationRequestDto.md)
+ - [au.com.heightsafety.api.models.SyncMutationResponseDto](docs/SyncMutationResponseDto.md)
  - [au.com.heightsafety.api.models.UpdateAnchorDto](docs/UpdateAnchorDto.md)
  - [au.com.heightsafety.api.models.UpdateClientDto](docs/UpdateClientDto.md)
  - [au.com.heightsafety.api.models.UpdateSiteDto](docs/UpdateSiteDto.md)

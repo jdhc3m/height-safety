@@ -694,6 +694,392 @@
         ],
         "type": "object"
       },
+      "SyncAnchorInspectionPayloadDto": {
+        "properties": {
+          "defectDescription": {
+            "maxLength": 10000,
+            "nullable": true,
+            "type": "string"
+          },
+          "disposition": {
+            "enum": [
+              "removed_from_service"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "exceptionReason": {
+            "enum": [
+              "inaccessible",
+              "unable_to_locate"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "expectedAnchorId": {
+            "example": "anchor-001",
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "identityConfirmed": {
+            "example": true,
+            "type": "boolean"
+          },
+          "inspectionId": {
+            "example": "inspection-anchor-001",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "location": {
+            "example": "North roof",
+            "maxLength": 10000,
+            "nullable": true,
+            "type": "string"
+          },
+          "locationConfirmed": {
+            "example": true,
+            "type": "boolean"
+          },
+          "notes": {
+            "maxLength": 10000,
+            "nullable": true,
+            "type": "string"
+          },
+          "observations": {
+            "example": "No visible damage.",
+            "maxLength": 10000,
+            "nullable": true,
+            "type": "string"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/SyncInspectionPhotoPayloadDto"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "proofTestEquipmentReference": {
+            "maxLength": 10000,
+            "nullable": true,
+            "type": "string"
+          },
+          "proofTestHold": {
+            "maxLength": 10000,
+            "nullable": true,
+            "type": "string"
+          },
+          "proofTestLoad": {
+            "maxLength": 10000,
+            "nullable": true,
+            "type": "string"
+          },
+          "proofTestResult": {
+            "maxLength": 10000,
+            "nullable": true,
+            "type": "string"
+          },
+          "provisionalAnchorId": {
+            "example": "provisional-001",
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "recommendation": {
+            "maxLength": 10000,
+            "nullable": true,
+            "type": "string"
+          },
+          "reconciliationProposal": {
+            "enum": [
+              "newly_discovered",
+              "replacement",
+              "duplicate"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "reconciliationReferenceId": {
+            "example": "anchor-002",
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "recordedOutcome": {
+            "enum": [
+              "serviceable",
+              "defective",
+              "not_inspected",
+              "further_assessment_required"
+            ],
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "inspectionId",
+          "identityConfirmed",
+          "locationConfirmed",
+          "photos"
+        ],
+        "type": "object"
+      },
+      "SyncInspectionPhotoPayloadDto": {
+        "properties": {
+          "byteSize": {
+            "example": 2048,
+            "minimum": 0,
+            "nullable": true,
+            "type": "number"
+          },
+          "capturedAtEpochMillis": {
+            "example": 1725000000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "checksum": {
+            "example": "sha256-photo-001",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "contentType": {
+            "example": "image/jpeg",
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "localId": {
+            "example": "photo-001",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "storageReference": {
+            "example": "anchor-photos/photo-001.jpg",
+            "maxLength": 512,
+            "type": "string"
+          }
+        },
+        "required": [
+          "localId",
+          "storageReference",
+          "capturedAtEpochMillis",
+          "checksum"
+        ],
+        "type": "object"
+      },
+      "SyncInspectionSubmissionPayloadDto": {
+        "properties": {
+          "anchorInspections": {
+            "items": {
+              "$ref": "#/components/schemas/SyncAnchorInspectionPayloadDto"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "companyId": {
+            "example": "company-a",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "jobId": {
+            "example": "job-001",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "jobPackVersion": {
+            "example": 1,
+            "minimum": 1,
+            "type": "number"
+          },
+          "jurisdiction": {
+            "enum": [
+              "NSW",
+              "QLD"
+            ],
+            "example": "NSW",
+            "type": "string"
+          },
+          "siteId": {
+            "example": "site-001",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "submissionId": {
+            "example": "submission-001",
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "jobId",
+          "siteId",
+          "jurisdiction",
+          "submissionId",
+          "jobPackVersion",
+          "anchorInspections"
+        ],
+        "type": "object"
+      },
+      "SyncMutationConflictDto": {
+        "properties": {
+          "conflictId": {
+            "example": "conflict-001",
+            "type": "string"
+          },
+          "currentEntityVersion": {
+            "example": 1,
+            "minimum": 0,
+            "nullable": true,
+            "type": "number"
+          },
+          "expectedEntityVersion": {
+            "example": 0,
+            "minimum": 0,
+            "type": "number"
+          },
+          "message": {
+            "example": "Server entity version changed before this mutation was received.",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "expected_version_mismatch",
+              "idempotency_key_reuse",
+              "mutation_identity_mismatch"
+            ],
+            "example": "expected_version_mismatch",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conflictId",
+          "reason",
+          "expectedEntityVersion",
+          "message"
+        ],
+        "type": "object"
+      },
+      "SyncMutationRequestDto": {
+        "properties": {
+          "entityId": {
+            "example": "submission-001",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "entityType": {
+            "enum": [
+              "inspection_submission"
+            ],
+            "example": "inspection_submission",
+            "type": "string"
+          },
+          "entityVersion": {
+            "example": 1,
+            "minimum": 1,
+            "type": "number"
+          },
+          "expectedEntityVersion": {
+            "example": 0,
+            "minimum": 0,
+            "type": "number"
+          },
+          "idempotencyKey": {
+            "example": "mutation-001",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "mutationId": {
+            "example": "mutation-001",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "operation": {
+            "enum": [
+              "submit_inspection"
+            ],
+            "example": "submit_inspection",
+            "type": "string"
+          },
+          "payload": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SyncInspectionSubmissionPayloadDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "mutationId",
+          "idempotencyKey",
+          "operation",
+          "entityType",
+          "entityId",
+          "expectedEntityVersion",
+          "entityVersion"
+        ],
+        "type": "object"
+      },
+      "SyncMutationResponseDto": {
+        "properties": {
+          "acknowledgedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "conflict": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SyncMutationConflictDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "idempotencyKey": {
+            "type": "string"
+          },
+          "mutationId": {
+            "type": "string"
+          },
+          "payloadApplied": {
+            "example": true,
+            "type": "boolean"
+          },
+          "replayed": {
+            "example": false,
+            "type": "boolean"
+          },
+          "serverEntityVersion": {
+            "example": 1,
+            "minimum": 0,
+            "nullable": true,
+            "type": "number"
+          },
+          "state": {
+            "enum": [
+              "synchronised",
+              "conflict"
+            ],
+            "example": "synchronised",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "mutationId",
+          "idempotencyKey",
+          "state",
+          "payloadApplied",
+          "replayed"
+        ],
+        "type": "object"
+      },
       "UpdateAnchorDto": {
         "properties": {
           "anchorType": {
@@ -1926,6 +2312,52 @@
         "summary": "Update a registered anchor",
         "tags": [
           "site-register"
+        ]
+      }
+    },
+    "/sync/mutations": {
+      "post": {
+        "operationId": "submitSyncMutation",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncMutationRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncMutationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Submit one idempotent mutation envelope",
+        "tags": [
+          "synchronisation"
         ]
       }
     }

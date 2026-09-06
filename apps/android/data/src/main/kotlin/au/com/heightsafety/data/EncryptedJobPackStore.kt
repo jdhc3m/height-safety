@@ -13,6 +13,7 @@ import au.com.heightsafety.domain.MutationOutboxStore
 import au.com.heightsafety.domain.OfflineAuthorizationLease
 import au.com.heightsafety.domain.EvidenceSyncState
 import au.com.heightsafety.domain.InspectionExceptionReason
+import au.com.heightsafety.domain.InspectionSubmissionPayload
 import au.com.heightsafety.domain.InspectionSubmissionIntent
 import au.com.heightsafety.domain.PhotoUploadState
 import au.com.heightsafety.domain.PhotoUpload
@@ -26,6 +27,7 @@ import au.com.heightsafety.domain.SyncMutation
 import au.com.heightsafety.domain.SyncMutationOperation
 import au.com.heightsafety.domain.SyncMutationState
 import au.com.heightsafety.domain.StoredJobPack
+import au.com.heightsafety.domain.SupportedJurisdiction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -190,6 +192,23 @@ public class EncryptedJobPackStore(
             }
         }
 
+    override suspend fun recoverInterruptedMutationsForCompany(
+        companyId: String,
+        nowEpochMillis: Long,
+    ) = withContext(Dispatchers.IO) {
+        require(companyId.isNotBlank()) { "companyId must not be blank" }
+        require(nowEpochMillis >= 0) {
+            "mutation recovery time must not be negative"
+        }
+        opener.open().use { handle ->
+            handle.database.jobPackDao().recoverInterruptedMutationsForCompany(
+                companyId = companyId,
+                nowEpochMillis = nowEpochMillis,
+                error = "Synchronisation interrupted before server acknowledgement.",
+            )
+        }
+    }
+
     override suspend fun loadMutations(companyId: String): List<SyncMutation> =
         withContext(Dispatchers.IO) {
             require(companyId.isNotBlank()) { "companyId must not be blank" }
@@ -197,6 +216,53 @@ public class EncryptedJobPackStore(
                 handle.database.jobPackDao().mutations(companyId).map { it.toDomain() }
             }
         }
+
+    override suspend fun loadSubmissionPayload(
+        mutation: SyncMutation,
+    ): InspectionSubmissionPayload? = withContext(Dispatchers.IO) {
+        if (
+            mutation.entityType != INSPECTION_SUBMISSION_ENTITY_TYPE ||
+            mutation.operation != SyncMutationOperation.SUBMIT_INSPECTION
+        ) {
+            return@withContext null
+        }
+        opener.open().use { handle ->
+            val dao = handle.database.jobPackDao()
+            val submission = dao.submissionByMutation(
+                companyId = mutation.companyId,
+                mutationId = mutation.mutationId,
+            ) ?: return@use null
+            check(submission.submissionId == mutation.entityId) {
+                "submission payload identity does not match mutation"
+            }
+            check(submission.jobPackVersion == mutation.entityVersion) {
+                "submission payload version does not match mutation"
+            }
+            val pack = dao.pack(
+                companyId = submission.companyId,
+                jobId = submission.jobId,
+            ) ?: return@use null
+            val jurisdiction = when (pack.jurisdiction) {
+                SupportedJurisdiction.NSW.value -> SupportedJurisdiction.NSW
+                SupportedJurisdiction.QLD.value -> SupportedJurisdiction.QLD
+                else -> error("unsupported stored site jurisdiction")
+            }
+            InspectionSubmissionPayload(
+                companyId = submission.companyId,
+                jobId = submission.jobId,
+                siteId = pack.siteId,
+                jurisdiction = jurisdiction,
+                submissionId = submission.submissionId,
+                jobPackVersion = submission.jobPackVersion,
+                anchorInspections = dao
+                    .evidenceSnapshots(
+                        companyId = submission.companyId,
+                        jobId = submission.jobId,
+                        jobPackVersion = submission.jobPackVersion,
+                    ).map(AnchorInspectionStorageSnapshot::toDomain),
+            )
+        }
+    }
 
     override suspend fun loadNextEligiblePhotoUpload(): PhotoUpload? =
         withContext(Dispatchers.IO) {

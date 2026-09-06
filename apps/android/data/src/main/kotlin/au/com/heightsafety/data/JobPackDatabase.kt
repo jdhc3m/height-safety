@@ -412,6 +412,15 @@ internal abstract class JobPackDao {
     ): InspectionSubmissionEntity?
 
     @Query(
+        "SELECT * FROM inspection_submission " +
+            "WHERE companyId = :companyId AND mutationId = :mutationId",
+    )
+    protected abstract fun findSubmissionByMutation(
+        companyId: String,
+        mutationId: String,
+    ): InspectionSubmissionEntity?
+
+    @Query(
         "SELECT * FROM sync_mutation " +
             "WHERE companyId = :companyId AND mutationId = :mutationId",
     )
@@ -445,6 +454,15 @@ internal abstract class JobPackDao {
             "WHERE state = 'synchronising' ORDER BY companyId, mutationId",
     )
     protected abstract fun findInterruptedMutations(): List<SyncMutationEntity>
+
+    @Query(
+        "SELECT * FROM sync_mutation " +
+            "WHERE companyId = :companyId AND state = 'synchronising' " +
+            "ORDER BY mutationId",
+    )
+    protected abstract fun findInterruptedMutationsForCompany(
+        companyId: String,
+    ): List<SyncMutationEntity>
 
     @Query(
         "SELECT * FROM photo_upload " +
@@ -525,6 +543,14 @@ internal abstract class JobPackDao {
         jobId: String,
         jobPackVersion: Long,
     ): InspectionSubmissionEntity? = findSubmission(companyId, jobId, jobPackVersion)
+
+    fun submissionByMutation(
+        companyId: String,
+        mutationId: String,
+    ): InspectionSubmissionEntity? = findSubmissionByMutation(companyId, mutationId)
+
+    fun pack(companyId: String, jobId: String): JobPackEntity? =
+        findPack(companyId, jobId)
 
     fun nextEligibleMutation(companyId: String): SyncMutationEntity? =
         findNextEligibleMutation(companyId)
@@ -681,6 +707,23 @@ internal abstract class JobPackDao {
         error: String,
     ) {
         findInterruptedMutations().forEach { mutation ->
+            val recovered = mutation.copy(
+                state = "failed",
+                lastError = error,
+                updatedAtEpochMillis = nowEpochMillis,
+            )
+            updateMutation(recovered)
+            updateVisibleMutationState(recovered)
+        }
+    }
+
+    @Transaction
+    open fun recoverInterruptedMutationsForCompany(
+        companyId: String,
+        nowEpochMillis: Long,
+        error: String,
+    ) {
+        findInterruptedMutationsForCompany(companyId).forEach { mutation ->
             val recovered = mutation.copy(
                 state = "failed",
                 lastError = error,

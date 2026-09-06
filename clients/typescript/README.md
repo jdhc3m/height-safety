@@ -76,6 +76,7 @@ All URIs are relative to */api/v1*
 *SiteRegisterApi* | [**updateAnchor**](docs/SiteRegisterApi.md#updateanchor) | **PATCH** /sites/{siteId}/anchors/{anchorId} | Update a registered anchor
 *SiteRegisterApi* | [**updateClient**](docs/SiteRegisterApi.md#updateclient) | **PATCH** /clients/{clientId} | Update a company client
 *SiteRegisterApi* | [**updateSite**](docs/SiteRegisterApi.md#updatesite) | **PATCH** /sites/{siteId} | Update a company site
+*SynchronisationApi* | [**submitSyncMutation**](docs/SynchronisationApi.md#submitsyncmutation) | **POST** /sync/mutations | Submit one idempotent mutation envelope
 *SystemApi* | [**getHealth**](docs/SystemApi.md#gethealth) | **GET** /health | Check API health
 
 
@@ -101,6 +102,12 @@ All URIs are relative to */api/v1*
 - [SessionResponseDto](docs/SessionResponseDto.md)
 - [SessionRevokedResponseDto](docs/SessionRevokedResponseDto.md)
 - [SiteResponseDto](docs/SiteResponseDto.md)
+- [SyncAnchorInspectionPayloadDto](docs/SyncAnchorInspectionPayloadDto.md)
+- [SyncInspectionPhotoPayloadDto](docs/SyncInspectionPhotoPayloadDto.md)
+- [SyncInspectionSubmissionPayloadDto](docs/SyncInspectionSubmissionPayloadDto.md)
+- [SyncMutationConflictDto](docs/SyncMutationConflictDto.md)
+- [SyncMutationRequestDto](docs/SyncMutationRequestDto.md)
+- [SyncMutationResponseDto](docs/SyncMutationResponseDto.md)
 - [UpdateAnchorDto](docs/UpdateAnchorDto.md)
 - [UpdateClientDto](docs/UpdateClientDto.md)
 - [UpdateSiteDto](docs/UpdateSiteDto.md)

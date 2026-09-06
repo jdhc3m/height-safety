@@ -153,6 +153,8 @@ class FieldViewModel(
     private val submissionService: AnchorSubmissionService? = null,
     private val scheduleMutationSync: () -> Unit = {},
     private val schedulePhotoUpload: () -> Unit = {},
+    private val scheduleAuthenticatedMutationSync: (FieldSession) -> Unit = {},
+    private val clearAuthenticatedMutationSync: () -> Unit = {},
     private val nowEpochMillis: () -> Long = { System.currentTimeMillis() },
     private val deviceAuthenticationGate: DeviceAuthenticationGate,
     private val inspectionIdGenerator: () -> String = { UUID.randomUUID().toString() },
@@ -181,6 +183,7 @@ class FieldViewModel(
         lastCompanyId = normalizedCompanyId
         activeRequest?.cancel()
         session = null
+        clearAuthenticatedMutationSync()
         gateway.clearSession()
         _uiState.value = FieldUiState.SigningIn(normalizedCompanyId)
         activeRequest = scope.launch {
@@ -211,6 +214,7 @@ class FieldViewModel(
                 throw error
             } catch (error: Throwable) {
                 session = null
+                clearAuthenticatedMutationSync()
                 gateway.clearSession()
                 _uiState.value = signInError(error)
             }
@@ -625,6 +629,13 @@ class FieldViewModel(
                 } catch (_: Exception) {
                     // The local queue is durable; a later app event can reschedule the drain.
                 }
+                try {
+                    scheduleAuthenticatedMutationSync(currentSession)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    // The local queue is durable; a later app event can reschedule the drain.
+                }
                 val review = service.review(currentSession, current.opened)
                 _uiState.value = current.copy(
                     review = review,
@@ -831,6 +842,7 @@ class FieldViewModel(
         activeRequest?.cancel()
         val currentSession = session
         session = null
+        clearAuthenticatedMutationSync()
         _uiState.value = FieldUiState.SignedOut
         gateway.clearSession()
 
@@ -884,6 +896,7 @@ class FieldViewModel(
 
     private fun expireSession() {
         session = null
+        clearAuthenticatedMutationSync()
         gateway.clearSession()
         _uiState.value = FieldUiState.SessionExpired()
     }

@@ -99,6 +99,84 @@ class FieldSyncTest {
         assertEquals(1, transport.mutationIds.size)
     }
 
+    @Test
+    fun permanentServerRejectionRemainsFailedWithoutRetryLoop() = runTest {
+        val store = InMemoryMutationStore()
+        val transport = QueueTransport(
+            SyncMutationDelivery.PermanentFailure("session is no longer valid"),
+        )
+        store.enqueueMutation(mutation())
+
+        val result = drainer(store, transport).drain()
+
+        assertFalse(result.requiresRetry)
+        assertEquals(1, result.failed)
+        assertEquals(SyncMutationState.FAILED, store.loadMutations("company-a").single().state)
+        assertEquals("session is no longer valid", store.loadMutations("company-a").single().lastError)
+    }
+
+    @Test
+    fun scopedDrainForwardsFrozenPayloadAndLeavesOtherCompanyQueued() = runTest {
+        val store = InMemoryMutationStore()
+        val payload = InspectionSubmissionPayload(
+            companyId = "company-a",
+            jobId = "job-001",
+            siteId = "site-001",
+            jurisdiction = SupportedJurisdiction.NSW,
+            submissionId = "submission-001",
+            jobPackVersion = 1L,
+            anchorInspections = emptyList(),
+        )
+        store.payload = payload
+        store.enqueueMutation(mutation())
+        store.enqueueMutation(
+            mutation().copy(
+                companyId = "company-b",
+                mutationId = "mutation-b",
+                idempotencyKey = "mutation-b",
+            ),
+        )
+        val transport = PayloadTransport()
+
+        val result = MutationOutboxDrainer(
+            store = store,
+            transport = transport,
+            nowEpochMillis = { 2_000L },
+            companyId = "company-a",
+        ).drain()
+
+        assertEquals(1, result.acknowledged)
+        assertEquals(payload, transport.payload)
+        assertEquals(SyncMutationState.PENDING, store.loadMutations("company-b").single().state)
+    }
+
+    @Test
+    fun reviewGateRequiresServerAcknowledgementAndEveryPhotoUpload() {
+        val blocked = SubmissionSynchronization(
+            mutationState = SyncMutationState.SYNCHRONISED,
+            photoStates = listOf(
+                PhotoUploadQueueState.UPLOADED,
+                PhotoUploadQueueState.FAILED,
+                PhotoUploadQueueState.PENDING,
+            ),
+        )
+
+        assertFalse(blocked.isReadyForReview)
+        assertEquals(
+            listOf(
+                SubmissionSynchronizationBlocker.PHOTO_UPLOAD_FAILED,
+                SubmissionSynchronizationBlocker.PHOTO_UPLOAD_PENDING,
+            ),
+            blocked.blockers,
+        )
+
+        val acknowledged = SubmissionSynchronization(
+            mutationState = SyncMutationState.SYNCHRONISED,
+            photoStates = listOf(PhotoUploadQueueState.UPLOADED),
+        )
+        assertTrue(acknowledged.isReadyForReview)
+    }
+
     private fun drainer(
         store: InMemoryMutationStore,
         transport: QueueTransport,
@@ -137,8 +215,24 @@ class FieldSyncTest {
         }
     }
 
+    private class PayloadTransport : SyncMutationTransport {
+        var payload: InspectionSubmissionPayload? = null
+
+        override suspend fun send(mutation: SyncMutation): SyncMutationDelivery =
+            error("payload-aware overload expected")
+
+        override suspend fun send(
+            mutation: SyncMutation,
+            payload: InspectionSubmissionPayload?,
+        ): SyncMutationDelivery {
+            this.payload = payload
+            return SyncMutationDelivery.Acknowledged
+        }
+    }
+
     private class InMemoryMutationStore : MutationOutboxStore {
         private val mutations = linkedMapOf<String, SyncMutation>()
+        var payload: InspectionSubmissionPayload? = null
 
         override suspend fun enqueueMutation(mutation: SyncMutation): SyncMutation {
             val key = "${mutation.companyId}:${mutation.mutationId}"
@@ -172,6 +266,10 @@ class FieldSyncTest {
 
         override suspend fun loadMutations(companyId: String): List<SyncMutation> =
             mutations.values.filter { it.companyId == companyId }
+
+        override suspend fun loadSubmissionPayload(
+            mutation: SyncMutation,
+        ): InspectionSubmissionPayload? = payload
 
         private fun SyncMutation.hasSameIdentityAs(other: SyncMutation): Boolean =
             companyId == other.companyId &&

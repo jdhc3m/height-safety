@@ -25,6 +25,13 @@ docs/SessionResponseDto.md
 docs/SessionRevokedResponseDto.md
 docs/SiteRegisterApi.md
 docs/SiteResponseDto.md
+docs/SyncAnchorInspectionPayloadDto.md
+docs/SyncInspectionPhotoPayloadDto.md
+docs/SyncInspectionSubmissionPayloadDto.md
+docs/SyncMutationConflictDto.md
+docs/SyncMutationRequestDto.md
+docs/SyncMutationResponseDto.md
+docs/SynchronisationApi.md
 docs/SystemApi.md
 docs/UpdateAnchorDto.md
 docs/UpdateClientDto.md
@@ -33,6 +40,7 @@ package.json
 src/apis/IdentityApi.ts
 src/apis/JobWorkflowApi.ts
 src/apis/SiteRegisterApi.ts
+src/apis/SynchronisationApi.ts
 src/apis/SystemApi.ts
 src/apis/index.ts
 src/index.ts
@@ -56,6 +64,12 @@ src/models/ProviderAccessTokenDto.ts
 src/models/SessionResponseDto.ts
 src/models/SessionRevokedResponseDto.ts
 src/models/SiteResponseDto.ts
+src/models/SyncAnchorInspectionPayloadDto.ts
+src/models/SyncInspectionPhotoPayloadDto.ts
+src/models/SyncInspectionSubmissionPayloadDto.ts
+src/models/SyncMutationConflictDto.ts
+src/models/SyncMutationRequestDto.ts
+src/models/SyncMutationResponseDto.ts
 src/models/UpdateAnchorDto.ts
 src/models/UpdateClientDto.ts
 src/models/UpdateSiteDto.ts

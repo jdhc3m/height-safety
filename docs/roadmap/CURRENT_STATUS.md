@@ -1,6 +1,6 @@
 # Current Status
 
-Last update: 2026-09-04
+Last update: 2026-09-05
 
 ## Active stage
 
@@ -10,6 +10,10 @@ Stage 3C — offline and synchronisation; `3A-01` through `3A-05` are Done.
 outbox implementation is started in this workspace; review and server
 transport remain open. `3C-02` durable photo upload queue is implemented for
 its bounded local/provider-neutral slice; server transport remains open.
+`3C-03` bounded acknowledgement/conflict protocol continuation is implemented
+for payload-aware service tests, encrypted-local payload reconstruction and a
+company-scoped process-memory authenticated worker seam; runtime persistence,
+media transport and durable session recovery remain open.
 G-03 is Done as D-027.
 
 ## Completed
@@ -221,16 +225,33 @@ G-03 is Done as D-027.
   their evidence-photo parent, and pending/uploaded/failed states remain
   visible without claiming server acknowledgement; provider/server transport,
   conflict handling and cleanup remain open.
+- `3C-03` bounded continuation adds an optional normalized inspection payload,
+  explicit `payloadApplied` response state and an in-memory payload-applier
+  proof. Android reconstructs the frozen payload from encrypted Room evidence,
+  maps it through generated OpenAPI DTOs and supplies a bearer token only from
+  the active process-memory session to a company-scoped WorkManager drain.
+  Missing/expired session or missing frozen payload remains a visible local
+  failure; the API runtime persistence/applier and photo media transport are
+  deliberately unconfigured.
 
 ## In progress
 
 - `3C-01` is in review: durable idempotent mutation outbox and background
-  drain seam are implemented, while server acknowledgements, conflict
-  protocol, logout/lease expiry/revocation safety and bounded offline recovery
+  drain seam are implemented, while runtime server persistence, media
+  transport, logout/lease expiry/revocation safety and bounded offline recovery
   remain separate work.
 - `3C-02` bounded implementation is complete for the local/provider-neutral
   queue slice; its transport is deliberately unconfigured, so no server upload
   or acknowledgement is claimed.
+- `3C-03` bounded protocol work is implemented: the API and generated clients
+  define stable mutation/idempotency identity, expected-version acknowledgement,
+  visible conflict responses with replay behavior and optional inspection
+  payload application reporting. The Android adapter maps responses into the
+  durable outbox, reconstructs frozen evidence, and uses a process-memory
+  authenticated, company-scoped worker seam. The local review gate still
+  requires server acknowledgement plus every recorded photo upload. Runtime
+  server persistence/applier, media transport and durable session recovery
+  remain open.
 - Scoped `3B-04` JVM, lint, Compose and encrypted-storage checks pass; an API 30
   emulator passes 15 app and 11 data instrumented tests. Runtime persistence,
   durable audit, identity membership, pack-update/sync/recovery workflows and
@@ -242,8 +263,10 @@ G-03 is Done as D-027.
 
 ## Next recommended task
 
-Continue `3C` with `3C-03` conflict and server-acknowledgement handling after
-the `3C-01` review.
+Continue `3C-03` with runtime persistence and media transport after the
+`3C-01` review. Keep `3C-04` logout, lease-expiry and revocation safety next;
+do not treat the bounded protocol, payload-applier proof or process-memory
+worker seam as production synchronisation.
 Do not add Kotlin
 Multiplatform, an iOS target or deferred standards candidates. Authentication
 vendor selection and the durable identity/runtime adapters remain deferred.
@@ -382,6 +405,13 @@ evidence-photo cascade cleanup. The repository root gate stopped at its
 required `TEST_POSTGRES_URL` prerequisite in this environment; scoped gates
 passed. Server upload, acknowledgement, conflict handling and production
 transport are not claimed.
+
+On 2026-09-05, the API build and suite passed 31 tests with one expected
+PostgreSQL integration skip, and deterministic OpenAPI/client generation passed
+with the payload-aware synchronisation schemas. The Kotlin/JVM domain suite
+passed. Android data/app compilation was environment-blocked because no local
+Android SDK is configured; no Android runtime or production synchronisation
+claim is made.
 
 ## Relevant files
 

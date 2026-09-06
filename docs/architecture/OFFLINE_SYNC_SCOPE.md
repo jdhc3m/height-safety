@@ -18,6 +18,17 @@ The durable local outbox and its business mutation are written consistently.
 Persistent Android background work drains the queue when connectivity returns;
 retries reuse the same stable mutation identity.
 
+The bounded `3C-03` API protocol carries stable mutation/idempotency identity,
+explicit expected and target entity versions, replay visibility and typed
+acknowledgement/conflict details. It can carry a normalized inspection payload
+and reports `payloadApplied` separately from envelope acknowledgement. The
+current payload applier is an in-memory proof only; the runtime API still uses
+an unconfigured persistence/applier boundary. Android reconstructs the frozen
+payload from encrypted local evidence and a process-memory authenticated
+WorkManager seam supplies the bearer token and company scope. Media transport,
+durable server persistence, durable session recovery and `3C-04` safety remain
+open.
+
 Visible states: local, pending, synchronising, synchronised, failed and
 conflict for mutations; pending-upload, uploaded and failed for photos. Office
 review cannot mark complete while required uploads or changes remain unresolved.

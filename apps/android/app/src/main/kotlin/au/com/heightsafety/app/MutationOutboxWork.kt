@@ -9,7 +9,10 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import au.com.heightsafety.api.apis.SynchronisationApi
+import au.com.heightsafety.api.infrastructure.ApiClient
 import au.com.heightsafety.data.EncryptedJobPackStore
+import au.com.heightsafety.domain.FieldSession
 import au.com.heightsafety.domain.MutationOutboxDrainer
 import au.com.heightsafety.domain.SyncMutationDelivery
 import au.com.heightsafety.domain.SyncMutationTransport
@@ -19,7 +22,23 @@ import java.util.concurrent.TimeUnit
 public object MutationOutboxWork {
     public const val UNIQUE_WORK_NAME: String = "height-safety-mutation-outbox"
 
+    @Volatile
+    private var activeSession: FieldSession? = null
+
     public fun enqueue(context: Context) {
+        enqueueInternal(context)
+    }
+
+    public fun enqueue(context: Context, session: FieldSession) {
+        activeSession = session
+        enqueueInternal(context)
+    }
+
+    public fun clearSession() {
+        activeSession = null
+    }
+
+    private fun enqueueInternal(context: Context) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
@@ -32,6 +51,8 @@ public object MutationOutboxWork {
                 .build(),
         )
     }
+
+    internal fun sessionForWorker(): FieldSession? = activeSession
 }
 
 public class MutationOutboxWorker internal constructor(
@@ -59,15 +80,49 @@ public class MutationOutboxWorker internal constructor(
 }
 
 private fun defaultMutationOutboxDrainer(context: Context): MutationOutboxDrainer =
-    MutationOutboxDrainer(
-        store = EncryptedJobPackStore(context.applicationContext),
-        transport = UnconfiguredMutationTransport,
-        nowEpochMillis = { System.currentTimeMillis() },
-    )
+    MutationOutboxWork.sessionForWorker().let { session ->
+        val store = EncryptedJobPackStore(context.applicationContext)
+        val apiClient = session?.let {
+            ApiClient(
+                baseUrl = context.getString(R.string.api_base_url),
+                authNames = arrayOf("access-token"),
+            )
+        }
+        val transport = when {
+            session == null -> UnconfiguredMutationTransport
+            session?.isExpired(System.currentTimeMillis()) == true ->
+                SessionExpiredMutationTransport
+            else -> {
+                val authenticatedSession = session
+                    ?: error("authenticated worker session disappeared")
+                val authenticatedApiClient = apiClient
+                    ?: error("authenticated worker API client is unavailable")
+                OpenApiSyncMutationTransport(
+                    synchronisationApi = authenticatedApiClient
+                        .createService(SynchronisationApi::class.java),
+                    session = authenticatedSession,
+                    bearerTokenSink = authenticatedApiClient::setBearerToken,
+                )
+            }
+        }
+        MutationOutboxDrainer(
+            store = store,
+            transport = transport,
+            nowEpochMillis = { System.currentTimeMillis() },
+            companyId = session?.companyId,
+        )
+    }
 
 private object UnconfiguredMutationTransport : SyncMutationTransport {
     override suspend fun send(mutation: au.com.heightsafety.domain.SyncMutation): SyncMutationDelivery =
-        SyncMutationDelivery.RetryableFailure(
+        SyncMutationDelivery.PermanentFailure(
             "Mutation synchronisation transport is not configured.",
+        )
+}
+
+private object SessionExpiredMutationTransport : SyncMutationTransport {
+    override suspend fun send(mutation: au.com.heightsafety.domain.SyncMutation): SyncMutationDelivery =
+        SyncMutationDelivery.PermanentFailure(
+            "Active field session is expired; sign in again before synchronising.",
         )
 }

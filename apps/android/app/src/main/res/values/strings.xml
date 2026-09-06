@@ -89,6 +89,12 @@
     <string name="view_queued_submission">View queued submission</string>
     <string name="submission_queued_locally">Submission queued locally</string>
     <string name="submission_server_not_confirmed">Stored on this device. Server submission is not confirmed.</string>
+    <string name="submission_sync_ready">Server acknowledgement and all recorded photo uploads are complete.</string>
+    <string name="submission_sync_blocked">Connected review and report work remain blocked until synchronisation is complete.</string>
+    <string name="submission_sync_acknowledgement_required">Server acknowledgement is still required.</string>
+    <string name="submission_sync_conflict">Synchronisation conflict is recorded and requires review; local evidence is preserved.</string>
+    <string name="submission_sync_photo_pending">Photo uploads remain pending.</string>
+    <string name="submission_sync_photo_failed">A photo upload failed and requires retry.</string>
     <string name="preparing_submission_review">Preparing submission review…</string>
     <string name="submission_ready_to_queue">Ready to queue</string>
     <string name="submission_blocked">Submission blocked</string>

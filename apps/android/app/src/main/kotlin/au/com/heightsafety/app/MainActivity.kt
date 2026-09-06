@@ -78,9 +78,10 @@ class MainActivity : ComponentActivity() {
                         submissionIdGenerator = { UUID.randomUUID().toString() },
                         mutationIdGenerator = { UUID.randomUUID().toString() },
                     ),
-                    scheduleMutationSync = {
-                        MutationOutboxWork.enqueue(applicationContext)
+                    scheduleAuthenticatedMutationSync = { session ->
+                        MutationOutboxWork.enqueue(applicationContext, session)
                     },
+                    clearAuthenticatedMutationSync = MutationOutboxWork::clearSession,
                     schedulePhotoUpload = {
                         PhotoUploadWork.enqueue(applicationContext)
                     },
