@@ -90,6 +90,38 @@ internal data class OfflineAuthorizationLeaseEntity(
 )
 
 @Entity(
+    tableName = "offline_access_state",
+    primaryKeys = ["companyId", "userId"],
+)
+internal data class OfflineAccessStateEntity(
+    val companyId: String,
+    val userId: String,
+    val nowEpochMillis: Long,
+    val highestObservedEpochMillis: Long,
+    val elapsedRealtimeMillis: Long,
+    val lastOnlineAuthorizationEpochMillis: Long,
+    val leaseDurationMillis: Long,
+    val leaseExpiresAtEpochMillis: Long,
+    val leaseElapsedDeadlineMillis: Long,
+    val serverAccountStatus: String,
+    val deviceAccountStatus: String,
+    val keystoreState: String,
+    val deviceUnlocked: Boolean,
+    val mode: String,
+    val lockReason: String,
+    val pendingMutationIdsJson: String,
+    val pendingPhotoIdsJson: String,
+    val unresolvedConflictIdsJson: String,
+    val serverAcknowledged: Boolean,
+    val localJobPackPresent: Boolean,
+    val recoveryCompanyId: String?,
+    val recoveryAdministratorUserId: String?,
+    val recoveryGrantedAtEpochMillis: Long?,
+    val recoveryExpiresAtEpochMillis: Long?,
+    val auditJson: String,
+)
+
+@Entity(
     tableName = "anchor_inspection",
     primaryKeys = ["companyId", "jobId", "jobPackVersion", "inspectionId"],
     indices = [Index(value = ["companyId", "jobId", "jobPackVersion"])],
@@ -280,6 +312,9 @@ internal abstract class JobPackDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     protected abstract fun replaceLease(lease: OfflineAuthorizationLeaseEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract fun replaceOfflineAccessState(state: OfflineAccessStateEntity)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract fun insertInspectionIfMissing(inspection: AnchorInspectionEntity): Long
 
@@ -349,6 +384,15 @@ internal abstract class JobPackDao {
             "WHERE companyId = :companyId AND jobPackId = :jobId",
     )
     protected abstract fun findLease(companyId: String, jobId: String): OfflineAuthorizationLeaseEntity?
+
+    @Query(
+        "SELECT * FROM offline_access_state " +
+            "WHERE companyId = :companyId AND userId = :userId",
+    )
+    protected abstract fun findOfflineAccessState(
+        companyId: String,
+        userId: String,
+    ): OfflineAccessStateEntity?
 
     @Query(
         "SELECT * FROM anchor_inspection " +
@@ -551,6 +595,14 @@ internal abstract class JobPackDao {
 
     fun pack(companyId: String, jobId: String): JobPackEntity? =
         findPack(companyId, jobId)
+
+    fun offlineAccessState(
+        companyId: String,
+        userId: String,
+    ): OfflineAccessStateEntity? = findOfflineAccessState(companyId, userId)
+
+    fun saveOfflineAccessState(state: OfflineAccessStateEntity) =
+        replaceOfflineAccessState(state)
 
     fun nextEligibleMutation(companyId: String): SyncMutationEntity? =
         findNextEligibleMutation(companyId)
@@ -1435,18 +1487,56 @@ internal val JOB_PACK_MIGRATION_5_6 = object : Migration(5, 6) {
     }
 }
 
+internal val JOB_PACK_MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE offline_access_state (
+                companyId TEXT NOT NULL,
+                userId TEXT NOT NULL,
+                nowEpochMillis INTEGER NOT NULL,
+                highestObservedEpochMillis INTEGER NOT NULL,
+                elapsedRealtimeMillis INTEGER NOT NULL,
+                lastOnlineAuthorizationEpochMillis INTEGER NOT NULL,
+                leaseDurationMillis INTEGER NOT NULL,
+                leaseExpiresAtEpochMillis INTEGER NOT NULL,
+                leaseElapsedDeadlineMillis INTEGER NOT NULL,
+                serverAccountStatus TEXT NOT NULL,
+                deviceAccountStatus TEXT NOT NULL,
+                keystoreState TEXT NOT NULL,
+                deviceUnlocked INTEGER NOT NULL,
+                mode TEXT NOT NULL,
+                lockReason TEXT NOT NULL,
+                pendingMutationIdsJson TEXT NOT NULL,
+                pendingPhotoIdsJson TEXT NOT NULL,
+                unresolvedConflictIdsJson TEXT NOT NULL,
+                serverAcknowledged INTEGER NOT NULL,
+                localJobPackPresent INTEGER NOT NULL,
+                recoveryCompanyId TEXT,
+                recoveryAdministratorUserId TEXT,
+                recoveryGrantedAtEpochMillis INTEGER,
+                recoveryExpiresAtEpochMillis INTEGER,
+                auditJson TEXT NOT NULL,
+                PRIMARY KEY(companyId, userId)
+            )
+            """.trimIndent(),
+        )
+    }
+}
+
 @Database(
     entities = [
         JobPackEntity::class,
         JobPackAnchorEntity::class,
         OfflineAuthorizationLeaseEntity::class,
+        OfflineAccessStateEntity::class,
         AnchorInspectionEntity::class,
         AnchorEvidencePhotoEntity::class,
         InspectionSubmissionEntity::class,
         SyncMutationEntity::class,
         PhotoUploadEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 internal abstract class JobPackDatabase : RoomDatabase() {

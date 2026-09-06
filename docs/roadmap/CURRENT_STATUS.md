@@ -1,6 +1,6 @@
 # Current Status
 
-Last update: 2026-09-06
+Last update: 2026-09-07
 
 ## Active stage
 
@@ -14,8 +14,10 @@ its bounded local/provider-neutral slice; server transport remains open.
 for payload-aware service tests, encrypted-local payload reconstruction and a
 company-scoped process-memory authenticated worker seam; runtime persistence,
 media transport and durable session recovery remain open.
-`3C-04` initial Kotlin/JVM offline-authorisation state-machine slice is started;
-Android lifecycle wiring and durable state persistence remain open.
+`3C-04` initial Kotlin/JVM offline-authorisation state-machine slice and its
+bounded encrypted Android state adapter are implemented; durable session
+recovery, administrator recovery UI and server revocation notification remain
+open.
 G-03 is Done as D-027.
 
 ## Completed
@@ -260,12 +262,15 @@ G-03 is Done as D-027.
   requires server acknowledgement plus every recorded photo upload. Runtime
   server persistence/applier, media transport and durable session recovery
   remain open.
-- `3C-04` initial domain implementation is in progress. Product transitions
-  are tested for lease expiry, elapsed-runtime expiry, clock rollback,
-  revocation notification, unnotified revocation, device lock, recovery expiry,
-  same-company Administrator upload-only recovery, logout/cleanup gates and
-  Keystore-loss evidence preservation. Android lifecycle integration, encrypted
-  state persistence and recovery UI remain open.
+- `3C-04` initial domain implementation and the bounded Android adapter are
+  implemented. Product transitions are tested for lease expiry, elapsed-runtime
+  expiry, clock rollback, revocation notification, unnotified revocation,
+  device lock, recovery expiry, same-company Administrator upload-only recovery,
+  logout/cleanup gates and Keystore-loss evidence preservation. Encrypted Room
+  state survives restart, and sign-in, device-authentication, capture,
+  logout and worker upload gates use the persisted state. Durable session
+  recovery, explicit server revocation notification, recovery UI and an
+  atomic evidence/state transaction remain open.
 - Scoped `3B-04` JVM, lint, Compose and encrypted-storage checks pass; an API 30
   emulator passes 15 app and 11 data instrumented tests. Runtime persistence,
   durable audit, identity membership, pack-update/sync/recovery workflows and
@@ -277,9 +282,9 @@ G-03 is Done as D-027.
 
 ## Next recommended task
 
-Continue `3C-04` by persisting the domain state and wiring logout, lease
-refresh/expiry, revocation and upload-only recovery through Android adapters.
-Then return to `3C-03` runtime persistence and media transport after the
+Continue `3C-04` with application lifecycle lock handling, durable session
+recovery, explicit server revocation notification and Administrator recovery
+UI. Then return to `3C-03` runtime persistence and media transport after the
 `3C-01` review. Do not treat bounded protocol, payload-applier, process-memory
 worker or domain state-machine slices as production synchronisation.
 Do not add Kotlin
@@ -429,8 +434,10 @@ Android SDK is configured; no Android runtime or production synchronisation
 claim is made.
 
 On 2026-09-06, the Kotlin/JVM domain suite passed 60 tests with the initial
-`3C-04` offline-authorisation state-machine coverage. Android lifecycle,
-encrypted state persistence and production recovery remain unimplemented.
+`3C-04` offline-authorisation state-machine coverage. On 2026-09-07, the
+encrypted Room state adapter, Android capture/logout/worker gates and restart
+coverage were added; durable session recovery, server revocation notification
+and production recovery remain unimplemented.
 
 ## Relevant files
 

@@ -34,8 +34,11 @@ elapsed-runtime and clock-rollback locks, separate server/device account state,
 device authentication, same-company Administrator upload-only recovery,
 evidence-preserving logout/cleanup gates and permanent Keystore-loss failure.
 It is a Kotlin/JVM state machine with audit events and no Android or persistence
-dependencies. Encrypted state persistence, application lifecycle wiring and
-recovery UI remain open.
+dependencies. The Android adapter persists the current company/user-scoped
+state, evidence IDs and audit events in the encrypted Room database, and the
+field app plus workers use the coordinator for capture, logout and upload gates.
+Durable session recovery, atomic evidence/state writes, explicit server
+revocation notification and recovery UI remain open.
 
 Visible states: local, pending, synchronising, synchronised, failed and
 conflict for mutations; pending-upload, uploaded and failed for photos. Office

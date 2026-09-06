@@ -34,6 +34,7 @@ public enum class OfflineAccessDecisionReason {
     ALLOWED,
     TICK,
     MUTATION_SAVED,
+    MUTATION_REPLACED,
     PHOTO_SAVED,
     CONFLICT_MARKED,
     PENDING_SYNCED,
@@ -67,9 +68,11 @@ public enum class OfflineAccessDecisionReason {
 
 public enum class OfflineAccessAuditAction {
     SESSION_STARTED,
+    LOCAL_PACK_AVAILABLE,
     CLOCK_ROLLBACK,
     RECOVERY_EXPIRED,
     MUTATION_SAVED,
+    MUTATION_REPLACED,
     PHOTO_SAVED,
     CONFLICT_MARKED,
     CONFLICT_RESOLVED,
@@ -311,6 +314,28 @@ public data class FieldOfflineAccessState(
         return next.transition(true, OfflineAccessDecisionReason.PHOTO_SAVED)
     }
 
+    public fun replacePendingMutation(
+        mutationId: String,
+        replacementMutationId: String,
+        actorUserId: String? = null,
+    ): OfflineAccessTransition {
+        require(mutationId.isNotBlank()) { "mutationId is required" }
+        require(replacementMutationId.isNotBlank()) {
+            "replacementMutationId is required"
+        }
+        if (!canCapture()) {
+            return denied(captureDenialReason(), actorUserId)
+        }
+        val next = copy(
+            evidence = evidence.copy(
+                pendingMutationIds =
+                    (evidence.pendingMutationIds - mutationId) + replacementMutationId,
+                serverAcknowledged = false,
+            ),
+        ).appendAudit(OfflineAccessAuditAction.MUTATION_REPLACED, actorUserId)
+        return next.transition(true, OfflineAccessDecisionReason.MUTATION_REPLACED)
+    }
+
     public fun markConflict(
         conflictId: String,
         actorUserId: String? = null,
@@ -382,6 +407,24 @@ public data class FieldOfflineAccessState(
             .appendAudit(OfflineAccessAuditAction.DEVICE_LOCKED, actorUserId)
             .recompute()
         return next.transition(true, OfflineAccessDecisionReason.DEVICE_LOCKED)
+    }
+
+    public fun markLocalJobPackPresent(
+        actorUserId: String? = null,
+    ): OfflineAccessTransition {
+        val next = copy(localJobPackPresent = true).appendAudit(
+            OfflineAccessAuditAction.LOCAL_PACK_AVAILABLE,
+            actorUserId,
+        )
+        return next.transition(true, OfflineAccessDecisionReason.ALLOWED)
+    }
+
+    public fun captureDecision(
+        actorUserId: String? = null,
+    ): OfflineAccessTransition = if (canCapture()) {
+        transition(true, OfflineAccessDecisionReason.ALLOWED)
+    } else {
+        denied(captureDenialReason(), actorUserId)
     }
 
     public fun unlockDevice(

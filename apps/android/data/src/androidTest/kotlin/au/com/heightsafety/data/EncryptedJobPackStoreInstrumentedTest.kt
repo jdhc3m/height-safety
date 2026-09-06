@@ -7,9 +7,11 @@ import au.com.heightsafety.domain.AnchorEvidencePhoto
 import au.com.heightsafety.domain.AnchorInspectionDraft
 import au.com.heightsafety.domain.EvidenceSyncState
 import au.com.heightsafety.domain.FieldJobPack
+import au.com.heightsafety.domain.FieldOfflineAccessState
 import au.com.heightsafety.domain.FieldSession
 import au.com.heightsafety.domain.JobPackAnchor
 import au.com.heightsafety.domain.OfflineAuthorizationLease
+import au.com.heightsafety.domain.OfflineAccountStatus
 import au.com.heightsafety.domain.ProductRole
 import au.com.heightsafety.domain.RecordedOutcome
 import au.com.heightsafety.domain.InspectionSubmissionIntent
@@ -74,6 +76,61 @@ class EncryptedJobPackStoreInstrumentedTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun offlineAccessStateSurvivesStoreRestartWithRecoveryAndAudit() = runBlocking<Unit> {
+        val state = FieldOfflineAccessState.start(
+            companyId = "company-a",
+            userId = "inspector-a",
+            nowEpochMillis = 1_000L,
+            elapsedRealtimeMillis = 500L,
+            leaseDurationMillis = 10_000L,
+        ).recordMutation("mutation-1", "inspector-a").state
+            .recordPhoto("photo-1", "inspector-a").state
+            .markConflict("conflict-1", "inspector-a").state
+            .observeServerAccountStatus(
+                status = OfflineAccountStatus.REVOKED,
+                deviceNotified = true,
+                actorUserId = "inspector-a",
+            ).state
+            .authoriseUploadOnlyRecovery(
+                administratorCompanyId = "company-a",
+                administratorUserId = "admin-a",
+                administratorRole = ProductRole.ADMINISTRATOR,
+            ).state
+
+        fixture.store().saveOfflineAccessState(state)
+        val restarted = fixture.store()
+
+        assertEquals(
+            state,
+            restarted.loadOfflineAccessState("company-a", "inspector-a"),
+        )
+    }
+
+    @Test
+    fun offlineAccessStateIsTenantAndUserScoped() = runBlocking<Unit> {
+        val companyA = FieldOfflineAccessState.start(
+            companyId = "company-a",
+            userId = "inspector-a",
+            nowEpochMillis = 1_000L,
+            elapsedRealtimeMillis = 500L,
+        )
+        val companyB = FieldOfflineAccessState.start(
+            companyId = "company-b",
+            userId = "inspector-b",
+            nowEpochMillis = 1_000L,
+            elapsedRealtimeMillis = 500L,
+        )
+        val store = fixture.store()
+        store.saveOfflineAccessState(companyA)
+        store.saveOfflineAccessState(companyB)
+
+        assertEquals(companyA, store.loadOfflineAccessState("company-a", "inspector-a"))
+        assertEquals(companyB, store.loadOfflineAccessState("company-b", "inspector-b"))
+        assertNull(store.loadOfflineAccessState("company-a", "inspector-b"))
+        assertNull(store.loadOfflineAccessState("company-b", "inspector-a"))
     }
 
     @Test

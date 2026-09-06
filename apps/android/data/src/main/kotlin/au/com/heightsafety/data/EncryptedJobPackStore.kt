@@ -7,10 +7,12 @@ import au.com.heightsafety.domain.AnchorEvidenceSubmissionStore
 import au.com.heightsafety.domain.AnchorInspectionDraft
 import au.com.heightsafety.domain.FieldJobPack
 import au.com.heightsafety.domain.FieldJobPackStore
+import au.com.heightsafety.domain.FieldOfflineAccessState
 import au.com.heightsafety.domain.JobPackAnchor
 import au.com.heightsafety.domain.INSPECTION_SUBMISSION_ENTITY_TYPE
 import au.com.heightsafety.domain.MutationOutboxStore
 import au.com.heightsafety.domain.OfflineAuthorizationLease
+import au.com.heightsafety.domain.OfflineAccessStateStore
 import au.com.heightsafety.domain.EvidenceSyncState
 import au.com.heightsafety.domain.InspectionExceptionReason
 import au.com.heightsafety.domain.InspectionSubmissionPayload
@@ -35,7 +37,11 @@ public class EncryptedJobPackStore(
     context: Context,
     directoryName: String = DEFAULT_DIRECTORY_NAME,
     keyAlias: String = DEFAULT_KEY_ALIAS,
-) : FieldJobPackStore, AnchorEvidenceSubmissionStore, MutationOutboxStore, PhotoUploadQueueStore {
+) : FieldJobPackStore,
+    AnchorEvidenceSubmissionStore,
+    MutationOutboxStore,
+    PhotoUploadQueueStore,
+    OfflineAccessStateStore {
     private val files = JobPackStorageFiles(context.applicationContext, directoryName)
     private val opener = EncryptedJobPackDatabaseOpener(
         context = context.applicationContext,
@@ -76,6 +82,26 @@ public class EncryptedJobPackStore(
         withContext(Dispatchers.IO) {
             opener.open().use { handle ->
                 handle.database.jobPackDao().saveLease(lease.toEntity())
+            }
+        }
+
+    override suspend fun loadOfflineAccessState(
+        companyId: String,
+        userId: String,
+    ) = withContext(Dispatchers.IO) {
+        require(companyId.isNotBlank()) { "companyId must not be blank" }
+        require(userId.isNotBlank()) { "userId must not be blank" }
+        opener.open().use { handle ->
+            handle.database.jobPackDao()
+                .offlineAccessState(companyId, userId)
+                ?.toDomain()
+        }
+    }
+
+    override suspend fun saveOfflineAccessState(state: FieldOfflineAccessState) =
+        withContext(Dispatchers.IO) {
+            opener.open().use { handle ->
+                handle.database.jobPackDao().saveOfflineAccessState(state.toEntity())
             }
         }
 

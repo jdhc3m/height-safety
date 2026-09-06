@@ -19,6 +19,9 @@ import au.com.heightsafety.domain.JobPackAccessException
 import au.com.heightsafety.domain.JobPackAccessFailure
 import au.com.heightsafety.domain.JobPackService
 import au.com.heightsafety.domain.OpenedJobPack
+import au.com.heightsafety.domain.OfflineAccessDecisionReason
+import au.com.heightsafety.domain.OfflineAccessSession
+import au.com.heightsafety.domain.OfflineAccountStatus
 import au.com.heightsafety.domain.ProductRole
 import au.com.heightsafety.domain.ProviderAccessTokenException
 import au.com.heightsafety.domain.ProviderAccessTokenSource
@@ -151,6 +154,7 @@ class FieldViewModel(
     private val jobPackService: JobPackService? = null,
     private val anchorEvidenceService: AnchorEvidenceService? = null,
     private val submissionService: AnchorSubmissionService? = null,
+    private val offlineAccessSession: OfflineAccessSession? = null,
     private val scheduleMutationSync: () -> Unit = {},
     private val schedulePhotoUpload: () -> Unit = {},
     private val scheduleAuthenticatedMutationSync: (FieldSession) -> Unit = {},
@@ -209,6 +213,10 @@ class FieldViewModel(
                 }
 
                 session = createdSession
+                offlineAccessSession?.restore(
+                    companyId = createdSession.companyId,
+                    userId = createdSession.userId,
+                )
                 loadJobs(createdSession)
             } catch (error: CancellationException) {
                 throw error
@@ -277,7 +285,14 @@ class FieldViewModel(
             var authorisedJob = selectedJob
             try {
                 if (!deviceAuthenticationGate.authenticate()) {
+                    offlineAccessSession?.lockDevice(currentSession.userId)
                     throw DeviceAuthenticationRequiredException()
+                }
+                offlineAccessSession?.unlockDevice(
+                    deviceAuthenticated = true,
+                    actorUserId = currentSession.userId,
+                )?.takeUnless { it.allowed }?.let { transition ->
+                    throw OfflineAccessDeniedException(transition.reason)
                 }
                 if (
                     selectedJob.workflowStatus == "released" &&
@@ -286,6 +301,7 @@ class FieldViewModel(
                     authorisedJob = claimJob(currentSession, selectedJob)
                 }
                 val opened = service.openOrDownload(currentSession, authorisedJob)
+                offlineAccessSession?.markLocalJobPackPresent(currentSession.userId)
                 val submissionReview = submissionService?.review(currentSession, opened)
                 val evidence = submissionReview?.evidence
                     ?: anchorEvidenceService?.loadDrafts(currentSession, opened).orEmpty()
@@ -302,6 +318,14 @@ class FieldViewModel(
             } catch (error: Throwable) {
                 if (error.isSessionExpired()) {
                     expireSession()
+                } else if (error is OfflineAccessDeniedException) {
+                    _uiState.value = FieldUiState.JobPackError(
+                        account = account,
+                        jobs = lastJobs,
+                        job = authorisedJob,
+                        message = offlineAccessMessage(error.reason),
+                        canRetry = error.reason != OfflineAccessDecisionReason.CLOCK_ROLLBACK_DENIED,
+                    )
                 } else {
                     _uiState.value = FieldUiState.JobPackError(
                         account = account,
@@ -612,7 +636,35 @@ class FieldViewModel(
         _uiState.value = current.copy(isQueueing = true, queueError = null)
         activeRequest = scope.launch {
             try {
-                service.queue(currentSession, current.opened)
+                requireOfflineCaptureAccess(currentSession.userId)
+                val intent = service.queue(currentSession, current.opened)
+                val draftIds = current.review.evidence.map(AnchorInspectionDraft::inspectionId)
+                if (draftIds.isEmpty()) {
+                    offlineAccessSession?.recordMutation(
+                        mutationId = intent.mutationId,
+                        actorUserId = currentSession.userId,
+                    )?.takeUnless { it.allowed }?.let { transition ->
+                        throw OfflineAccessDeniedException(transition.reason)
+                    }
+                } else {
+                    draftIds.forEach { draftId ->
+                        offlineAccessSession?.replacePendingMutation(
+                            mutationId = draftId,
+                            replacementMutationId = intent.mutationId,
+                            actorUserId = currentSession.userId,
+                        )?.takeUnless { it.allowed }?.let { transition ->
+                            throw OfflineAccessDeniedException(transition.reason)
+                        }
+                    }
+                }
+                current.review.evidence.flatMap { it.photos }.forEach { photo ->
+                    offlineAccessSession?.recordPhoto(
+                        photoId = photo.localId,
+                        actorUserId = currentSession.userId,
+                    )?.takeUnless { it.allowed }?.let { transition ->
+                        throw OfflineAccessDeniedException(transition.reason)
+                    }
+                }
                 if (current.review.evidence.any { it.photos.isNotEmpty() }) {
                     try {
                         schedulePhotoUpload()
@@ -653,6 +705,11 @@ class FieldViewModel(
             } catch (error: Throwable) {
                 if (error.isSessionExpired()) {
                     expireSession()
+                } else if (error is OfflineAccessDeniedException) {
+                    _uiState.value = current.copy(
+                        isQueueing = false,
+                        queueError = offlineAccessMessage(error.reason),
+                    )
                 } else if (error is JobPackAccessException) {
                     _uiState.value = FieldUiState.JobPackError(
                         account = current.account,
@@ -730,11 +787,26 @@ class FieldViewModel(
         )
         activeRequest = scope.launch {
             try {
+                requireOfflineCaptureAccess(currentSession.userId)
                 val saved = service.saveDraft(
                     session = currentSession,
                     opened = current.opened,
                     draft = current.draft,
                 )
+                offlineAccessSession?.recordMutation(
+                    mutationId = saved.inspectionId,
+                    actorUserId = currentSession.userId,
+                )?.takeUnless { it.allowed }?.let { transition ->
+                    throw OfflineAccessDeniedException(transition.reason)
+                }
+                saved.photos.forEach { photo ->
+                    offlineAccessSession?.recordPhoto(
+                        photoId = photo.localId,
+                        actorUserId = currentSession.userId,
+                    )?.takeUnless { it.allowed }?.let { transition ->
+                        throw OfflineAccessDeniedException(transition.reason)
+                    }
+                }
                 val evidence = current.evidence.replaceDraft(saved)
                 if (saved.photos.isNotEmpty()) {
                     try {
@@ -761,6 +833,11 @@ class FieldViewModel(
             } catch (error: Throwable) {
                 if (error.isSessionExpired()) {
                     expireSession()
+                } else if (error is OfflineAccessDeniedException) {
+                    _uiState.value = current.copy(
+                        saveState = EvidenceSaveState.FAILED,
+                        saveError = offlineAccessMessage(error.reason),
+                    )
                 } else if (error is JobPackAccessException) {
                     _uiState.value = FieldUiState.JobPackError(
                         account = current.account,
@@ -841,21 +918,31 @@ class FieldViewModel(
     fun signOut() {
         activeRequest?.cancel()
         val currentSession = session
-        session = null
-        clearAuthenticatedMutationSync()
-        _uiState.value = FieldUiState.SignedOut
-        gateway.clearSession()
+        if (currentSession == null || offlineAccessSession == null) {
+            completeSignOut(currentSession)
+            return
+        }
 
-        if (currentSession != null) {
-            scope.launch {
-                try {
-                    gateway.revokeSession(currentSession)
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (_: Throwable) {
-                    // Local session is already cleared. Server revocation remains
-                    // best effort when connectivity is unavailable.
+        scope.launch {
+            try {
+                val logout = offlineAccessSession.requestLogout(currentSession.userId)
+                if (!logout.allowed) {
+                    _uiState.value = FieldUiState.Error(
+                        message = logoutMessage(logout.reason),
+                        canRetry = false,
+                        account = currentSession.toAccountSummary(),
+                    )
+                    return@launch
                 }
+                completeSignOut(currentSession)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                _uiState.value = FieldUiState.Error(
+                    message = "Unable to verify local evidence before signing out.",
+                    canRetry = true,
+                    account = currentSession.toAccountSummary(),
+                )
             }
         }
     }
@@ -874,6 +961,11 @@ class FieldViewModel(
                 gateway.listAuthorizedJobs(currentSession),
             )
             lastJobs = jobs
+            offlineAccessSession?.refreshOnline(
+                reachable = true,
+                serverAccountStatus = OfflineAccountStatus.ACTIVE,
+                actorUserId = currentSession.userId,
+            )
             _uiState.value = if (jobs.isEmpty()) {
                 FieldUiState.EmptyJobs(account)
             } else {
@@ -899,6 +991,62 @@ class FieldViewModel(
         clearAuthenticatedMutationSync()
         gateway.clearSession()
         _uiState.value = FieldUiState.SessionExpired()
+    }
+
+    private suspend fun requireOfflineCaptureAccess(actorUserId: String) {
+        val transition = offlineAccessSession?.prepareCapture(actorUserId) ?: return
+        if (!transition.allowed) {
+            throw OfflineAccessDeniedException(transition.reason)
+        }
+    }
+
+    private fun completeSignOut(currentSession: FieldSession?) {
+        session = null
+        clearAuthenticatedMutationSync()
+        _uiState.value = FieldUiState.SignedOut
+        gateway.clearSession()
+
+        if (currentSession != null) {
+            scope.launch {
+                try {
+                    gateway.revokeSession(currentSession)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Throwable) {
+                    // Server revocation remains best effort when connectivity is unavailable.
+                }
+            }
+        }
+    }
+
+    private fun logoutMessage(reason: OfflineAccessDecisionReason): String = when (reason) {
+        OfflineAccessDecisionReason.PENDING_EVIDENCE,
+        OfflineAccessDecisionReason.UNRESOLVED_CONFLICT,
+        OfflineAccessDecisionReason.SERVER_UNACKNOWLEDGED,
+        -> "Finish synchronising local evidence before signing out."
+        OfflineAccessDecisionReason.ACCOUNT_REVOKED,
+        OfflineAccessDecisionReason.RECOVERY_REQUIRED,
+        -> "Account access is revoked; local evidence remains preserved."
+        else -> "Local evidence must be settled before signing out."
+    }
+
+    private fun offlineAccessMessage(reason: OfflineAccessDecisionReason): String = when (reason) {
+        OfflineAccessDecisionReason.CLOCK_ROLLBACK_DENIED ->
+            "Offline access is locked after a clock change. Reconnect to refresh access."
+        OfflineAccessDecisionReason.LEASE_EXPIRED_DENIED ->
+            "Offline access has expired. Reconnect to refresh access."
+        OfflineAccessDecisionReason.ACCOUNT_REVOKED,
+        OfflineAccessDecisionReason.RECOVERY_REQUIRED,
+        OfflineAccessDecisionReason.RECOVERY_EXPIRED,
+        -> "Offline capture is locked; local evidence remains preserved."
+        OfflineAccessDecisionReason.DEVICE_LOCKED_DENIED,
+        OfflineAccessDecisionReason.DEVICE_AUTH_FAILED,
+        -> "Unlock this device before capturing evidence."
+        OfflineAccessDecisionReason.KEYSTORE_LOST ->
+            "Encrypted local access is unavailable; local evidence remains preserved."
+        OfflineAccessDecisionReason.LOCAL_PACK_MISSING ->
+            "Open an authorised job pack before capturing evidence."
+        else -> "Offline capture is locked; local evidence remains preserved."
     }
 
     private suspend fun claimJob(
@@ -967,6 +1115,7 @@ class FieldViewModel(
     private fun jobPackMessage(error: Throwable): String = when (error) {
         is DeviceAuthenticationRequiredException ->
             "Unlock this device to open the job pack."
+        is OfflineAccessDeniedException -> offlineAccessMessage(error.reason)
         is FieldAuthorizationException -> "Current account cannot open this job pack."
         is JobPackAccessException -> when (error.reason) {
             JobPackAccessFailure.NOT_FOUND -> "Job pack is not available on this device. Try again."
@@ -995,6 +1144,8 @@ class FieldViewModel(
 
     private fun canRetryJobPack(error: Throwable): Boolean = when (error) {
         is DeviceAuthenticationRequiredException -> true
+        is OfflineAccessDeniedException ->
+            error.reason != OfflineAccessDecisionReason.CLOCK_ROLLBACK_DENIED
         is FieldAuthorizationException -> false
         is JobPackAccessException -> error.reason !in setOf(
             JobPackAccessFailure.LOCAL_PACK_IDENTITY_MISMATCH,
@@ -1019,6 +1170,10 @@ class FieldViewModel(
         role = role,
     )
 }
+
+private class OfflineAccessDeniedException(
+    val reason: OfflineAccessDecisionReason,
+) : IllegalStateException()
 
 private fun List<AnchorInspectionDraft>.replaceDraft(
     draft: AnchorInspectionDraft,

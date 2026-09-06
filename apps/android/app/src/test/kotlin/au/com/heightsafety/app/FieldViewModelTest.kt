@@ -8,6 +8,7 @@ import au.com.heightsafety.domain.EvidenceSyncState
 import au.com.heightsafety.domain.FieldGateway
 import au.com.heightsafety.domain.FieldGatewayException
 import au.com.heightsafety.domain.FieldJobPack
+import au.com.heightsafety.domain.FieldOfflineAccessState
 import au.com.heightsafety.domain.FieldJobPackStore
 import au.com.heightsafety.domain.FieldSession
 import au.com.heightsafety.domain.GatewayFailureReason
@@ -19,6 +20,8 @@ import au.com.heightsafety.domain.JobPackGateway
 import au.com.heightsafety.domain.JobPackOpenSource
 import au.com.heightsafety.domain.JobPackService
 import au.com.heightsafety.domain.OfflineAuthorizationLease
+import au.com.heightsafety.domain.OfflineAccessSession
+import au.com.heightsafety.domain.OfflineAccessStateStore
 import au.com.heightsafety.domain.ProductRole
 import au.com.heightsafety.domain.ProviderAccessTokenSource
 import au.com.heightsafety.domain.RecordedOutcome
@@ -182,6 +185,39 @@ class FieldViewModelTest {
         assertEquals(2, gateway.clearSessionCallCount)
         viewModel.refreshJobs()
         assertEquals(FieldUiState.SignedOut, viewModel.uiState.value)
+    }
+
+    @Test
+    fun signOutIsBlockedWhileOfflineEvidenceIsPending() = runTest {
+        var now = 1_000L
+        var elapsed = 500L
+        val gateway = FakeGateway()
+        val access = OfflineAccessSession(
+            store = FakeOfflineAccessStateStore(),
+            nowEpochMillis = { now },
+            elapsedRealtimeMillis = { elapsed },
+        )
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            nowEpochMillis = { now },
+            offlineAccessSession = access,
+        )
+
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+        access.markLocalJobPackPresent("inspector-a")
+        access.recordMutation("mutation-1", "inspector-a")
+
+        viewModel.signOut()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value as FieldUiState.Error
+        assertEquals(
+            "Finish synchronising local evidence before signing out.",
+            state.message,
+        )
+        assertFalse(gateway.revokeCalled)
     }
 
     @Test
@@ -622,6 +658,7 @@ class FieldViewModelTest {
         jobPackService: JobPackService? = null,
         anchorEvidenceService: AnchorEvidenceService? = null,
         submissionService: AnchorSubmissionService? = null,
+        offlineAccessSession: OfflineAccessSession? = null,
         scheduleMutationSync: () -> Unit = {},
         schedulePhotoUpload: () -> Unit = {},
         nowEpochMillis: () -> Long = { 1_000L },
@@ -637,6 +674,7 @@ class FieldViewModelTest {
         jobPackService = jobPackService,
         anchorEvidenceService = anchorEvidenceService,
         submissionService = submissionService,
+        offlineAccessSession = offlineAccessSession,
         scheduleMutationSync = scheduleMutationSync,
         schedulePhotoUpload = schedulePhotoUpload,
         deviceAuthenticationGate = deviceAuthenticationGate,
@@ -692,6 +730,21 @@ class FieldViewModelTest {
             }
             drafts += frozenEvidence
             return intent
+        }
+    }
+
+    private class FakeOfflineAccessStateStore : OfflineAccessStateStore {
+        var state: FieldOfflineAccessState? = null
+
+        override suspend fun loadOfflineAccessState(
+            companyId: String,
+            userId: String,
+        ): FieldOfflineAccessState? = state?.takeIf {
+            it.companyId == companyId && it.userId == userId
+        }
+
+        override suspend fun saveOfflineAccessState(state: FieldOfflineAccessState) {
+            this.state = state
         }
     }
 

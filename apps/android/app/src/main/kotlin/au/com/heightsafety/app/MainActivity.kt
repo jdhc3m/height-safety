@@ -18,6 +18,7 @@ import au.com.heightsafety.api.infrastructure.ApiClient
 import au.com.heightsafety.domain.AnchorEvidenceService
 import au.com.heightsafety.domain.AnchorSubmissionService
 import au.com.heightsafety.domain.JobPackService
+import au.com.heightsafety.domain.OfflineAccessSession
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -55,6 +56,11 @@ class MainActivity : ComponentActivity() {
                 )
                 val gateway = OpenApiFieldGateway(apiClient)
                 val localStore = EncryptedJobPackStore(applicationContext)
+                val offlineAccessSession = OfflineAccessSession(
+                    store = localStore,
+                    nowEpochMillis = { System.currentTimeMillis() },
+                    elapsedRealtimeMillis = { SystemClock.elapsedRealtime() },
+                )
                 val evidenceService = AnchorEvidenceService(
                     store = localStore,
                     nowEpochMillis = { System.currentTimeMillis() },
@@ -71,6 +77,7 @@ class MainActivity : ComponentActivity() {
                         elapsedRealtimeMillis = { SystemClock.elapsedRealtime() },
                     ),
                     anchorEvidenceService = evidenceService,
+                    offlineAccessSession = offlineAccessSession,
                     submissionService = AnchorSubmissionService(
                         evidenceService = evidenceService,
                         store = localStore,

@@ -12,9 +12,11 @@ import androidx.work.WorkerParameters
 import au.com.heightsafety.data.EncryptedJobPackStore
 import au.com.heightsafety.data.LocalAnchorPhotoStorage
 import au.com.heightsafety.data.LocalAnchorPhotoUploadContentSource
+import au.com.heightsafety.domain.OfflineAccessSession
 import au.com.heightsafety.domain.PhotoUploadDelivery
 import au.com.heightsafety.domain.PhotoUploadQueueDrainer
 import au.com.heightsafety.domain.PhotoUploadTransport
+import au.com.heightsafety.domain.PhotoUploadQueueState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -42,15 +44,28 @@ public class PhotoUploadWorker internal constructor(
     appContext: Context,
     workerParams: WorkerParameters,
     private val drainer: PhotoUploadQueueDrainer,
+    private val canUpload: suspend () -> Boolean = { true },
+    private val reconcileOfflineAccess: suspend () -> Unit = {},
 ) : CoroutineWorker(appContext, workerParams) {
     public constructor(
         appContext: Context,
         workerParams: WorkerParameters,
-    ) : this(appContext, workerParams, defaultPhotoUploadDrainer(appContext))
+    ) : this(
+        appContext,
+        workerParams,
+        defaultPhotoUploadDrainer(appContext),
+        canUpload = { defaultPhotoUploadAllowed(appContext) },
+        reconcileOfflineAccess = { reconcileDefaultPhotoAccess(appContext) },
+    )
 
     override suspend fun doWork(): Result = try {
-        val drain = withContext(Dispatchers.IO) { drainer.drain() }
-        if (drain.requiresRetry) Result.retry() else Result.success()
+        if (!canUpload()) {
+            Result.success()
+        } else {
+            val drain = withContext(Dispatchers.IO) { drainer.drain() }
+            reconcileOfflineAccess()
+            if (drain.requiresRetry) Result.retry() else Result.success()
+        }
     } catch (error: CancellationException) {
         throw error
     } catch (_: Exception) {
@@ -68,6 +83,43 @@ private fun defaultPhotoUploadDrainer(context: Context): PhotoUploadQueueDrainer
         transport = UnconfiguredPhotoUploadTransport,
         nowEpochMillis = { System.currentTimeMillis() },
     )
+
+private suspend fun defaultPhotoUploadAllowed(context: Context): Boolean {
+    val session = MutationOutboxWork.sessionForWorker() ?: return false
+    if (session.isExpired(System.currentTimeMillis())) return false
+    val access = defaultPhotoOfflineAccessSession(context)
+    return try {
+        access.restore(session.companyId, session.userId).state.canUpload()
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: Exception) {
+        false
+    }
+}
+
+private suspend fun reconcileDefaultPhotoAccess(context: Context) {
+    val session = MutationOutboxWork.sessionForWorker() ?: return
+    val store = EncryptedJobPackStore(context.applicationContext)
+    val access = defaultPhotoOfflineAccessSession(context)
+    val restored = access.restore(session.companyId, session.userId)
+    if (!restored.state.canUpload()) return
+    val uploadedPhotoIds = store.loadPhotoUploads(session.companyId)
+        .filter { it.state == PhotoUploadQueueState.UPLOADED }
+        .map { it.localId }
+        .toSet()
+    if (uploadedPhotoIds.isNotEmpty()) {
+        access.acknowledgePending(
+            photoIds = uploadedPhotoIds,
+            actorUserId = session.userId,
+        )
+    }
+}
+
+private fun defaultPhotoOfflineAccessSession(context: Context) = OfflineAccessSession(
+    store = EncryptedJobPackStore(context.applicationContext),
+    nowEpochMillis = { System.currentTimeMillis() },
+    elapsedRealtimeMillis = { android.os.SystemClock.elapsedRealtime() },
+)
 
 private object UnconfiguredPhotoUploadTransport : PhotoUploadTransport {
     override suspend fun upload(

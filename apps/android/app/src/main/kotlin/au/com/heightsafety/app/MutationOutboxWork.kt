@@ -14,7 +14,9 @@ import au.com.heightsafety.api.infrastructure.ApiClient
 import au.com.heightsafety.data.EncryptedJobPackStore
 import au.com.heightsafety.domain.FieldSession
 import au.com.heightsafety.domain.MutationOutboxDrainer
+import au.com.heightsafety.domain.OfflineAccessSession
 import au.com.heightsafety.domain.SyncMutationDelivery
+import au.com.heightsafety.domain.SyncMutationState
 import au.com.heightsafety.domain.SyncMutationTransport
 import kotlinx.coroutines.CancellationException
 import java.util.concurrent.TimeUnit
@@ -59,17 +61,27 @@ public class MutationOutboxWorker internal constructor(
     appContext: Context,
     workerParams: WorkerParameters,
     private val drainer: MutationOutboxDrainer,
+    private val canUpload: suspend () -> Boolean = { true },
+    private val reconcileOfflineAccess: suspend () -> Unit = {},
 ) : CoroutineWorker(appContext, workerParams) {
     public constructor(
         appContext: Context,
         workerParams: WorkerParameters,
-    ) : this(appContext, workerParams, defaultMutationOutboxDrainer(appContext))
+    ) : this(
+        appContext,
+        workerParams,
+        defaultMutationOutboxDrainer(appContext),
+        canUpload = { defaultMutationUploadAllowed(appContext) },
+        reconcileOfflineAccess = { reconcileDefaultMutationAccess(appContext) },
+    )
 
     override suspend fun doWork(): Result = try {
-        if (drainer.drain().requiresRetry) {
-            Result.retry()
-        } else {
+        if (!canUpload()) {
             Result.success()
+        } else {
+            val drain = drainer.drain()
+            reconcileOfflineAccess()
+            if (drain.requiresRetry) Result.retry() else Result.success()
         }
     } catch (error: CancellationException) {
         throw error
@@ -112,6 +124,52 @@ private fun defaultMutationOutboxDrainer(context: Context): MutationOutboxDraine
             companyId = session?.companyId,
         )
     }
+
+private suspend fun defaultMutationUploadAllowed(context: Context): Boolean {
+    val session = MutationOutboxWork.sessionForWorker() ?: return false
+    if (session.isExpired(System.currentTimeMillis())) return false
+    val access = defaultOfflineAccessSession(context)
+    return try {
+        access.restore(session.companyId, session.userId).state.canUpload()
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: Exception) {
+        false
+    }
+}
+
+private suspend fun reconcileDefaultMutationAccess(context: Context) {
+    val session = MutationOutboxWork.sessionForWorker() ?: return
+    val store = EncryptedJobPackStore(context.applicationContext)
+    val access = defaultOfflineAccessSession(context)
+    val restored = access.restore(session.companyId, session.userId)
+    if (!restored.state.canUpload()) return
+
+    val mutations = store.loadMutations(session.companyId)
+    val acknowledged = mutations.filter { it.state == SyncMutationState.SYNCHRONISED }
+        .map { it.mutationId }
+        .toSet()
+    val conflicts = mutations.filter { it.state == SyncMutationState.CONFLICT }
+        .map { it.mutationId }
+        .toSet()
+    if (acknowledged.isNotEmpty() || conflicts.isNotEmpty()) {
+        access.acknowledgePending(
+            mutationIds = acknowledged + conflicts,
+            actorUserId = session.userId,
+        )
+        conflicts.forEach { conflictId ->
+            access.markConflict(conflictId, session.userId)
+        }
+    }
+}
+
+private fun defaultOfflineAccessSession(
+    context: Context,
+) = OfflineAccessSession(
+    store = EncryptedJobPackStore(context.applicationContext),
+    nowEpochMillis = { System.currentTimeMillis() },
+    elapsedRealtimeMillis = { android.os.SystemClock.elapsedRealtime() },
+)
 
 private object UnconfiguredMutationTransport : SyncMutationTransport {
     override suspend fun send(mutation: au.com.heightsafety.domain.SyncMutation): SyncMutationDelivery =
