@@ -84,6 +84,46 @@ h1 {
   padding-top: 2rem;
 }
 
+.auth-panel {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #b9d5c2;
+  border-radius: 1.25rem;
+  background: #e8f3eb;
+  padding: 1.5rem;
+}
+
+.auth-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.action-link,
+.quiet-link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.65rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.action-link {
+  background: #285f46;
+  color: #fff;
+}
+
+.quiet-link {
+  color: #386a50;
+}
+
 .section-heading {
   display: flex;
   gap: 2rem;
@@ -168,9 +208,14 @@ h3 {
 
 @media (max-width: 720px) {
   .hero,
+  .auth-panel,
   .section-heading {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .auth-actions {
+    justify-content: flex-start;
   }
 
   .card-grid {

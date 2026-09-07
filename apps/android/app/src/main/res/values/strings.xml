@@ -7,7 +7,7 @@
     <string name="signing_in">Signing in</string>
     <string name="restoring_session">Restoring session</string>
     <string name="sign_out">Sign out</string>
-    <string name="provider_neutral_sign_in_note">Sign-in uses the configured identity provider. Provider selection remains outside this build.</string>
+    <string name="provider_neutral_sign_in_note">Sign-in uses the configured Auth0 application. Company membership and the application session remain API-controlled.</string>
     <string name="inspector_jobs">Inspector jobs</string>
     <string name="company_value">Company: %1$s</string>
     <string name="syncing_jobs">Syncing jobs</string>

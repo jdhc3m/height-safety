@@ -4,9 +4,13 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val auth0Domain = providers.gradleProperty("auth0Domain").orNull.orEmpty()
+val auth0ClientId = providers.gradleProperty("auth0ClientId").orNull.orEmpty()
+val auth0ApiAudience = providers.gradleProperty("auth0ApiAudience").orNull.orEmpty()
+
 android {
     namespace = "au.com.heightsafety.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "au.com.heightsafety.app"
@@ -16,6 +20,14 @@ android {
         versionName = "0.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Auth0 native-app values are public client configuration. Secrets stay
+        // on the office/API server and are never placed in this APK.
+        manifestPlaceholders["auth0Domain"] = auth0Domain
+        manifestPlaceholders["auth0Scheme"] = "https"
+        resValue("string", "com_auth0_client_id", auth0ClientId)
+        resValue("string", "com_auth0_domain", auth0Domain)
+        resValue("string", "auth0_api_audience", auth0ApiAudience)
     }
 
     buildFeatures {
@@ -39,6 +51,7 @@ dependencies {
     implementation(project(":data"))
     implementation(project(":domain"))
     implementation("au.com.heightsafety:height-safety-api-client:0.0.0")
+    implementation("com.auth0.android:auth0:4.1.0")
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.camera:camera-camera2:1.5.3")
     implementation("androidx.camera:camera-core:1.5.3")

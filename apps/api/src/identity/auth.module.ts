@@ -15,6 +15,10 @@ import {
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth-service';
 import { UnconfiguredAuthStore } from './auth-store';
+import {
+  Auth0IdentityProvider,
+  auth0IdentityProviderConfigFromEnvironment,
+} from './auth0-identity-provider';
 
 export const AUTH_STORE = Symbol('AUTH_STORE');
 export const IDENTITY_PROVIDER = Symbol('IDENTITY_PROVIDER');
@@ -33,7 +37,15 @@ export const DEFAULT_AUTH_CONFIG: AuthConfig = {
   controllers: [AuthController],
   providers: [
     { provide: AUTH_STORE, useClass: UnconfiguredAuthStore },
-    { provide: IDENTITY_PROVIDER, useClass: UnconfiguredIdentityProvider },
+    {
+      provide: IDENTITY_PROVIDER,
+      useFactory: (): IdentityProvider => {
+        const config = auth0IdentityProviderConfigFromEnvironment();
+        return config
+          ? new Auth0IdentityProvider(config)
+          : new UnconfiguredIdentityProvider();
+      },
+    },
     { provide: AUTH_AUDIT_SINK, useClass: NoopAuthAuditSink },
     { provide: AUTH_CLOCK, useValue: systemAuthClock },
     { provide: AUTH_TOKEN_GENERATOR, useValue: secureAuthTokenGenerator },

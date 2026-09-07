@@ -71,7 +71,7 @@ class MainActivity : ComponentActivity() {
                 )
                 FieldViewModel(
                     gateway = gateway,
-                    providerAccessTokenSource = UnconfiguredProviderAccessTokenSource(),
+                    providerAccessTokenSource = providerAccessTokenSource(),
                     scope = lifecycleScope,
                     jobPackService = JobPackService(
                         gateway = gateway,
@@ -141,6 +141,19 @@ class MainActivity : ComponentActivity() {
             )
         }
     }
+
+    private fun providerAccessTokenSource() =
+        if (
+            hasAuth0Configuration(
+                domain = getString(R.string.com_auth0_domain),
+                clientId = getString(R.string.com_auth0_client_id),
+                apiAudience = getString(R.string.auth0_api_audience),
+            )
+        ) {
+            Auth0ProviderAccessTokenSource(this)
+        } else {
+            UnconfiguredProviderAccessTokenSource()
+        }
 
     override fun onPostResume() {
         super.onPostResume()
