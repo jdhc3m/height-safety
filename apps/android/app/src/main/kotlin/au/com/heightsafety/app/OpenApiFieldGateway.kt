@@ -99,6 +99,44 @@ class OpenApiFieldGateway(
         }
     }
 
+    override suspend fun restoreSession(session: FieldSession): FieldSession =
+        apiMutex.withLock {
+            guardedCall("restore session") {
+                if (session.accessToken.isBlank()) {
+                    throw FieldGatewayException(
+                        GatewayFailureReason.UNAUTHENTICATED,
+                        "stored session token is empty",
+                    )
+                }
+                bearerTokenSink(session.accessToken)
+                val current = requireBody(
+                    identityApi.getCurrentAuth(session.companyId),
+                    "restore session",
+                )
+                if (
+                    current.companyId != session.companyId ||
+                    current.sessionId != session.sessionId ||
+                    current.userId != session.userId ||
+                    current.email != session.email
+                ) {
+                    throw FieldGatewayException(
+                        GatewayFailureReason.TENANT_MISMATCH,
+                        "stored session membership does not match the server",
+                    )
+                }
+                FieldSession(
+                    accessToken = session.accessToken,
+                    companyId = current.companyId,
+                    sessionId = current.sessionId,
+                    userId = current.userId,
+                    email = current.email,
+                    role = current.role.toDomainRole(),
+                    mfaSatisfied = current.mfaSatisfied,
+                    expiresAtEpochMillis = current.sessionExpiresAt.toInstant().toEpochMilli(),
+                )
+            }
+        }
+
     override suspend fun listAuthorizedJobs(session: FieldSession): List<InspectorJob> =
         apiMutex.withLock {
             guardedCall("list jobs") {

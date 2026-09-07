@@ -5,6 +5,7 @@
     <string name="company_id">Company ID</string>
     <string name="sign_in">Sign in</string>
     <string name="signing_in">Signing in</string>
+    <string name="restoring_session">Restoring session</string>
     <string name="sign_out">Sign out</string>
     <string name="provider_neutral_sign_in_note">Sign-in uses the configured identity provider. Provider selection remains outside this build.</string>
     <string name="inspector_jobs">Inspector jobs</string>
@@ -113,4 +114,11 @@
     <string name="view_submitted_evidence">View queued evidence</string>
     <string name="device_unlock_title">Unlock Height Safety</string>
     <string name="device_unlock_description">Confirm device access to open this job pack.</string>
+    <string name="app_locked_title">Height Safety is locked</string>
+    <string name="app_locked_evidence_note">Local evidence remains preserved on this device.</string>
+    <string name="unlock_device">Unlock device</string>
+    <string name="account_access_unavailable_title">Account access unavailable</string>
+    <string name="recovery_evidence_note">Local evidence remains preserved. Administrator recovery is upload-only and does not restore account access.</string>
+    <string name="start_administrator_recovery">Administrator recovery</string>
+    <string name="authorising_recovery">Authorising recovery</string>
 </resources>

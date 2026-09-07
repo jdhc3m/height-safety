@@ -134,6 +134,49 @@ class EncryptedJobPackStoreInstrumentedTest {
     }
 
     @Test
+    fun authenticatedSessionSurvivesStoreRestart() = runBlocking<Unit> {
+        val session = FieldSession(
+            accessToken = "opaque-session-token",
+            companyId = "company-a",
+            sessionId = "session-a",
+            userId = "inspector-a",
+            email = "inspector-a@example.test",
+            role = ProductRole.INSPECTOR,
+            mfaSatisfied = false,
+            expiresAtEpochMillis = 10_000L,
+        )
+
+        fixture.store().saveSession(session)
+        val restarted = fixture.store()
+
+        assertEquals(session, restarted.loadSession())
+    }
+
+    @Test
+    fun clearingAuthenticatedSessionDoesNotRemoveLocalEvidence() = runBlocking<Unit> {
+        val store = fixture.store()
+        val pack = pack("company-a")
+        store.save(pack, lease("company-a", "inspector-a", pack.jobId), 1_000L)
+        store.saveSession(
+            FieldSession(
+                accessToken = "opaque-session-token",
+                companyId = "company-a",
+                sessionId = "session-a",
+                userId = "inspector-a",
+                email = "inspector-a@example.test",
+                role = ProductRole.INSPECTOR,
+                mfaSatisfied = false,
+                expiresAtEpochMillis = 10_000L,
+            ),
+        )
+
+        store.clearSession()
+
+        assertNull(store.loadSession())
+        assertNotNull(store.load("company-a", pack.jobId))
+    }
+
+    @Test
     fun roomV2MigrationPreservesVersionedEvidenceAndPhotos() = runBlocking<Unit> {
         val passphraseStore = JobPackKeystorePassphraseStore(fixture.files, fixture.alias)
         val passphrase = passphraseStore.loadOrCreate()

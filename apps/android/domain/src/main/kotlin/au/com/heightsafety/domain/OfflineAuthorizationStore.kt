@@ -60,7 +60,18 @@ public class OfflineAccessSession(
                 actorUserId = userId,
             )
         }
-        return persist(transition)
+        val processRestore =
+            stored != null &&
+                transition.allowed &&
+                transition.state.localJobPackPresent &&
+                transition.state.deviceUnlocked
+        return persist(
+            if (processRestore) {
+                transition.state.lockDevice(userId)
+            } else {
+                transition
+            },
+        )
     }
 
     public suspend fun observeTime(

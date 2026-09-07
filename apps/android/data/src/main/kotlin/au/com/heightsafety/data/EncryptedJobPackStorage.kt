@@ -407,6 +407,7 @@ internal class EncryptedJobPackDatabaseOpener(
                         JOB_PACK_MIGRATION_4_5,
                         JOB_PACK_MIGRATION_5_6,
                         JOB_PACK_MIGRATION_6_7,
+                        JOB_PACK_MIGRATION_7_8,
                     )
                     .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                     .build()

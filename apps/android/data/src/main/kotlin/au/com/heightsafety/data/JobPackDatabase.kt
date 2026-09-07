@@ -7,6 +7,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
+import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
@@ -119,6 +120,20 @@ internal data class OfflineAccessStateEntity(
     val recoveryGrantedAtEpochMillis: Long?,
     val recoveryExpiresAtEpochMillis: Long?,
     val auditJson: String,
+)
+
+@Entity(tableName = "field_session")
+internal data class FieldSessionEntity(
+    @PrimaryKey
+    val sessionKey: String,
+    val accessToken: String,
+    val companyId: String,
+    val sessionId: String,
+    val userId: String,
+    val email: String,
+    val role: String,
+    val mfaSatisfied: Boolean,
+    val expiresAtEpochMillis: Long,
 )
 
 @Entity(
@@ -314,6 +329,15 @@ internal abstract class JobPackDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     protected abstract fun replaceOfflineAccessState(state: OfflineAccessStateEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract fun replaceFieldSession(session: FieldSessionEntity)
+
+    @Query("SELECT * FROM field_session WHERE sessionKey = 'active'")
+    protected abstract fun findFieldSession(): FieldSessionEntity?
+
+    @Query("DELETE FROM field_session WHERE sessionKey = 'active'")
+    protected abstract fun deleteFieldSession()
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract fun insertInspectionIfMissing(inspection: AnchorInspectionEntity): Long
@@ -603,6 +627,12 @@ internal abstract class JobPackDao {
 
     fun saveOfflineAccessState(state: OfflineAccessStateEntity) =
         replaceOfflineAccessState(state)
+
+    fun fieldSession(): FieldSessionEntity? = findFieldSession()
+
+    fun saveFieldSession(session: FieldSessionEntity) = replaceFieldSession(session)
+
+    fun clearFieldSession() = deleteFieldSession()
 
     fun nextEligibleMutation(companyId: String): SyncMutationEntity? =
         findNextEligibleMutation(companyId)
@@ -1524,19 +1554,41 @@ internal val JOB_PACK_MIGRATION_6_7 = object : Migration(6, 7) {
     }
 }
 
+internal val JOB_PACK_MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE field_session (
+                sessionKey TEXT NOT NULL,
+                accessToken TEXT NOT NULL,
+                companyId TEXT NOT NULL,
+                sessionId TEXT NOT NULL,
+                userId TEXT NOT NULL,
+                email TEXT NOT NULL,
+                role TEXT NOT NULL,
+                mfaSatisfied INTEGER NOT NULL,
+                expiresAtEpochMillis INTEGER NOT NULL,
+                PRIMARY KEY(sessionKey)
+            )
+            """.trimIndent(),
+        )
+    }
+}
+
 @Database(
     entities = [
         JobPackEntity::class,
         JobPackAnchorEntity::class,
         OfflineAuthorizationLeaseEntity::class,
         OfflineAccessStateEntity::class,
+        FieldSessionEntity::class,
         AnchorInspectionEntity::class,
         AnchorEvidencePhotoEntity::class,
         InspectionSubmissionEntity::class,
         SyncMutationEntity::class,
         PhotoUploadEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 internal abstract class JobPackDatabase : RoomDatabase() {

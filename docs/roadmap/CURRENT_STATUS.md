@@ -12,12 +12,14 @@ transport remain open. `3C-02` durable photo upload queue is implemented for
 its bounded local/provider-neutral slice; server transport remains open.
 `3C-03` bounded acknowledgement/conflict protocol continuation is implemented
 for payload-aware service tests, encrypted-local payload reconstruction and a
-company-scoped process-memory authenticated worker seam; runtime persistence,
-media transport and durable session recovery remain open.
+company-scoped process-memory authenticated worker seam; runtime persistence
+and media transport remain open.
 `3C-04` initial Kotlin/JVM offline-authorisation state-machine slice and its
-bounded encrypted Android state adapter are implemented; durable session
-recovery, administrator recovery UI and server revocation notification remain
-open.
+bounded encrypted Android state adapter are implemented. The continuation adds
+encrypted opaque-session persistence, server revalidation on process recovery,
+foreground lifecycle locking, explicit server-revocation UI and bounded
+Administrator recovery UI; provider selection, authenticated recovery/upload
+transport and atomic evidence/state writes remain open.
 G-03 is Done as D-027.
 
 ## Completed
@@ -243,6 +245,10 @@ G-03 is Done as D-027.
   Administrator upload-only recovery, evidence-preserving logout/cleanup gates
   and permanent Keystore-loss failure. The slice emits domain audit events and
   has transition coverage without Android or persistence dependencies.
+  The continuation adds encrypted Room session persistence, server-authoritative
+  `/auth/me` revalidation, lifecycle lock/unlock handling, evidence-preserving
+  server-revocation visibility and a provider-neutral Administrator recovery UI.
+  It does not select an identity provider or claim recovery upload transport.
 
 ## In progress
 
@@ -260,17 +266,17 @@ G-03 is Done as D-027.
   durable outbox, reconstructs frozen evidence, and uses a process-memory
   authenticated, company-scoped worker seam. The local review gate still
   requires server acknowledgement plus every recorded photo upload. Runtime
-  server persistence/applier, media transport and durable session recovery
-  remain open.
+  server persistence/applier and media transport remain open.
 - `3C-04` initial domain implementation and the bounded Android adapter are
   implemented. Product transitions are tested for lease expiry, elapsed-runtime
   expiry, clock rollback, revocation notification, unnotified revocation,
   device lock, recovery expiry, same-company Administrator upload-only recovery,
   logout/cleanup gates and Keystore-loss evidence preservation. Encrypted Room
-  state survives restart, and sign-in, device-authentication, capture,
-  logout and worker upload gates use the persisted state. Durable session
-  recovery, explicit server revocation notification, recovery UI and an
-  atomic evidence/state transaction remain open.
+  state and the opaque application session survive restart; `/auth/me`
+  revalidation, lifecycle lock/unlock, explicit server revocation visibility and
+  recovery UI are wired. Provider selection, session renewal, authenticated
+  recovery/upload transport and an atomic evidence/state transaction remain
+  open.
 - Scoped `3B-04` JVM, lint, Compose and encrypted-storage checks pass; an API 30
   emulator passes 15 app and 11 data instrumented tests. Runtime persistence,
   durable audit, identity membership, pack-update/sync/recovery workflows and
@@ -282,11 +288,13 @@ G-03 is Done as D-027.
 
 ## Next recommended task
 
-Continue `3C-04` with application lifecycle lock handling, durable session
-recovery, explicit server revocation notification and Administrator recovery
-UI. Then return to `3C-03` runtime persistence and media transport after the
-`3C-01` review. Do not treat bounded protocol, payload-applier, process-memory
-worker or domain state-machine slices as production synchronisation.
+Complete the remaining `3C-04` integration after an identity-provider decision:
+session renewal, explicit account-status handling, authenticated
+Administrator recovery/upload transport and an atomic evidence/state write
+boundary. Then return to `3C-03` runtime persistence and media transport after
+the `3C-01` review. Do not treat bounded protocol, payload-applier,
+process-memory worker or domain state-machine slices as production
+synchronisation.
 Do not add Kotlin
 Multiplatform, an iOS target or deferred standards candidates. Authentication
 vendor selection and the durable identity/runtime adapters remain deferred.
@@ -436,8 +444,11 @@ claim is made.
 On 2026-09-06, the Kotlin/JVM domain suite passed 60 tests with the initial
 `3C-04` offline-authorisation state-machine coverage. On 2026-09-07, the
 encrypted Room state adapter, Android capture/logout/worker gates and restart
-coverage were added; durable session recovery, server revocation notification
-and production recovery remain unimplemented.
+coverage were added. The session continuation then passed the Kotlin/JVM and
+Android app unit suites, encrypted data/app restart coverage and 18 data plus
+16 app instrumented tests on `Pixel_5_API_31` (API 31). Provider selection,
+authenticated recovery/upload transport and production runtime persistence
+remain unconfigured.
 
 ## Relevant files
 

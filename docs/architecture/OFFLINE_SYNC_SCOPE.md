@@ -25,9 +25,10 @@ and reports `payloadApplied` separately from envelope acknowledgement. The
 current payload applier is an in-memory proof only; the runtime API still uses
 an unconfigured persistence/applier boundary. Android reconstructs the frozen
 payload from encrypted local evidence and a process-memory authenticated
-WorkManager seam supplies the bearer token and company scope. Media transport,
-durable server persistence, durable session recovery and `3C-04` safety remain
-open.
+WorkManager seam supplies the bearer token and company scope. Media transport
+and durable server persistence remain open. The Android session continuation
+persists one opaque application session in the encrypted Room store and
+revalidates it through `/auth/me` before restoring process memory.
 
 The initial `3C-04` product-domain slice models the D-025 capture lease,
 elapsed-runtime and clock-rollback locks, separate server/device account state,
@@ -35,10 +36,15 @@ device authentication, same-company Administrator upload-only recovery,
 evidence-preserving logout/cleanup gates and permanent Keystore-loss failure.
 It is a Kotlin/JVM state machine with audit events and no Android or persistence
 dependencies. The Android adapter persists the current company/user-scoped
-state, evidence IDs and audit events in the encrypted Room database, and the
-field app plus workers use the coordinator for capture, logout and upload gates.
-Durable session recovery, atomic evidence/state writes, explicit server
-revocation notification and recovery UI remain open.
+state, evidence IDs, audit events and one opaque application session in the
+encrypted Room database. Process recovery revalidates the session against
+server-authoritative membership and expiry; lifecycle backgrounding requires
+device authentication before local evidence is shown again. A server 401 is
+visible as an evidence-preserving revoked state, and the recovery UI can call
+only a provider-neutral authenticated Administrator boundary that preserves
+D-025's same-company, upload-only limits. Provider selection, session renewal,
+authenticated recovery/upload transport and atomic evidence/state writes remain
+open.
 
 Visible states: local, pending, synchronising, synchronised, failed and
 conflict for mutations; pending-upload, uploaded and failed for photos. Office

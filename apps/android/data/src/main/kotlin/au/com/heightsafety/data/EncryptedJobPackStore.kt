@@ -8,6 +8,8 @@ import au.com.heightsafety.domain.AnchorInspectionDraft
 import au.com.heightsafety.domain.FieldJobPack
 import au.com.heightsafety.domain.FieldJobPackStore
 import au.com.heightsafety.domain.FieldOfflineAccessState
+import au.com.heightsafety.domain.FieldSession
+import au.com.heightsafety.domain.FieldSessionStore
 import au.com.heightsafety.domain.JobPackAnchor
 import au.com.heightsafety.domain.INSPECTION_SUBMISSION_ENTITY_TYPE
 import au.com.heightsafety.domain.MutationOutboxStore
@@ -41,7 +43,8 @@ public class EncryptedJobPackStore(
     AnchorEvidenceSubmissionStore,
     MutationOutboxStore,
     PhotoUploadQueueStore,
-    OfflineAccessStateStore {
+    OfflineAccessStateStore,
+    FieldSessionStore {
     private val files = JobPackStorageFiles(context.applicationContext, directoryName)
     private val opener = EncryptedJobPackDatabaseOpener(
         context = context.applicationContext,
@@ -104,6 +107,24 @@ public class EncryptedJobPackStore(
                 handle.database.jobPackDao().saveOfflineAccessState(state.toEntity())
             }
         }
+
+    override suspend fun loadSession(): FieldSession? = withContext(Dispatchers.IO) {
+        opener.open().use { handle ->
+            handle.database.jobPackDao().fieldSession()?.toDomain()
+        }
+    }
+
+    override suspend fun saveSession(session: FieldSession) = withContext(Dispatchers.IO) {
+        opener.open().use { handle ->
+            handle.database.jobPackDao().saveFieldSession(session.toEntity())
+        }
+    }
+
+    override suspend fun clearSession() = withContext(Dispatchers.IO) {
+        opener.open().use { handle ->
+            handle.database.jobPackDao().clearFieldSession()
+        }
+    }
 
     override suspend fun loadEvidence(
         companyId: String,

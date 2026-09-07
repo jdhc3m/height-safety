@@ -75,6 +75,7 @@ fun FieldScreen(
     onOpenSubmissionReview: () -> Unit = {},
     onCloseSubmissionReview: () -> Unit = {},
     onQueueSubmission: () -> Unit = {},
+    onStartAdministratorRecovery: () -> Unit = {},
 ) {
     MaterialTheme {
         Scaffold { innerPadding ->
@@ -96,10 +97,24 @@ fun FieldScreen(
                             isSigningIn = true,
                             onSignIn = onSignIn,
                         )
+                        is FieldUiState.RestoringSession -> SignInContent(
+                            message = null,
+                            isSigningIn = true,
+                            isRestoring = true,
+                            onSignIn = onSignIn,
+                        )
                         is FieldUiState.SessionExpired -> SignInContent(
                             message = state.message,
                             isSigningIn = false,
                             onSignIn = onSignIn,
+                        )
+                        is FieldUiState.AppLocked -> AppLockedContent(
+                            state = state,
+                            onUnlock = onRetry,
+                        )
+                        is FieldUiState.AccountRevoked -> AccountRevokedContent(
+                            state = state,
+                            onStartRecovery = onStartAdministratorRecovery,
                         )
                         is FieldUiState.Error -> if (state.account == null) {
                             SignInContent(
@@ -160,6 +175,7 @@ fun FieldScreen(
 private fun SignInContent(
     message: String?,
     isSigningIn: Boolean,
+    isRestoring: Boolean = false,
     onSignIn: (String) -> Unit,
 ) {
     var companyId by rememberSaveable { mutableStateOf("") }
@@ -212,7 +228,13 @@ private fun SignInContent(
             }
             Text(
                 text = if (isSigningIn) {
-                    stringResource(R.string.signing_in)
+                    stringResource(
+                        if (isRestoring) {
+                            R.string.restoring_session
+                        } else {
+                            R.string.signing_in
+                        },
+                    )
                 } else {
                     stringResource(R.string.sign_in)
                 },
@@ -225,6 +247,117 @@ private fun SignInContent(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+@Composable
+private fun AppLockedContent(
+    state: FieldUiState.AppLocked,
+    onUnlock: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.app_locked_title),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = state.message,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.app_locked_evidence_note),
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onUnlock,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.unlock_device))
+        }
+    }
+}
+
+@Composable
+private fun AccountRevokedContent(
+    state: FieldUiState.AccountRevoked,
+    onStartRecovery: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.account_access_unavailable_title),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = state.account.email,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            text = stringResource(R.string.company_value, state.account.companyId),
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = state.message,
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.error,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.recovery_evidence_note),
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        state.recoveryMessage?.let { message ->
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = message,
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onStartRecovery,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !state.isRecovering,
+        ) {
+            if (state.isRecovering) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                )
+                Spacer(modifier = Modifier.size(8.dp))
+            }
+            Text(
+                stringResource(
+                    if (state.isRecovering) {
+                        R.string.authorising_recovery
+                    } else {
+                        R.string.start_administrator_recovery
+                    },
+                ),
+            )
+        }
     }
 }
 

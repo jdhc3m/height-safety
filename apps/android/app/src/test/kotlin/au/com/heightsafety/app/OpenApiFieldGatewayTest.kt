@@ -56,6 +56,47 @@ class OpenApiFieldGatewayTest {
     }
 
     @Test
+    fun restoreSessionRevalidatesMembershipAndRefreshesServerFields() = runTest {
+        val identityApi = FakeIdentityApi(
+            sessionResponse = Response.success(sessionResponse()),
+            currentResponse = Response.success(currentAuthResponse().copy(mfaSatisfied = true)),
+        )
+        val bearerTokens = mutableListOf<String>()
+        val gateway = OpenApiFieldGateway(
+            identityApi = identityApi,
+            jobWorkflowApi = FakeJobWorkflowApi(Response.success(emptyList())),
+            bearerTokenSink = bearerTokens::add,
+        )
+
+        val restored = gateway.restoreSession(fieldSession())
+
+        assertEquals(fieldSession().copy(mfaSatisfied = true, expiresAtEpochMillis = 2_000L), restored)
+        assertEquals("company-a", identityApi.currentAuthCompanyId)
+        assertEquals(listOf("session-token"), bearerTokens)
+    }
+
+    @Test
+    fun restoreSessionRejectsChangedMembership() = runTest {
+        val gateway = OpenApiFieldGateway(
+            identityApi = FakeIdentityApi(
+                sessionResponse = Response.success(sessionResponse()),
+                currentResponse = Response.success(currentAuthResponse().copy(sessionId = "other-session")),
+            ),
+            jobWorkflowApi = FakeJobWorkflowApi(Response.success(emptyList())),
+            bearerTokenSink = {},
+        )
+
+        val error = try {
+            gateway.restoreSession(fieldSession())
+            error("expected membership mismatch")
+        } catch (expected: FieldGatewayException) {
+            expected
+        }
+
+        assertEquals(GatewayFailureReason.TENANT_MISMATCH, error.reason)
+    }
+
+    @Test
     fun listJobsMapsAndPreservesAuthoritativeFields() = runTest {
         val gateway = OpenApiFieldGateway(
             identityApi = FakeIdentityApi(

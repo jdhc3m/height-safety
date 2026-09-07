@@ -9,10 +9,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.lifecycleScope
 import au.com.heightsafety.data.EncryptedJobPackStore
 import au.com.heightsafety.api.infrastructure.ApiClient
 import au.com.heightsafety.domain.AnchorEvidenceService
@@ -27,10 +28,13 @@ import java.util.UUID
 class MainActivity : ComponentActivity() {
     private var deviceAuthenticationContinuation: CancellableContinuation<Boolean>? = null
     private var fieldViewModel: FieldViewModel? = null
+    private var appWasStopped = false
+    private var cameraCaptureInProgress = false
 
     private val cameraCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
+        cameraCaptureInProgress = false
         CameraCaptureIntent.capturedPhoto(result.data)?.let { photo ->
             fieldViewModel?.attachCapturedPhoto(photo)
         }
@@ -48,8 +52,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val scope = rememberCoroutineScope()
-            val viewModel = remember(scope) {
+            val viewModel = remember {
                 val apiClient = ApiClient(
                     baseUrl = getString(R.string.api_base_url),
                     authNames = arrayOf("access-token"),
@@ -69,7 +72,7 @@ class MainActivity : ComponentActivity() {
                 FieldViewModel(
                     gateway = gateway,
                     providerAccessTokenSource = UnconfiguredProviderAccessTokenSource(),
-                    scope = scope,
+                    scope = lifecycleScope,
                     jobPackService = JobPackService(
                         gateway = gateway,
                         store = localStore,
@@ -78,6 +81,7 @@ class MainActivity : ComponentActivity() {
                     ),
                     anchorEvidenceService = evidenceService,
                     offlineAccessSession = offlineAccessSession,
+                    sessionStore = localStore,
                     submissionService = AnchorSubmissionService(
                         evidenceService = evidenceService,
                         store = localStore,
@@ -97,6 +101,9 @@ class MainActivity : ComponentActivity() {
                     },
                 )
             }.also { fieldViewModel = it }
+            LaunchedEffect(viewModel) {
+                viewModel.restorePersistedSession()
+            }
             val state by viewModel.uiState.collectAsState()
             FieldScreen(
                 state = state,
@@ -115,9 +122,11 @@ class MainActivity : ComponentActivity() {
                 onOpenSubmissionReview = viewModel::openSubmissionReview,
                 onCloseSubmissionReview = viewModel::closeSubmissionReview,
                 onQueueSubmission = viewModel::queueSubmission,
+                onStartAdministratorRecovery = viewModel::startAdministratorRecovery,
                 onCapturePhoto = {
                     val capture = viewModel.uiState.value as? FieldUiState.AnchorCapture
                     capture?.let {
+                        cameraCaptureInProgress = true
                         cameraCaptureLauncher.launch(
                             CameraCaptureIntent.create(
                                 context = this@MainActivity,
@@ -131,6 +140,24 @@ class MainActivity : ComponentActivity() {
                 },
             )
         }
+    }
+
+    override fun onPostResume() {
+        super.onPostResume()
+        if (appWasStopped) {
+            appWasStopped = false
+            fieldViewModel?.onApplicationForegrounded()
+        }
+    }
+
+    override fun onStop() {
+        val stoppedForExternalAuthentication = deviceAuthenticationContinuation != null
+        val stoppedForCameraCapture = cameraCaptureInProgress
+        appWasStopped = !stoppedForExternalAuthentication && !stoppedForCameraCapture
+        if (appWasStopped) {
+            fieldViewModel?.onApplicationBackgrounded()
+        }
+        super.onStop()
     }
 
     override fun onDestroy() {

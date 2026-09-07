@@ -38,6 +38,9 @@ public interface FieldGateway {
         providerAccessToken: String,
     ): FieldSession
 
+    /** Revalidate a previously persisted application session with the server. */
+    public suspend fun restoreSession(session: FieldSession): FieldSession = session
+
     public suspend fun listAuthorizedJobs(session: FieldSession): List<InspectorJob>
 
     public suspend fun claimJob(

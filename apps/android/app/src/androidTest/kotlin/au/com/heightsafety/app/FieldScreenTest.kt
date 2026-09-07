@@ -90,6 +90,36 @@ class FieldScreenTest {
     }
 
     @Test
+    fun lockedAndRevokedStatesExplainEvidencePreservationAndRecovery() {
+        val screenState = mutableStateOf<FieldUiState>(
+            FieldUiState.AppLocked(account()),
+        )
+        var recoveryClicked = false
+        composeTestRule.setContent {
+            FieldScreen(
+                state = screenState.value,
+                onSignIn = {},
+                onRetry = {},
+                onRefresh = {},
+                onSignOut = {},
+                onStartAdministratorRecovery = { recoveryClicked = true },
+            )
+        }
+
+        composeTestRule.onNodeWithText("Height Safety is locked").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Local evidence remains preserved on this device.")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Unlock device").assertIsDisplayed()
+
+        screenState.value = FieldUiState.AccountRevoked(account())
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Account access unavailable").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Administrator recovery").performClick()
+
+        assertTrue(recoveryClicked)
+    }
+
+    @Test
     fun signInCompanyFieldRestoresAfterRecreation() {
         val restorationTester = StateRestorationTester(composeTestRule)
         restorationTester.setContent {

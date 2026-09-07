@@ -42,8 +42,15 @@ class OfflineAuthorizationStoreTest {
         )
         val resumed = restarted.restore("company-a", "inspector-a")
 
-        assertTrue(resumed.state.canCapture())
+        assertFalse(resumed.state.deviceUnlocked)
+        assertFalse(resumed.state.canCapture())
         assertEquals(store.state, resumed.state)
+        assertTrue(
+            restarted.unlockDevice(
+                deviceAuthenticated = true,
+                actorUserId = "inspector-a",
+            ).state.canCapture(),
+        )
     }
 
     @Test
@@ -138,12 +145,18 @@ class OfflineAuthorizationStoreTest {
         val resumed = restarted.restore("company-a", "inspector-a")
 
         assertFalse(resumed.state.canCapture())
-        assertTrue(resumed.state.canUpload())
-        assertEquals(OfflineAccessMode.UPLOAD_ONLY, resumed.state.mode)
+        assertFalse(resumed.state.deviceUnlocked)
+        assertEquals(OfflineAccessMode.LOCKED, resumed.state.mode)
         assertEquals(
             setOf("mutation-1"),
             resumed.state.evidence.pendingMutationIds,
         )
+        val unlocked = restarted.unlockDevice(
+            deviceAuthenticated = true,
+            actorUserId = "inspector-a",
+        )
+        assertTrue(unlocked.state.canUpload())
+        assertEquals(OfflineAccessMode.UPLOAD_ONLY, unlocked.state.mode)
     }
 
     private class FakeOfflineAccessStateStore : OfflineAccessStateStore {

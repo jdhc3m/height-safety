@@ -11,6 +11,7 @@ import au.com.heightsafety.domain.FieldJobPack
 import au.com.heightsafety.domain.FieldOfflineAccessState
 import au.com.heightsafety.domain.FieldJobPackStore
 import au.com.heightsafety.domain.FieldSession
+import au.com.heightsafety.domain.FieldSessionStore
 import au.com.heightsafety.domain.GatewayFailureReason
 import au.com.heightsafety.domain.InspectorAssignment
 import au.com.heightsafety.domain.InspectorJob
@@ -155,19 +156,33 @@ class FieldViewModelTest {
     }
 
     @Test
-    fun unauthenticatedJobResponseExpiresSession() = runTest {
+    fun unauthenticatedJobResponseShowsRevocationAndPreservesOfflineState() = runTest {
         val gateway = FakeGateway(
             failure = FieldGatewayException(
                 GatewayFailureReason.UNAUTHENTICATED,
                 "expired session",
             ),
         )
-        val viewModel = viewModel(gateway, scope = this)
+        val accessStore = FakeOfflineAccessStateStore()
+        val access = OfflineAccessSession(
+            store = accessStore,
+            nowEpochMillis = { 1_000L },
+            elapsedRealtimeMillis = { 500L },
+        )
+        val viewModel = viewModel(
+            gateway,
+            scope = this,
+            offlineAccessSession = access,
+        )
 
         viewModel.signIn("company-a")
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value is FieldUiState.SessionExpired)
+        assertTrue(viewModel.uiState.value is FieldUiState.AccountRevoked)
+        assertEquals(
+            au.com.heightsafety.domain.OfflineAccountStatus.REVOKED,
+            accessStore.state?.serverAccountStatus,
+        )
     }
 
     @Test
@@ -218,6 +233,143 @@ class FieldViewModelTest {
             state.message,
         )
         assertFalse(gateway.revokeCalled)
+    }
+
+    @Test
+    fun signInPersistsSessionForProcessRecovery() = runTest {
+        val sessionStore = FakeFieldSessionStore()
+        val viewModel = viewModel(
+            gateway = FakeGateway(jobs = listOf(job("released"))),
+            scope = this,
+            sessionStore = sessionStore,
+        )
+
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+
+        assertEquals("company-a", sessionStore.session?.companyId)
+        assertEquals("session-id", sessionStore.session?.sessionId)
+    }
+
+    @Test
+    fun persistedSessionIsRevalidatedAndRestored() = runTest {
+        val sessionStore = FakeFieldSessionStore().apply {
+            session = FieldSession(
+                accessToken = "saved-token",
+                companyId = "company-a",
+                sessionId = "session-id",
+                userId = "inspector-a",
+                email = "inspector-a@example.test",
+                role = ProductRole.INSPECTOR,
+                mfaSatisfied = false,
+                expiresAtEpochMillis = 10_000L,
+            )
+        }
+        val gateway = FakeGateway(jobs = listOf(job("released")))
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            sessionStore = sessionStore,
+        )
+
+        viewModel.restorePersistedSession()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value is FieldUiState.JobsLoaded)
+        assertEquals(1, gateway.restoreSessionCallCount)
+    }
+
+    @Test
+    fun appBackgroundLocksAndForegroundRequiresDeviceAuthentication() = runTest {
+        val accessStore = FakeOfflineAccessStateStore()
+        val access = OfflineAccessSession(
+            store = accessStore,
+            nowEpochMillis = { 1_000L },
+            elapsedRealtimeMillis = { 500L },
+        )
+        val gateway = FakeGateway(jobs = listOf(job("released")))
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            offlineAccessSession = access,
+        )
+
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+        access.markLocalJobPackPresent("inspector-a")
+
+        viewModel.onApplicationBackgrounded()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value is FieldUiState.AppLocked)
+        assertFalse(accessStore.state!!.deviceUnlocked)
+
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value is FieldUiState.JobsLoaded)
+        assertTrue(accessStore.state!!.deviceUnlocked)
+    }
+
+    @Test
+    fun administratorRecoveryRequiresAuthenticatedSameCompanyAdministrator() = runTest {
+        val accessStore = FakeOfflineAccessStateStore()
+        val access = OfflineAccessSession(
+            store = accessStore,
+            nowEpochMillis = { 1_000L },
+            elapsedRealtimeMillis = { 500L },
+        )
+        val gateway = FakeGateway(
+            restoreFailure = FieldGatewayException(
+                GatewayFailureReason.UNAUTHENTICATED,
+                "server revoked session",
+            ),
+        )
+        val sessionStore = FakeFieldSessionStore().apply {
+            session = FieldSession(
+                accessToken = "saved-token",
+                companyId = "company-a",
+                sessionId = "session-id",
+                userId = "inspector-a",
+                email = "inspector-a@example.test",
+                role = ProductRole.INSPECTOR,
+                mfaSatisfied = false,
+                expiresAtEpochMillis = 10_000L,
+            )
+        }
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            offlineAccessSession = access,
+            sessionStore = sessionStore,
+            administratorRecoveryAuthenticator = AdministratorRecoveryAuthenticator {
+                AdministratorRecoveryIdentity(
+                    companyId = it,
+                    userId = "admin-a",
+                    role = ProductRole.ADMINISTRATOR,
+                )
+            },
+        )
+        accessStore.state = FieldOfflineAccessState.start(
+            companyId = "company-a",
+            userId = "inspector-a",
+            nowEpochMillis = 1_000L,
+            elapsedRealtimeMillis = 500L,
+            leaseDurationMillis = 10_000L,
+        )
+
+        viewModel.restorePersistedSession()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value is FieldUiState.AccountRevoked)
+
+        viewModel.startAdministratorRecovery()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value as FieldUiState.AccountRevoked
+        assertTrue(state.recoveryMessage!!.contains("Upload-only recovery authorised"))
+        assertEquals(
+            au.com.heightsafety.domain.OfflineAccessMode.UPLOAD_ONLY,
+            accessStore.state?.mode,
+        )
     }
 
     @Test
@@ -659,6 +811,9 @@ class FieldViewModelTest {
         anchorEvidenceService: AnchorEvidenceService? = null,
         submissionService: AnchorSubmissionService? = null,
         offlineAccessSession: OfflineAccessSession? = null,
+        sessionStore: FieldSessionStore? = null,
+        administratorRecoveryAuthenticator: AdministratorRecoveryAuthenticator =
+            UnconfiguredAdministratorRecoveryAuthenticator(),
         scheduleMutationSync: () -> Unit = {},
         schedulePhotoUpload: () -> Unit = {},
         nowEpochMillis: () -> Long = { 1_000L },
@@ -675,6 +830,8 @@ class FieldViewModelTest {
         anchorEvidenceService = anchorEvidenceService,
         submissionService = submissionService,
         offlineAccessSession = offlineAccessSession,
+        sessionStore = sessionStore,
+        administratorRecoveryAuthenticator = administratorRecoveryAuthenticator,
         scheduleMutationSync = scheduleMutationSync,
         schedulePhotoUpload = schedulePhotoUpload,
         deviceAuthenticationGate = deviceAuthenticationGate,
@@ -748,9 +905,24 @@ class FieldViewModelTest {
         }
     }
 
+    private class FakeFieldSessionStore : FieldSessionStore {
+        var session: FieldSession? = null
+
+        override suspend fun loadSession(): FieldSession? = session
+
+        override suspend fun saveSession(session: FieldSession) {
+            this.session = session
+        }
+
+        override suspend fun clearSession() {
+            session = null
+        }
+    }
+
     private class FakeGateway(
         private val jobs: List<InspectorJob> = emptyList(),
         private val failure: Throwable? = null,
+        private val restoreFailure: Throwable? = null,
         private val sessionCompanyId: String = "company-a",
         private val sessionRole: ProductRole = ProductRole.INSPECTOR,
         private val sessionExpiresAtEpochMillis: Long = 10_000L,
@@ -763,6 +935,7 @@ class FieldViewModelTest {
         private val claimedJobIds = mutableSetOf<String>()
         var revokeCalled = false
         var clearSessionCallCount = 0
+        var restoreSessionCallCount = 0
 
         override suspend fun createSession(
             companyId: String,
@@ -783,6 +956,12 @@ class FieldViewModelTest {
             listJobsCallCount += 1
             failure?.let { throw it }
             return jobs
+        }
+
+        override suspend fun restoreSession(session: FieldSession): FieldSession {
+            restoreSessionCallCount += 1
+            restoreFailure?.let { throw it }
+            return session
         }
 
         override suspend fun claimJob(

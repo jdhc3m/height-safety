@@ -5,6 +5,7 @@ import au.com.heightsafety.domain.FieldGateway
 import au.com.heightsafety.domain.FieldGatewayException
 import au.com.heightsafety.domain.FieldSession
 import au.com.heightsafety.domain.FieldSessionExpiredException
+import au.com.heightsafety.domain.FieldSessionStore
 import au.com.heightsafety.domain.GatewayFailureReason
 import au.com.heightsafety.domain.AnchorEvidenceService
 import au.com.heightsafety.domain.AnchorInspectionDraft
@@ -63,6 +64,8 @@ sealed interface FieldUiState {
     data object SignedOut : FieldUiState
 
     data class SigningIn(val companyId: String) : FieldUiState
+
+    data class RestoringSession(val companyId: String? = null) : FieldUiState
 
     data class LoadingJobs(
         val account: AccountSummary,
@@ -145,6 +148,19 @@ sealed interface FieldUiState {
     data class SessionExpired(
         val message: String = "Session expired. Sign in again.",
     ) : FieldUiState
+
+    data class AppLocked(
+        val account: AccountSummary,
+        val message: String = "Unlock this device to continue.",
+    ) : FieldUiState
+
+    data class AccountRevoked(
+        val account: AccountSummary,
+        val message: String =
+            "Server reported that this session is no longer authorised. Local evidence remains preserved.",
+        val isRecovering: Boolean = false,
+        val recoveryMessage: String? = null,
+    ) : FieldUiState
 }
 
 class FieldViewModel(
@@ -155,6 +171,9 @@ class FieldViewModel(
     private val anchorEvidenceService: AnchorEvidenceService? = null,
     private val submissionService: AnchorSubmissionService? = null,
     private val offlineAccessSession: OfflineAccessSession? = null,
+    private val sessionStore: FieldSessionStore? = null,
+    private val administratorRecoveryAuthenticator: AdministratorRecoveryAuthenticator =
+        UnconfiguredAdministratorRecoveryAuthenticator(),
     private val scheduleMutationSync: () -> Unit = {},
     private val schedulePhotoUpload: () -> Unit = {},
     private val scheduleAuthenticatedMutationSync: (FieldSession) -> Unit = {},
@@ -173,6 +192,9 @@ class FieldViewModel(
     private var lastCompanyId: String = ""
     private var lastJobs: List<InspectorJob> = emptyList()
     private var activeRequest: Job? = null
+    private var lifecycleRequest: Job? = null
+    private var sessionRestoreStarted = false
+    private var lockedUiState: FieldUiState? = null
 
     fun signIn(companyId: String) {
         val normalizedCompanyId = companyId.trim()
@@ -212,12 +234,18 @@ class FieldViewModel(
                     throw FieldSessionExpiredException()
                 }
 
+                sessionStore?.saveSession(createdSession)
                 session = createdSession
                 offlineAccessSession?.restore(
                     companyId = createdSession.companyId,
                     userId = createdSession.userId,
                 )
-                loadJobs(createdSession)
+                val accessState = offlineAccessSession?.currentState
+                if (accessState?.localJobPackPresent == true && !accessState.deviceUnlocked) {
+                    _uiState.value = FieldUiState.AppLocked(createdSession.toAccountSummary())
+                } else {
+                    loadJobs(createdSession)
+                }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
@@ -229,7 +257,93 @@ class FieldViewModel(
         }
     }
 
+    /** Restore a saved application session, then revalidate it with the server. */
+    fun restorePersistedSession() {
+        val store = sessionStore ?: return
+        if (sessionRestoreStarted) return
+        sessionRestoreStarted = true
+        activeRequest?.cancel()
+        _uiState.value = FieldUiState.RestoringSession()
+        activeRequest = scope.launch {
+            var storedSession: FieldSession? = null
+            var sessionWasLoaded = false
+            try {
+                storedSession = store.loadSession()
+                sessionWasLoaded = true
+                if (storedSession == null) {
+                    _uiState.value = FieldUiState.SignedOut
+                    return@launch
+                }
+                val saved = storedSession ?: error("saved session disappeared")
+                lastCompanyId = saved.companyId
+                if (saved.isExpired(nowEpochMillis())) {
+                    store.clearSession()
+                    gateway.clearSession()
+                    _uiState.value = FieldUiState.SessionExpired(
+                        "Saved session expired. Sign in again.",
+                    )
+                    return@launch
+                }
+
+                offlineAccessSession?.restore(saved.companyId, saved.userId)
+                val restored = gateway.restoreSession(saved)
+                requireInspectorSession(restored)
+                if (restored.isExpired(nowEpochMillis())) {
+                    store.clearSession()
+                    gateway.clearSession()
+                    _uiState.value = FieldUiState.SessionExpired(
+                        "Saved session expired. Sign in again.",
+                    )
+                    return@launch
+                }
+                store.saveSession(restored)
+                session = restored
+                val accessState = offlineAccessSession?.currentState
+                if (accessState?.localJobPackPresent == true && !accessState.deviceUnlocked) {
+                    _uiState.value = FieldUiState.AppLocked(restored.toAccountSummary())
+                } else {
+                    loadJobs(restored)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                val saved = storedSession
+                when {
+                    saved != null && error.isServerAuthorizationFailure() -> {
+                        notifyServerRevocation(saved)
+                    }
+                    saved != null && error.isRetryableNetworkFailure() -> {
+                        session = saved
+                        _uiState.value = FieldUiState.Error(
+                            message = "Unable to verify saved session. Check connection and try again.",
+                            canRetry = true,
+                            account = saved.toAccountSummary(),
+                        )
+                    }
+                    else -> {
+                        session = null
+                        clearAuthenticatedMutationSync()
+                        gateway.clearSession()
+                        if (sessionWasLoaded) {
+                            store.clearSession()
+                        }
+                        _uiState.value = if (error is FieldSessionExpiredException) {
+                            FieldUiState.SessionExpired("Saved session expired. Sign in again.")
+                        } else {
+                            signInError(error)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fun retry() {
+        if (_uiState.value is FieldUiState.AppLocked) {
+            onApplicationForegrounded()
+            return
+        }
+
         val packError = _uiState.value as? FieldUiState.JobPackError
         if (packError != null) {
             openJobPack(packError.job)
@@ -257,6 +371,141 @@ class FieldViewModel(
 
         activeRequest?.cancel()
         activeRequest = scope.launch { loadJobs(currentSession) }
+    }
+
+    /** Lock downloaded evidence when the application leaves the foreground. */
+    fun onApplicationBackgrounded() {
+        val currentSession = session ?: return
+        val access = offlineAccessSession ?: return
+        val currentState = access.currentState ?: return
+        if (!currentState.localJobPackPresent || _uiState.value is FieldUiState.AppLocked) {
+            return
+        }
+
+        lockedUiState = _uiState.value
+        activeRequest?.cancel()
+        _uiState.value = FieldUiState.AppLocked(currentSession.toAccountSummary())
+        lifecycleRequest?.cancel()
+        lifecycleRequest = scope.launch {
+            access.lockDevice(currentSession.userId)
+        }
+    }
+
+    /** Require device authentication again before returning to downloaded data. */
+    fun onApplicationForegrounded() {
+        if (_uiState.value !is FieldUiState.AppLocked) return
+        unlockApplication()
+    }
+
+    /** Start same-company Administrator upload-only recovery after server denial. */
+    fun startAdministratorRecovery() {
+        val revoked = _uiState.value as? FieldUiState.AccountRevoked ?: return
+        if (revoked.isRecovering) return
+        val access = offlineAccessSession
+        if (access == null) {
+            _uiState.value = revoked.copy(
+                recoveryMessage = "Offline recovery is not configured for this build.",
+            )
+            return
+        }
+
+        _uiState.value = revoked.copy(isRecovering = true, recoveryMessage = null)
+        activeRequest?.cancel()
+        activeRequest = scope.launch {
+            try {
+                if (!deviceAuthenticationGate.authenticate()) {
+                    _uiState.value = revoked.copy(
+                        recoveryMessage = "Unlock this device before Administrator recovery.",
+                    )
+                    return@launch
+                }
+                val unlocked = access.unlockDevice(
+                    deviceAuthenticated = true,
+                    actorUserId = revoked.account.userId,
+                )
+                if (!unlocked.allowed) {
+                    _uiState.value = revoked.copy(
+                        recoveryMessage = offlineAccessMessage(unlocked.reason),
+                    )
+                    return@launch
+                }
+
+                val administrator = administratorRecoveryAuthenticator.authenticate(
+                    revoked.account.companyId,
+                )
+                if (administrator == null) {
+                    _uiState.value = revoked.copy(
+                        recoveryMessage =
+                            "Administrator authentication is not configured for this build.",
+                    )
+                    return@launch
+                }
+                val recovery = access.authoriseUploadOnlyRecovery(
+                    administratorCompanyId = administrator.companyId,
+                    administratorUserId = administrator.userId,
+                    administratorRole = administrator.role,
+                )
+                if (!recovery.allowed) {
+                    _uiState.value = revoked.copy(
+                        recoveryMessage = offlineAccessMessage(recovery.reason),
+                    )
+                    return@launch
+                }
+                _uiState.value = revoked.copy(
+                    recoveryMessage =
+                        "Upload-only recovery authorised for one hour. Capture remains locked; upload transport is still a separate configuration step.",
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                _uiState.value = revoked.copy(
+                    recoveryMessage = "Administrator recovery could not be authorised. Try again.",
+                )
+            }
+        }
+    }
+
+    private fun unlockApplication() {
+        val locked = _uiState.value as? FieldUiState.AppLocked ?: return
+        val currentSession = session ?: run {
+            _uiState.value = FieldUiState.SignedOut
+            return
+        }
+        val access = offlineAccessSession
+        val previousLifecycleRequest = lifecycleRequest
+        lifecycleRequest = scope.launch {
+            previousLifecycleRequest?.join()
+            try {
+                if (!deviceAuthenticationGate.authenticate()) {
+                    _uiState.value = locked
+                    return@launch
+                }
+                val transition = access?.unlockDevice(
+                    deviceAuthenticated = true,
+                    actorUserId = currentSession.userId,
+                )
+                if (transition != null && !transition.allowed) {
+                    lockedUiState = null
+                    _uiState.value = FieldUiState.Error(
+                        message = offlineAccessMessage(transition.reason),
+                        canRetry = true,
+                        account = currentSession.toAccountSummary(),
+                    )
+                    return@launch
+                }
+                val resume = lockedUiState
+                lockedUiState = null
+                if (resume == null || resume is FieldUiState.AppLocked) {
+                    loadJobs(currentSession)
+                } else {
+                    _uiState.value = resume
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                _uiState.value = locked
+            }
+        }
     }
 
     fun openJobPack(job: InspectorJob) {
@@ -316,7 +565,9 @@ class FieldViewModel(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                if (error.isSessionExpired()) {
+                if (error.isServerAuthorizationFailure()) {
+                    notifyServerRevocation(currentSession)
+                } else if (error.isSessionExpired()) {
                     expireSession()
                 } else if (error is OfflineAccessDeniedException) {
                     _uiState.value = FieldUiState.JobPackError(
@@ -974,7 +1225,9 @@ class FieldViewModel(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            if (error.isSessionExpired()) {
+            if (error.isServerAuthorizationFailure()) {
+                notifyServerRevocation(currentSession)
+            } else if (error.isSessionExpired()) {
                 expireSession()
             } else {
                 _uiState.value = FieldUiState.Error(
@@ -990,7 +1243,23 @@ class FieldViewModel(
         session = null
         clearAuthenticatedMutationSync()
         gateway.clearSession()
+        sessionStore?.let { store ->
+            scope.launch { store.clearSession() }
+        }
         _uiState.value = FieldUiState.SessionExpired()
+    }
+
+    private suspend fun notifyServerRevocation(currentSession: FieldSession) {
+        offlineAccessSession?.observeServerAccountStatus(
+            status = OfflineAccountStatus.REVOKED,
+            deviceNotified = true,
+            actorUserId = currentSession.userId,
+        )
+        sessionStore?.clearSession()
+        session = null
+        clearAuthenticatedMutationSync()
+        gateway.clearSession()
+        _uiState.value = FieldUiState.AccountRevoked(currentSession.toAccountSummary())
     }
 
     private suspend fun requireOfflineCaptureAccess(actorUserId: String) {
@@ -1005,6 +1274,10 @@ class FieldViewModel(
         clearAuthenticatedMutationSync()
         _uiState.value = FieldUiState.SignedOut
         gateway.clearSession()
+
+        sessionStore?.let { store ->
+            scope.launch { store.clearSession() }
+        }
 
         if (currentSession != null) {
             scope.launch {
@@ -1162,6 +1435,14 @@ class FieldViewModel(
         this is FieldSessionExpiredException ||
             (this is FieldGatewayException &&
                 reason == GatewayFailureReason.UNAUTHENTICATED)
+
+    private fun Throwable.isServerAuthorizationFailure(): Boolean =
+        this is FieldGatewayException &&
+            reason == GatewayFailureReason.UNAUTHENTICATED
+
+    private fun Throwable.isRetryableNetworkFailure(): Boolean =
+        this is FieldGatewayException &&
+            reason in setOf(GatewayFailureReason.NETWORK, GatewayFailureReason.UNAVAILABLE)
 
     private fun FieldSession.toAccountSummary() = AccountSummary(
         companyId = companyId,
