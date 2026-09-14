@@ -1,7 +1,9 @@
 # Auth0 AU bounded setup
 
-Status: implementation guide for D-042; no Auth0 tenant was created or
-mutated by the agent.
+Status: implementation guide for D-042. The owner-configured local tenant and
+applications were exercised on 2026-09-14; see
+`docs/roadmap/LOCAL_AUTH0_TEST_LOG.md`. No Auth0 tenant mutation was performed
+by the agent.
 
 This guide configures the provider boundary only. The application still owns
 company membership, product roles, opaque application sessions, offline
@@ -140,3 +142,15 @@ client/token and must not be exercised from the browser or Android app.
   authenticated recovery/upload transport remain later 3C/3D integration.
 - No real customer data should be used until G-05 and the retention/recovery
   gates are closed.
+
+## Local verification
+
+The owner-configured development tenant was tested with the Android field app
+on a physical Pixel device. The custom API identifier used for this test was
+`https://height-safety-api.local`; the older placeholder identifier
+`https://api.example.test` returned Auth0 `Service not found` and is not the
+working local audience. The native Android application's access grant was
+given to the custom API, not to the Auth0 Management API.
+
+The complete evidence and the known remaining boundary are recorded in
+[`docs/roadmap/LOCAL_AUTH0_TEST_LOG.md`](../roadmap/LOCAL_AUTH0_TEST_LOG.md).
