@@ -137,6 +137,66 @@ class OpenApiFieldGateway(
             }
         }
 
+    override suspend fun renewSession(session: FieldSession): FieldSession =
+        apiMutex.withLock {
+            guardedCall("renew session") {
+                if (session.accessToken.isBlank()) {
+                    throw FieldGatewayException(
+                        GatewayFailureReason.UNAUTHENTICATED,
+                        "session token is empty",
+                    )
+                }
+                bearerTokenSink(session.accessToken)
+                val renewed = requireBody(
+                    identityApi.renewSession(session.companyId),
+                    "renew session",
+                )
+                if (
+                    renewed.companyId != session.companyId ||
+                    renewed.user.userId != session.userId ||
+                    renewed.user.email != session.email
+                ) {
+                    throw FieldGatewayException(
+                        GatewayFailureReason.TENANT_MISMATCH,
+                        "renewed session membership does not match the signed-in user",
+                    )
+                }
+
+                // The renewal response intentionally does not carry the session
+                // identifier or MFA claim. Re-read /auth/me so role, account
+                // status, MFA state and the expiry are all server-authoritative.
+                val current = requireBody(
+                    identityApi.getCurrentAuth(session.companyId),
+                    "verify renewed session",
+                )
+                if (
+                    current.companyId != session.companyId ||
+                    current.sessionId != session.sessionId ||
+                    current.userId != session.userId ||
+                    current.email != session.email ||
+                    current.role.toDomainRole() != renewed.user.role.toDomainRole()
+                ) {
+                    throw FieldGatewayException(
+                        GatewayFailureReason.TENANT_MISMATCH,
+                        "renewed session membership does not match the server",
+                    )
+                }
+                FieldSession(
+                    accessToken = renewed.accessToken,
+                    companyId = current.companyId,
+                    sessionId = current.sessionId,
+                    userId = current.userId,
+                    email = current.email,
+                    role = current.role.toDomainRole(),
+                    mfaSatisfied = current.mfaSatisfied,
+                    expiresAtEpochMillis = maxOf(
+                        renewed.expiresAt.toInstant().toEpochMilli(),
+                        current.sessionExpiresAt.toInstant().toEpochMilli(),
+                    ),
+                )
+            }
+        }
+
     override suspend fun listAuthorizedJobs(session: FieldSession): List<InspectorJob> =
         apiMutex.withLock {
             guardedCall("list jobs") {

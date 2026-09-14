@@ -40,7 +40,7 @@ These results establish that the Auth0 callback, provider login, API audience,
 phone-to-computer network path, provider-token exchange and PostgreSQL
 membership lookup reached the application session boundary.
 
-## Known remaining failure
+## Known failure at the time of the first run
 
 After authentication, the app displayed:
 
@@ -48,15 +48,34 @@ After authentication, the app displayed:
 
 The phone could still reach the API health endpoint. The failure was caused by
 the API's job workflow module still binding
-`UnconfiguredJobWorkflowStore`, which returns persistence-unavailable for the
-authorised-job list. PostgreSQL job workflow persistence and a seeded released
-or assigned job are the next implementation boundary.
+`UnconfiguredJobWorkflowStore`, which returned persistence-unavailable for the
+authorised-job list. This was the remaining failure in that 2026-09-14 run;
+the local PostgreSQL job workflow adapter and seed fixture were wired in the
+follow-up below.
 
 ## Not tested yet
 
-- A successful authorised-job list from PostgreSQL
-- Downloading a durable release-time job-pack snapshot
-- Offline capture, mutation acknowledgement, photo upload or conflict
-  handling against the running API
-- Production Auth0, database, cloud deployment, invitation delivery or
+- Fresh provider login after the follow-up rebuild (the native client ID is
+  intentionally redacted from this workspace)
+- Production Auth0 AU, database, cloud deployment, invitation provider or
   operational controls
+
+## Follow-up local runtime verification
+
+Verification date: **2026-09-15** (Australia/Brisbane)
+
+The local API was rebuilt with PostgreSQL and the existing owner-configured
+development Auth0 domain/audience. Using a short-lived local application
+session for the seeded Inspector membership, the following checks passed:
+
+- `/auth/me` revalidation and application-session renewal;
+- authorised job listing and a durable versioned QLD job-pack read;
+- one tenant-bound inspection mutation with evidence and photo metadata;
+- identical mutation replay returning the original acknowledgement; and
+- resumable photo upload, with `uploaded` database state and matching private
+  object SHA-256.
+
+The rebuilt debug APK installed and launched on the physical Pixel 10 Pro, and
+the Inspector sign-in screen rendered. This follow-up does not claim a
+production tenant, production storage, Administrator recovery upload or
+provider invitation endpoint.

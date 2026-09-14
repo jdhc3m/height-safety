@@ -591,6 +591,84 @@
         ],
         "type": "object"
       },
+      "PhotoUploadChunkDto": {
+        "properties": {
+          "bytesBase64": {
+            "description": "Base64 encoded bytes for this chunk.",
+            "maxLength": 700000,
+            "type": "string"
+          },
+          "checksum": {
+            "example": "sha256-photo-001",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "contentType": {
+            "example": "image/jpeg",
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "localId": {
+            "example": "photo-001",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "mediaId": {
+            "example": "photo-001",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "offset": {
+            "example": 0,
+            "minimum": 0,
+            "type": "number"
+          },
+          "storageReference": {
+            "example": "company-a/anchor-photos/photo-001.jpg",
+            "maxLength": 512,
+            "type": "string"
+          },
+          "totalBytes": {
+            "example": 2048,
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "mediaId",
+          "localId",
+          "storageReference",
+          "checksum",
+          "totalBytes",
+          "offset",
+          "bytesBase64"
+        ],
+        "type": "object"
+      },
+      "PhotoUploadChunkResponseDto": {
+        "properties": {
+          "mediaId": {
+            "example": "photo-001",
+            "type": "string"
+          },
+          "nextOffset": {
+            "example": 2048,
+            "minimum": 0,
+            "type": "number"
+          },
+          "uploaded": {
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "mediaId",
+          "nextOffset",
+          "uploaded"
+        ],
+        "type": "object"
+      },
       "ProviderAccessTokenDto": {
         "properties": {
           "providerAccessToken": {
@@ -1370,6 +1448,42 @@
           }
         },
         "summary": "Create an application session from a provider access token",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/auth/sessions/renew": {
+      "post": {
+        "operationId": "renewSession",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Renew a still-live application session after membership revalidation",
         "tags": [
           "identity"
         ]
@@ -2356,6 +2470,117 @@
           }
         ],
         "summary": "Submit one idempotent mutation envelope",
+        "tags": [
+          "synchronisation"
+        ]
+      }
+    },
+    "/sync/photos/{mediaId}/chunks": {
+      "post": {
+        "operationId": "uploadPhotoChunk",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoUploadChunkDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoUploadChunkResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Upload one resumable evidence-photo chunk",
+        "tags": [
+          "synchronisation"
+        ]
+      }
+    },
+    "/sync/recovery/photos/{mediaId}/chunks": {
+      "post": {
+        "operationId": "uploadRecoveryPhotoChunk",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoUploadChunkDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoUploadChunkResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          },
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Upload one evidence-photo chunk during Administrator recovery",
         "tags": [
           "synchronisation"
         ]

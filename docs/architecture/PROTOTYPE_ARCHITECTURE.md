@@ -7,9 +7,20 @@ PostgreSQL-compatible relational database, authenticated web API, Android
 client with an encrypted Room-based local database, private object storage for
 media/reports, deterministic server-side PDF generation and append-only audit
 events. Authentication uses a managed provider with invitation-only access;
-cloud provider and authentication provider remain open. D-023 selects and
-proves maintained SQLCipher Android as the bounded Room candidate; production
-adoption remains conditional on its documented exit triggers.
+the authentication provider remains open. D-023 selects and proves maintained
+SQLCipher Android as the bounded Room candidate; production adoption remains
+conditional on its documented exit triggers.
+
+D-041 points the bounded pilot at Google Cloud in `australia-southeast1`
+(Sydney): Cloud Run for the NestJS API, Next.js office web application and
+separate PDF worker; Cloud Tasks for authenticated asynchronous invocation;
+Cloud SQL for PostgreSQL; and private Cloud Storage for media and reports.
+This is the target platform, not a statement that cloud resources have been
+created or that production deployment is approved. Native provider
+configuration, backup/restore, retention, export, residency, runtime IAM and
+recovery gates remain open.
+See `docs/architecture/GCP_TARGET_PLATFORM.md` for the service map and
+deployment boundary.
 
 Approved application stack: Kotlin with Jetpack Compose, Room and WorkManager
 for Android; TypeScript with NestJS for the backend; TypeScript with Next.js for
@@ -50,10 +61,15 @@ adapters. Object storage exposes application-owned upload, download, checksum,
 delete and short-lived-access operations using S3-compatible semantics as the
 baseline; a non-S3 provider must pass the same common adapter contract tests.
 
-Backend and web deploy as containers to a managed Australian-region platform.
-No provider is selected. Hosting and PDF renderer are co-selected only after a
-representative report spike measures memory, CPU, timeout, concurrency,
-cold-start, fonts and retry behavior in the candidate environment.
+Backend and web deploy as containers to Cloud Run in the target Australian
+region. The PDF worker is separately deployable so report generation remains
+asynchronous and independently retryable; Cloud Tasks invokes it through
+authenticated service-to-service requests. Cloud SQL and Cloud Storage remain
+behind infrastructure adapters, with private network/access configuration
+and least-privilege runtime identities required before production use.
+The representative report spike established the Cloud Run renderer candidate;
+production sizing still measures memory, CPU, timeout, concurrency,
+cold-start, fonts and retry behavior in the target environment.
 
 Quality gates: cross-tenant tests, restart recovery, mutation replay, photo
 association, conflict visibility, deterministic report reproduction and private

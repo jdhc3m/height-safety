@@ -5,13 +5,25 @@ Status: **Done — owner approved as D-027**, 2026-08-24
 ## Gate boundary
 
 G-03 is the provider-portability gate required before production
-infrastructure and before `3A-02` proceeds. It does not select a production
-cloud provider, authentication vendor or backup retention schedule.
+infrastructure and before `3A-02` proceeds. At the time this gate closed, it
+did not select a production cloud provider, authentication vendor or backup
+retention schedule.
 
 The evidence uses only fictional NSW and Queensland fixture data. No cloud
 resource was created or changed. D-024 remains the separate owner-approved
 Cloud Run Sydney draft-renderer candidate; this gate does not extend that
 approval to a database, object-storage provider or production deployment.
+
+## Subsequent target decision
+
+D-041 (2026-09-07) points the bounded pilot at Google Cloud in
+`australia-southeast1` (Sydney): Cloud Run for the API, office web and
+separate PDF worker; Cloud Tasks for authenticated asynchronous invocation;
+Cloud SQL for PostgreSQL; and private Cloud Storage for media/reports. This
+updates the project target without changing the evidence recorded by G-03. No
+cloud resource was created or changed by that decision, and production use
+still requires native backup/restore, retention, export, residency, runtime
+IAM and recovery gates.
 
 ## Recorded decisions carried into the proof
 
@@ -44,7 +56,8 @@ first-party evidence checked on 2026-08-24 for:
 - The already-approved private Cloud Run/Cloud Tasks Sydney renderer
   boundary.
 
-This is comparison evidence, not a provider selection. The research records
+At G-03 completion this was comparison evidence, not a provider selection.
+D-041 later records the GCP Sydney target; the research still records
 inferences separately from provider facts and does not claim Australian legal
 residency, compliance or certification.
 
@@ -118,7 +131,9 @@ The checked-in machine-readable result is
 
 ## Limitations and open decisions
 
-- No production database or object-storage provider is selected.
+- No production database or object-storage resource is deployed or
+  provider-native configuration is approved. D-041 selects GCP Sydney as the
+  bounded-pilot target.
 - No production cloud resource was deployed; cloud mutation remains an
   explicitly authorised action.
 - Provider-native backup location, cross-region copy, backup expiry, recovery
@@ -134,8 +149,9 @@ The checked-in machine-readable result is
 ## Owner approval
 
 The owner approved G-03 as a **provider-portability evidence gate** on
-2026-08-24 (D-027). Production provider selection, native backup
-configuration, concrete retention/RPO/RTO and strict backup/log/subprocessor
-residency remain deferred. `3A-02` is unblocked and uses portable PostgreSQL
-migrations and the tested application-owned storage/export boundaries; its
-complete product schema and cross-tenant API tests passed independent review.
+2026-08-24 (D-027). D-041 later selects GCP Sydney as the target platform;
+native backup configuration, concrete retention/RPO/RTO and strict
+backup/log/subprocessor residency remain deferred. `3A-02` is unblocked and
+uses portable PostgreSQL migrations and the tested application-owned
+storage/export boundaries; its complete product schema and cross-tenant API
+tests passed independent review.

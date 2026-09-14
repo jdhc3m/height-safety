@@ -27,6 +27,8 @@ import io.kotlintest.shouldBe
 import io.kotlintest.specs.ShouldSpec
 
 import au.com.heightsafety.api.apis.SynchronisationApi
+import au.com.heightsafety.api.models.PhotoUploadChunkDto
+import au.com.heightsafety.api.models.PhotoUploadChunkResponseDto
 import au.com.heightsafety.api.models.SyncMutationRequestDto
 import au.com.heightsafety.api.models.SyncMutationResponseDto
 
@@ -41,6 +43,26 @@ class SynchronisationApiTest : ShouldSpec() {
             //val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
             //val syncMutationRequestDto : SyncMutationRequestDto =  // SyncMutationRequestDto | 
             //val result : SyncMutationResponseDto = apiInstance.submitSyncMutation(xCompanyId, syncMutationRequestDto)
+            //result shouldBe ("TODO")
+        }
+
+        // to test uploadPhotoChunk
+        should("test uploadPhotoChunk") {
+            // uncomment below to test uploadPhotoChunk
+            //val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
+            //val mediaId : kotlin.String = mediaId_example // kotlin.String | 
+            //val photoUploadChunkDto : PhotoUploadChunkDto =  // PhotoUploadChunkDto | 
+            //val result : PhotoUploadChunkResponseDto = apiInstance.uploadPhotoChunk(xCompanyId, mediaId, photoUploadChunkDto)
+            //result shouldBe ("TODO")
+        }
+
+        // to test uploadRecoveryPhotoChunk
+        should("test uploadRecoveryPhotoChunk") {
+            // uncomment below to test uploadRecoveryPhotoChunk
+            //val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
+            //val mediaId : kotlin.String = mediaId_example // kotlin.String | 
+            //val photoUploadChunkDto : PhotoUploadChunkDto =  // PhotoUploadChunkDto | 
+            //val result : PhotoUploadChunkResponseDto = apiInstance.uploadRecoveryPhotoChunk(xCompanyId, mediaId, photoUploadChunkDto)
             //result shouldBe ("TODO")
         }
 

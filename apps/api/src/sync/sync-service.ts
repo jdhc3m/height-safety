@@ -22,6 +22,7 @@ import {
   type SyncMutationResponse,
   type SyncMutationPayloadApplier,
   type SyncMutationStore,
+  type SyncMutationAtomicProcessor,
 } from './sync.types';
 
 const ID_MAX_LENGTH = 128;
@@ -413,14 +414,25 @@ export class SyncService {
       options.payloadApplier ?? new NoopSyncMutationPayloadApplier();
   }
 
-  submitMutation(
+  async submitMutation(
     principal: AuthPrincipal,
     input: unknown,
-  ): SyncMutationResponse {
+  ): Promise<SyncMutationResponse> {
     assertInspector(principal);
     const request = normalizeRequest(input);
     validatePayloadScope(principal, request);
-    const existingMutation = this.options.store.findByMutationId(
+    const atomicProcessor = this.options
+      .store as unknown as SyncMutationAtomicProcessor;
+    if (typeof atomicProcessor.submitAtomically === 'function') {
+      return atomicProcessor.submitAtomically(
+        principal,
+        request,
+        requestSha256(request),
+        this.now(),
+        () => this.options.idGenerator.createId(),
+      );
+    }
+    const existingMutation = await this.options.store.findByMutationId(
       principal.companyId,
       request.mutationId,
     );
@@ -437,7 +449,7 @@ export class SyncService {
       );
     }
 
-    const existingKey = this.options.store.findByIdempotencyKey(
+    const existingKey = await this.options.store.findByIdempotencyKey(
       principal.companyId,
       request.idempotencyKey,
     );
@@ -454,7 +466,7 @@ export class SyncService {
       );
     }
 
-    const currentEntityVersion = this.options.store.currentEntityVersion(
+    const currentEntityVersion = await this.options.store.currentEntityVersion(
       principal.companyId,
       request.entityType,
       request.entityId,
@@ -468,7 +480,7 @@ export class SyncService {
         'Server entity version changed before this mutation was received.',
         currentEntityVersion ?? null,
       );
-      this.options.store.save({
+      await this.options.store.save({
         companyId: principal.companyId,
         request,
         actorUserId: principal.userId,
@@ -486,7 +498,7 @@ export class SyncService {
       state: 'synchronised',
       serverEntityVersion: request.entityVersion,
       acknowledgedAt,
-      payloadApplied: this.payloadApplier.apply(
+      payloadApplied: await this.payloadApplier.apply(
         principal,
         request,
         acknowledgedAt,
@@ -494,7 +506,7 @@ export class SyncService {
       replayed: false,
       conflict: null,
     };
-    this.options.store.save({
+    await this.options.store.save({
       companyId: principal.companyId,
       request,
       actorUserId: principal.userId,

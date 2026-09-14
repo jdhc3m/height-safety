@@ -1,11 +1,15 @@
 package au.com.heightsafety.app
 
 import au.com.heightsafety.api.apis.SynchronisationApi
+import au.com.heightsafety.api.models.PhotoUploadChunkDto
+import au.com.heightsafety.api.models.PhotoUploadChunkResponseDto
 import au.com.heightsafety.api.models.SyncMutationConflictDto
 import au.com.heightsafety.api.models.SyncMutationRequestDto
 import au.com.heightsafety.api.models.SyncMutationResponseDto
 import au.com.heightsafety.domain.FieldSession
 import au.com.heightsafety.domain.InspectionSubmissionPayload
+import au.com.heightsafety.domain.PhotoUploadChunk
+import au.com.heightsafety.domain.PhotoUploadDelivery
 import au.com.heightsafety.domain.ProductRole
 import au.com.heightsafety.domain.SupportedJurisdiction
 import au.com.heightsafety.domain.SyncMutation
@@ -116,7 +120,78 @@ class OpenApiSyncMutationTransportTest {
         )
     }
 
-    private fun session() = FieldSession(
+    @Test
+    fun mapsPhotoUploadAcknowledgementAndEncodesChunkBytes() = runTest {
+        val api = FakeSynchronisationApi(
+            photoResponse = Response.success(
+                PhotoUploadChunkResponseDto(
+                    mediaId = "photo-001",
+                    nextOffset = BigDecimal.valueOf(4L),
+                    uploaded = true,
+                ),
+            ),
+        )
+        var bearerToken: String? = null
+        val delivery = OpenApiPhotoUploadTransport(
+            synchronisationApi = api,
+            session = session(expiresAt = Long.MAX_VALUE),
+            bearerTokenSink = { bearerToken = it },
+        ).upload(
+            PhotoUploadChunk(
+                mediaId = "photo-001",
+                companyId = "company-a",
+                jobId = "job-001",
+                jobPackVersion = 1L,
+                anchorInspectionId = "anchor-inspection-001",
+                localId = "photo-001",
+                storageReference = "anchor-photos/photo-001.jpg",
+                checksum = "checksum",
+                contentType = "image/jpeg",
+                totalBytes = 4L,
+                offset = 0L,
+                bytes = "test".encodeToByteArray(),
+            ),
+        )
+
+        assertEquals(PhotoUploadDelivery.Uploaded, delivery)
+        assertEquals("access-token", bearerToken)
+        assertEquals("dGVzdA==", api.photoRequest?.bytesBase64)
+        assertEquals(BigDecimal.ZERO, api.photoRequest?.offset)
+        assertEquals("photo-001", api.photoMediaId)
+    }
+
+    @Test
+    fun mapsPhotoOffsetConflictToRetryableDelivery() = runTest {
+        val api = FakeSynchronisationApi(
+            photoResponse = Response.error(
+                409,
+                "".toResponseBody("text/plain".toMediaType()),
+            ),
+        )
+        val delivery = OpenApiPhotoUploadTransport(
+            synchronisationApi = api,
+            session = session(expiresAt = Long.MAX_VALUE),
+        ).upload(
+            PhotoUploadChunk(
+                mediaId = "photo-001",
+                companyId = "company-a",
+                jobId = "job-001",
+                jobPackVersion = 1L,
+                anchorInspectionId = "anchor-inspection-001",
+                localId = "photo-001",
+                storageReference = "anchor-photos/photo-001.jpg",
+                checksum = "checksum",
+                contentType = "image/jpeg",
+                totalBytes = 4L,
+                offset = 0L,
+                bytes = "test".encodeToByteArray(),
+            ),
+        )
+
+        assertTrue(delivery is PhotoUploadDelivery.RetryableFailure)
+    }
+
+    private fun session(expiresAt: Long = 2_000L) = FieldSession(
         accessToken = "access-token",
         companyId = "company-a",
         sessionId = "session-a",
@@ -124,7 +199,7 @@ class OpenApiSyncMutationTransportTest {
         email = "inspector-a@example.test",
         role = ProductRole.INSPECTOR,
         mfaSatisfied = false,
-        expiresAtEpochMillis = 2_000L,
+        expiresAtEpochMillis = expiresAt,
     )
 
     private fun mutation(version: Long = 1L) = SyncMutation(
@@ -159,10 +234,32 @@ class OpenApiSyncMutationTransportTest {
     )
 
     private class FakeSynchronisationApi(
-        private val response: Response<SyncMutationResponseDto>,
+        private val response: Response<SyncMutationResponseDto> = Response.success(
+            SyncMutationResponseDto(
+                companyId = "company-a",
+                idempotencyKey = "mutation-001",
+                mutationId = "mutation-001",
+                payloadApplied = false,
+                replayed = false,
+                state = SyncMutationResponseDto.State.synchronised,
+                acknowledgedAt = OffsetDateTime.parse("2026-09-04T00:00:00Z"),
+                conflict = null,
+                serverEntityVersion = BigDecimal.ONE,
+            ),
+        ),
+        private val photoResponse: Response<PhotoUploadChunkResponseDto> =
+            Response.success(
+                PhotoUploadChunkResponseDto(
+                    mediaId = "photo-001",
+                    nextOffset = BigDecimal.valueOf(4L),
+                    uploaded = true,
+                ),
+            ),
     ) : SynchronisationApi {
         var companyId: String? = null
         var request: SyncMutationRequestDto? = null
+        var photoMediaId: String? = null
+        var photoRequest: PhotoUploadChunkDto? = null
 
         override suspend fun submitSyncMutation(
             xCompanyId: String,
@@ -172,5 +269,21 @@ class OpenApiSyncMutationTransportTest {
             request = syncMutationRequestDto
             return response
         }
+
+        override suspend fun uploadPhotoChunk(
+            xCompanyId: String,
+            mediaId: String,
+            photoUploadChunkDto: PhotoUploadChunkDto,
+        ): Response<PhotoUploadChunkResponseDto> {
+            photoMediaId = mediaId
+            photoRequest = photoUploadChunkDto
+            return photoResponse
+        }
+
+        override suspend fun uploadRecoveryPhotoChunk(
+            xCompanyId: String,
+            mediaId: String,
+            photoUploadChunkDto: PhotoUploadChunkDto,
+        ): Response<PhotoUploadChunkResponseDto> = error("unused")
     }
 }

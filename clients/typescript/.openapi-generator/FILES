@@ -20,6 +20,8 @@ docs/JobAssignmentResponseDto.md
 docs/JobPackResponseDto.md
 docs/JobResponseDto.md
 docs/JobWorkflowApi.md
+docs/PhotoUploadChunkDto.md
+docs/PhotoUploadChunkResponseDto.md
 docs/ProviderAccessTokenDto.md
 docs/SessionResponseDto.md
 docs/SessionRevokedResponseDto.md
@@ -60,6 +62,8 @@ src/models/InvitationResponseDto.ts
 src/models/JobAssignmentResponseDto.ts
 src/models/JobPackResponseDto.ts
 src/models/JobResponseDto.ts
+src/models/PhotoUploadChunkDto.ts
+src/models/PhotoUploadChunkResponseDto.ts
 src/models/ProviderAccessTokenDto.ts
 src/models/SessionResponseDto.ts
 src/models/SessionRevokedResponseDto.ts

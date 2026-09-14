@@ -49,6 +49,7 @@ All URIs are relative to */api/v1*
 | *IdentityApi* | [**createInvitation**](docs/IdentityApi.md#createinvitation) | **POST** auth/invitations | Create an invitation for a company user |
 | *IdentityApi* | [**createSession**](docs/IdentityApi.md#createsession) | **POST** auth/sessions | Create an application session from a provider access token |
 | *IdentityApi* | [**getCurrentAuth**](docs/IdentityApi.md#getcurrentauth) | **GET** auth/me | Read current session membership and role |
+| *IdentityApi* | [**renewSession**](docs/IdentityApi.md#renewsession) | **POST** auth/sessions/renew | Renew a still-live application session after membership revalidation |
 | *IdentityApi* | [**revokeCurrentSession**](docs/IdentityApi.md#revokecurrentsession) | **POST** auth/sessions/revoke | Revoke the current application session |
 | *JobWorkflowApi* | [**assignJob**](docs/JobWorkflowApi.md#assignjob) | **POST** jobs/{jobId}/assignment | Assign a released job to an inspector |
 | *JobWorkflowApi* | [**claimJob**](docs/JobWorkflowApi.md#claimjob) | **POST** jobs/{jobId}/claim | Claim a released job |
@@ -70,6 +71,8 @@ All URIs are relative to */api/v1*
 | *SiteRegisterApi* | [**updateClient**](docs/SiteRegisterApi.md#updateclient) | **PATCH** clients/{clientId} | Update a company client |
 | *SiteRegisterApi* | [**updateSite**](docs/SiteRegisterApi.md#updatesite) | **PATCH** sites/{siteId} | Update a company site |
 | *SynchronisationApi* | [**submitSyncMutation**](docs/SynchronisationApi.md#submitsyncmutation) | **POST** sync/mutations | Submit one idempotent mutation envelope |
+| *SynchronisationApi* | [**uploadPhotoChunk**](docs/SynchronisationApi.md#uploadphotochunk) | **POST** sync/photos/{mediaId}/chunks | Upload one resumable evidence-photo chunk |
+| *SynchronisationApi* | [**uploadRecoveryPhotoChunk**](docs/SynchronisationApi.md#uploadrecoveryphotochunk) | **POST** sync/recovery/photos/{mediaId}/chunks | Upload one evidence-photo chunk during Administrator recovery |
 | *SystemApi* | [**getHealth**](docs/SystemApi.md#gethealth) | **GET** health | Check API health |
 
 
@@ -92,6 +95,8 @@ All URIs are relative to */api/v1*
  - [au.com.heightsafety.api.models.JobAssignmentResponseDto](docs/JobAssignmentResponseDto.md)
  - [au.com.heightsafety.api.models.JobPackResponseDto](docs/JobPackResponseDto.md)
  - [au.com.heightsafety.api.models.JobResponseDto](docs/JobResponseDto.md)
+ - [au.com.heightsafety.api.models.PhotoUploadChunkDto](docs/PhotoUploadChunkDto.md)
+ - [au.com.heightsafety.api.models.PhotoUploadChunkResponseDto](docs/PhotoUploadChunkResponseDto.md)
  - [au.com.heightsafety.api.models.ProviderAccessTokenDto](docs/ProviderAccessTokenDto.md)
  - [au.com.heightsafety.api.models.SessionResponseDto](docs/SessionResponseDto.md)
  - [au.com.heightsafety.api.models.SessionRevokedResponseDto](docs/SessionRevokedResponseDto.md)

@@ -1,7 +1,9 @@
 # Stage 2C Technical Blueprint
 
 Status: **complete for repository-level technical direction** (2026-08-10).
-Provider selection, implementation spikes and partner validation remain open.
+Provider selection was open when this blueprint was completed; D-041 later
+points the bounded pilot at GCP Sydney. Implementation spikes and partner
+validation remain open.
 This blueprint implements the Stage 2B workflow without adding compliance,
 certification or jurisdiction-rule automation.
 
@@ -24,7 +26,7 @@ Approved stack direction:
 | Server database | PostgreSQL-compatible relational database |
 | Media/reports | S3-compatible private object storage or a provider adapter passing equivalent contract tests |
 | Authentication | Managed, invitation-only provider; exact provider open |
-| Deployment | Containerised backend/web on a managed Australian-region platform; broader provider open, with Cloud Run Sydney renderer candidate recorded in D-024 |
+| Deployment | Containerised backend/web on Cloud Run in `australia-southeast1` (Sydney), with Cloud Tasks, Cloud SQL PostgreSQL and private Cloud Storage as the D-041 bounded-pilot target; native configuration remains open |
 
 No Kubernetes, microservices, multi-region deployment, generic rules engine or
 event-streaming platform is required for the prototype.
@@ -221,9 +223,11 @@ requires design-partner review.
 - Select an Australian region near initial users and co-locate dependent
   services where practical.
 
-Google Cloud Run in `australia-southeast1` is the owner-approved first managed
-draft-renderer candidate (D-024). This does not select the production database,
-object-storage provider or broader hosting platform.
+Google Cloud Run in `australia-southeast1` was the owner-approved first managed
+draft-renderer candidate (D-024). D-041 later extends that target to the API,
+office web, PDF worker, Cloud Tasks, Cloud SQL and private Cloud Storage for
+the bounded pilot. This does not authorise cloud mutation or production use;
+native configuration and operational gates remain open.
 
 ## PDF/hosting feasibility gate
 

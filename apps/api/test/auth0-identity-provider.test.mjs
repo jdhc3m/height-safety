@@ -8,6 +8,7 @@ import {
   Auth0IdentityProvider,
   auth0IdentityProviderConfigFromEnvironment,
 } from '../dist/identity/auth0-identity-provider.js';
+import { HttpInvitationDelivery } from '../dist/identity/invitation-delivery.js';
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', {
   modulusLength: 2048,
@@ -151,4 +152,48 @@ test('Auth0 provider validates issuer/audience/signature and maps verified profi
       server.close((error) => (error ? reject(error) : resolve())),
     );
   }
+});
+
+test('configured invitation delivery sends the application token without storing it in Auth0', async () => {
+  let request;
+  const delivery = new HttpInvitationDelivery(
+    'http://127.0.0.1/invitations',
+    'delivery-secret',
+    1_000,
+    async (input, init) => {
+      request = { input, init };
+      return { ok: true, status: 202 };
+    },
+  );
+  const provider = new Auth0IdentityProvider(
+    {
+      domain: 'tenant.au.auth0.com',
+      audience: 'https://api.example.test',
+      useUserInfo: false,
+    },
+    undefined,
+    delivery,
+  );
+  const expiresAt = new Date('2026-09-14T00:00:00.000Z');
+
+  await provider.sendInvitation({
+    companyId: 'company-a',
+    invitationId: 'invitation-a',
+    email: 'inspector@example.test',
+    role: 'inspector',
+    invitationToken: 'one-time-token',
+    expiresAt,
+  });
+
+  assert.equal(request.input, 'http://127.0.0.1/invitations');
+  assert.equal(request.init.method, 'POST');
+  assert.equal(request.init.headers.authorization, 'Bearer delivery-secret');
+  assert.deepEqual(JSON.parse(request.init.body), {
+    companyId: 'company-a',
+    invitationId: 'invitation-a',
+    email: 'inspector@example.test',
+    role: 'inspector',
+    invitationToken: 'one-time-token',
+    expiresAt: expiresAt.toISOString(),
+  });
 });

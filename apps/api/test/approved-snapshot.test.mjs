@@ -4,6 +4,7 @@ import test from 'node:test';
 import { ApprovedSnapshotService } from '../dist/approved-snapshot/approved-snapshot-service.js';
 import { ApprovedSnapshotFailure } from '../dist/approved-snapshot/approved-snapshot.types.js';
 import { InMemoryApprovedSnapshotStore } from '../dist/approved-snapshot/approved-snapshot-store.js';
+import { PostgresApprovedSnapshotStore } from '../dist/approved-snapshot/approved-snapshot-postgres-store.js';
 
 class FixedClock {
   now() {
@@ -117,17 +118,61 @@ function makeHarness() {
   return { audit, service };
 }
 
-function expectFailure(action, code) {
-  assert.throws(action, (error) => {
+class FakeSqlDatabase {
+  constructor(rows = [], queryError = null) {
+    this.rows = rows;
+    this.queryError = queryError;
+    this.queries = [];
+  }
+
+  async transaction(work) {
+    return work({
+      query: async (text, values) => {
+        this.queries.push({ text, values });
+        if (this.queryError && text.includes('INSERT INTO')) {
+          throw this.queryError;
+        }
+        return { rows: this.rows };
+      },
+    });
+  }
+}
+
+class ConcurrentApprovalStore {
+  constructor() {
+    this.snapshot = undefined;
+    this.reads = 0;
+  }
+
+  async findById() {
+    return this.snapshot;
+  }
+
+  async findByApprovalId() {
+    this.reads += 1;
+    return this.reads === 1 ? undefined : this.snapshot;
+  }
+
+  async create(snapshot) {
+    this.snapshot = snapshot;
+    throw new ApprovedSnapshotFailure(
+      'CONFLICT',
+      'simulated concurrent approval insert',
+    );
+  }
+}
+
+async function expectFailure(action, code) {
+  await assert.rejects(action, (error) => {
     assert.ok(error instanceof ApprovedSnapshotFailure);
     assert.equal(error.code, code);
     return true;
   });
 }
 
-test('freezes a tenant-scoped approved inspection revision with evidence references', () => {
+test('freezes a tenant-scoped approved inspection revision with evidence references', async () => {
   const { audit, service } = makeHarness();
-  const result = service.create(principal('company-a'), source());
+  const result = await service.create(principal('company-a'), source());
 
   assert.equal(result.replayed, false);
   assert.equal(result.snapshot.snapshotId, 'snapshot-1');
@@ -156,26 +201,47 @@ test('freezes a tenant-scoped approved inspection revision with evidence referen
   );
 });
 
-test('replaying one review approval returns the same immutable snapshot', () => {
+test('replaying one review approval returns the same immutable snapshot', async () => {
   const { audit, service } = makeHarness();
-  const first = service.create(principal('company-a'), source());
-  const replay = service.create(principal('company-a'), source());
+  const first = await service.create(principal('company-a'), source());
+  const replay = await service.create(principal('company-a'), source());
 
   assert.equal(replay.replayed, true);
   assert.deepEqual(replay.snapshot, first.snapshot);
   assert.equal(audit.events.length, 1);
 
-  expectFailure(
+  await expectFailure(
     () =>
       service.create(principal('company-a'), source({ inspectionRevision: 4 })),
     'CONFLICT',
   );
 });
 
-test('approval gates reject unsynchronised evidence, blockers and open changes', () => {
+test('concurrent approval insert is replayed when the frozen source is identical', async () => {
+  const audit = {
+    events: [],
+    record(event) {
+      this.events.push(event);
+    },
+  };
+  const service = new ApprovedSnapshotService({
+    store: new ConcurrentApprovalStore(),
+    auditSink: audit,
+    clock: new FixedClock(),
+    idGenerator: new FixedIdGenerator(),
+  });
+
+  const result = await service.create(principal('company-a'), source());
+
+  assert.equal(result.replayed, true);
+  assert.equal(result.snapshot.snapshotId, 'snapshot-1');
+  assert.equal(audit.events.length, 0);
+});
+
+test('approval gates reject unsynchronised evidence, blockers and open changes', async () => {
   const { service } = makeHarness();
 
-  expectFailure(
+  await expectFailure(
     () =>
       service.create(
         principal('company-a'),
@@ -183,7 +249,7 @@ test('approval gates reject unsynchronised evidence, blockers and open changes',
       ),
     'CONFLICT',
   );
-  expectFailure(
+  await expectFailure(
     () =>
       service.create(
         principal('company-a'),
@@ -191,7 +257,7 @@ test('approval gates reject unsynchronised evidence, blockers and open changes',
       ),
     'CONFLICT',
   );
-  expectFailure(
+  await expectFailure(
     () =>
       service.create(
         principal('company-a'),
@@ -199,7 +265,7 @@ test('approval gates reject unsynchronised evidence, blockers and open changes',
       ),
     'CONFLICT',
   );
-  expectFailure(
+  await expectFailure(
     () =>
       service.create(
         principal('company-a'),
@@ -209,25 +275,27 @@ test('approval gates reject unsynchronised evidence, blockers and open changes',
   );
 });
 
-test('only office reviewers and administrators can approve or read snapshots', () => {
+test('only office reviewers and administrators can approve or read snapshots', async () => {
   const { service } = makeHarness();
 
-  expectFailure(
+  await expectFailure(
     () => service.create(principal('company-a', 'inspector'), source()),
     'ROLE_FORBIDDEN',
   );
-  const created = service.create(
+  const created = await service.create(
     principal('company-a', 'administrator', 'admin-a'),
     source(),
   );
   assert.equal(
-    service.get(
-      principal('company-a', 'administrator', 'admin-a'),
-      created.snapshot.snapshotId,
+    (
+      await service.get(
+        principal('company-a', 'administrator', 'admin-a'),
+        created.snapshot.snapshotId,
+      )
     ).approvedByUserId,
     'admin-a',
   );
-  expectFailure(
+  await expectFailure(
     () =>
       service.get(
         principal('company-a', 'inspector'),
@@ -237,15 +305,15 @@ test('only office reviewers and administrators can approve or read snapshots', (
   );
 });
 
-test('tenant scope and source identity cannot be crossed or rewritten', () => {
+test('tenant scope and source identity cannot be crossed or rewritten', async () => {
   const { service } = makeHarness();
-  const created = service.create(principal('company-a'), source());
+  const created = await service.create(principal('company-a'), source());
 
-  expectFailure(
+  await expectFailure(
     () => service.get(principal('company-b'), created.snapshot.snapshotId),
     'NOT_FOUND',
   );
-  expectFailure(
+  await expectFailure(
     () =>
       service.create(
         principal('company-a'),
@@ -258,15 +326,15 @@ test('tenant scope and source identity cannot be crossed or rewritten', () => {
   );
 });
 
-test('stored evidence stays unchanged when source or returned values are mutated', () => {
+test('stored evidence stays unchanged when source or returned values are mutated', async () => {
   const { service } = makeHarness();
   const input = source();
-  const created = service.create(principal('company-a'), input);
+  const created = await service.create(principal('company-a'), input);
   input.submission.anchorInspections[0].photos[0].checksum = 'changed';
   created.snapshot.document.inspectionSubmission.anchorInspections[0].photos[0].checksum =
     'changed-again';
 
-  const stored = service.get(
+  const stored = await service.get(
     principal('company-a'),
     created.snapshot.snapshotId,
   );
@@ -278,9 +346,9 @@ test('stored evidence stays unchanged when source or returned values are mutated
   assert.equal(stored.sha256, created.snapshot.sha256);
 });
 
-test('preserves Queensland as recorded site context without deriving a rule', () => {
+test('preserves Queensland as recorded site context without deriving a rule', async () => {
   const { service } = makeHarness();
-  const result = service.create(
+  const result = await service.create(
     principal('company-a'),
     source({
       approvalId: 'approval-qld',
@@ -291,4 +359,72 @@ test('preserves Queensland as recorded site context without deriving a rule', ()
 
   assert.equal(result.snapshot.jurisdiction, 'QLD');
   assert.equal(result.snapshot.document.jurisdiction, 'QLD');
+});
+
+test('PostgreSQL adapter applies tenant context and round-trips immutable snapshot content', async () => {
+  const { service } = makeHarness();
+  const created = await service.create(principal('company-a'), source());
+  const snapshot = created.snapshot;
+  const database = new FakeSqlDatabase([
+    {
+      company_id: snapshot.companyId,
+      snapshot_id: snapshot.snapshotId,
+      approval_id: snapshot.approvalId,
+      inspection_id: snapshot.sourceInspectionId,
+      jurisdiction: snapshot.jurisdiction,
+      snapshot_document: snapshot.documentJson,
+      sha256: snapshot.sha256,
+    },
+  ]);
+  const store = new PostgresApprovedSnapshotStore(database);
+
+  await store.create(snapshot);
+  const byId = await store.findById('company-a', snapshot.snapshotId);
+  const byApproval = await store.findByApprovalId(
+    'company-a',
+    snapshot.approvalId,
+  );
+
+  assert.deepEqual(byId, snapshot);
+  assert.deepEqual(byApproval, snapshot);
+  assert.equal(
+    database.queries[0].text,
+    "SELECT set_config('app.company_id', $1, true)",
+  );
+  assert.deepEqual(database.queries[0].values, ['company-a']);
+  assert.match(database.queries[1].text, /approval_id/);
+  assert.deepEqual(database.queries[1].values.slice(0, 5), [
+    'company-a',
+    'snapshot-1',
+    'approval-a',
+    'inspection-a',
+    'NSW',
+  ]);
+});
+
+test('PostgreSQL adapter maps approval uniqueness and corrupt content to typed failures', async () => {
+  const { service } = makeHarness();
+  const created = await service.create(principal('company-a'), source());
+  const uniqueDatabase = new FakeSqlDatabase([], { code: '23505' });
+  const uniqueStore = new PostgresApprovedSnapshotStore(uniqueDatabase);
+
+  await expectFailure(() => uniqueStore.create(created.snapshot), 'CONFLICT');
+
+  const corruptDatabase = new FakeSqlDatabase([
+    {
+      company_id: 'company-a',
+      snapshot_id: 'snapshot-1',
+      approval_id: 'approval-a',
+      inspection_id: 'inspection-a',
+      jurisdiction: 'NSW',
+      snapshot_document: created.snapshot.documentJson,
+      sha256: 'wrong-sha',
+    },
+  ]);
+  const corruptStore = new PostgresApprovedSnapshotStore(corruptDatabase);
+
+  await expectFailure(
+    () => corruptStore.findById('company-a', 'snapshot-1'),
+    'PERSISTENCE_UNAVAILABLE',
+  );
 });

@@ -13,6 +13,10 @@ import {
   ApprovedSnapshotService,
   secureApprovedSnapshotIdGenerator,
 } from './approved-snapshot-service';
+import { DatabaseModule, POSTGRES_DATABASE } from '../database/database.module';
+import { PostgresAuditSink } from '../database/postgres-audit-sink';
+import { PostgresApprovedSnapshotStore } from './approved-snapshot-postgres-store';
+import type { SqlDatabase } from '../database/postgres-database';
 
 export const APPROVED_SNAPSHOT_STORE = Symbol('APPROVED_SNAPSHOT_STORE');
 export const APPROVED_SNAPSHOT_AUDIT_SINK = Symbol(
@@ -24,14 +28,25 @@ export const APPROVED_SNAPSHOT_ID_GENERATOR = Symbol(
 );
 
 @Module({
+  imports: [DatabaseModule],
   providers: [
     {
       provide: APPROVED_SNAPSHOT_STORE,
-      useClass: UnconfiguredApprovedSnapshotStore,
+      useFactory: (database: SqlDatabase | undefined): ApprovedSnapshotStore =>
+        database
+          ? new PostgresApprovedSnapshotStore(database)
+          : new UnconfiguredApprovedSnapshotStore(),
+      inject: [POSTGRES_DATABASE],
     },
     {
       provide: APPROVED_SNAPSHOT_AUDIT_SINK,
-      useClass: NoopApprovedSnapshotAuditSink,
+      useFactory: (
+        database: SqlDatabase | undefined,
+      ): ApprovedSnapshotAuditSink =>
+        database
+          ? new PostgresAuditSink(database)
+          : new NoopApprovedSnapshotAuditSink(),
+      inject: [POSTGRES_DATABASE],
     },
     {
       provide: APPROVED_SNAPSHOT_CLOCK,

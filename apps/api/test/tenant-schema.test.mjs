@@ -17,6 +17,14 @@ const AUTH_SCHEMA_MIGRATION = new URL(
   '../migrations/002_identity_auth_schema.sql',
   import.meta.url,
 );
+const JOB_PACK_SCHEMA_MIGRATION = new URL(
+  '../migrations/003_job_pack_snapshots.sql',
+  import.meta.url,
+);
+const SYNC_RUNTIME_MIGRATION = new URL(
+  '../migrations/004_sync_payload_runtime.sql',
+  import.meta.url,
+);
 const TENANT_TABLES = [
   'companies',
   'users',
@@ -42,6 +50,7 @@ const TENANT_TABLES = [
   'audit_events',
   'user_invitations',
   'user_sessions',
+  'job_pack_snapshots',
 ];
 
 const databaseUrl = process.env.TEST_POSTGRES_URL;
@@ -83,13 +92,20 @@ async function readMigration(url) {
 }
 
 test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async () => {
-  const [runtimeRoleMigration, tenantSchemaMigration, authSchemaMigration] =
-    await Promise.all([
-      readMigration(RUNTIME_ROLE_MIGRATION),
-      readMigration(TENANT_SCHEMA_MIGRATION),
-      readMigration(AUTH_SCHEMA_MIGRATION),
-    ]);
-  const productSchema = `${tenantSchemaMigration}\n${authSchemaMigration}`;
+  const [
+    runtimeRoleMigration,
+    tenantSchemaMigration,
+    authSchemaMigration,
+    jobPackSchemaMigration,
+    syncRuntimeMigration,
+  ] = await Promise.all([
+    readMigration(RUNTIME_ROLE_MIGRATION),
+    readMigration(TENANT_SCHEMA_MIGRATION),
+    readMigration(AUTH_SCHEMA_MIGRATION),
+    readMigration(JOB_PACK_SCHEMA_MIGRATION),
+    readMigration(SYNC_RUNTIME_MIGRATION),
+  ]);
+  const productSchema = `${tenantSchemaMigration}\n${authSchemaMigration}\n${jobPackSchemaMigration}`;
 
   assert.match(runtimeRoleMigration, /height_safety_runtime/);
   assert.match(runtimeRoleMigration, /NOBYPASSRLS/);
@@ -119,9 +135,13 @@ test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async
   );
   assert.match(tenantSchemaMigration, /report_revisions_snapshot_fk/);
   assert.match(tenantSchemaMigration, /inspection_snapshots_immutable/);
+  assert.match(tenantSchemaMigration, /UNIQUE \(company_id, approval_id\)/);
   assert.match(tenantSchemaMigration, /disposition = 'removed_from_service'/);
   assert.match(authSchemaMigration, /user_invitations_token_hash_ck/);
   assert.match(authSchemaMigration, /user_sessions_token_hash_ck/);
+  assert.match(jobPackSchemaMigration, /job_pack_snapshots_tenant_policy/);
+  assert.match(syncRuntimeMigration, /location_confirmed/);
+  assert.match(syncRuntimeMigration, /request_body/);
 
   for (const table of TENANT_TABLES) {
     assert.match(
@@ -140,6 +160,8 @@ test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async
     new URL('000_runtime_role.sql', MIGRATION_DIRECTORY),
     new URL('001_initial_tenant_schema.sql', MIGRATION_DIRECTORY),
     new URL('002_identity_auth_schema.sql', MIGRATION_DIRECTORY),
+    new URL('003_job_pack_snapshots.sql', MIGRATION_DIRECTORY),
+    new URL('004_sync_payload_runtime.sql', MIGRATION_DIRECTORY),
   ];
   assert.deepEqual(
     migrationFiles.map((url) => url.pathname.split('/').at(-1)),
@@ -147,6 +169,8 @@ test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async
       '000_runtime_role.sql',
       '001_initial_tenant_schema.sql',
       '002_identity_auth_schema.sql',
+      '003_job_pack_snapshots.sql',
+      '004_sync_payload_runtime.sql',
     ],
   );
 });
@@ -173,6 +197,8 @@ test(
         RUNTIME_ROLE_MIGRATION,
         TENANT_SCHEMA_MIGRATION,
         new URL('../migrations/002_identity_auth_schema.sql', import.meta.url),
+        JOB_PACK_SCHEMA_MIGRATION,
+        SYNC_RUNTIME_MIGRATION,
       ]) {
         const migration = await readMigration(migrationUrl);
         runPsql(migration, { schema });
@@ -226,10 +252,10 @@ test(
             ('company-a', 'inspection-a-other', 'job-a-other', 'site-a-other', 'NSW', 1, 'inspector-a'),
             ('company-b', 'inspection-b', 'job-b', 'site-b', 'QLD', 1, 'inspector-b');
           INSERT INTO inspection_snapshots
-            (company_id, snapshot_id, inspection_id, jurisdiction, snapshot_document, sha256)
+            (company_id, snapshot_id, approval_id, inspection_id, jurisdiction, snapshot_document, sha256)
           VALUES
-            ('company-a', 'snapshot-a', 'inspection-a', 'NSW', '{}', 'snapshot-a-sha'),
-            ('company-a', 'snapshot-a-other', 'inspection-a-other', 'NSW', '{}', 'snapshot-a-other-sha');
+            ('company-a', 'snapshot-a', 'approval-a', 'inspection-a', 'NSW', '{}', 'snapshot-a-sha'),
+            ('company-a', 'snapshot-a-other', 'approval-a-other', 'inspection-a-other', 'NSW', '{}', 'snapshot-a-other-sha');
           INSERT INTO anchor_inspections
             (company_id, anchor_inspection_id, inspection_id, site_id, anchor_id)
           VALUES

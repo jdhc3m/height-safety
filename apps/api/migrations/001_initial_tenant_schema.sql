@@ -399,6 +399,7 @@ CREATE TABLE photos (
 CREATE TABLE inspection_snapshots (
   company_id text NOT NULL,
   snapshot_id text NOT NULL,
+  approval_id text NOT NULL,
   inspection_id text NOT NULL,
   jurisdiction text NOT NULL,
   snapshot_document text NOT NULL,
@@ -415,7 +416,9 @@ CREATE TABLE inspection_snapshots (
   CONSTRAINT inspection_snapshots_id_jurisdiction_unique
     UNIQUE (company_id, snapshot_id, jurisdiction),
   CONSTRAINT inspection_snapshots_snapshot_inspection_unique
-    UNIQUE (company_id, snapshot_id, jurisdiction, inspection_id)
+    UNIQUE (company_id, snapshot_id, jurisdiction, inspection_id),
+  CONSTRAINT inspection_snapshots_approval_unique
+    UNIQUE (company_id, approval_id)
 );
 
 CREATE FUNCTION height_safety_reject_snapshot_mutation()

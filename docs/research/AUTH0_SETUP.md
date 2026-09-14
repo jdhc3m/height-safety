@@ -102,6 +102,9 @@ secret belongs in the API verifier.
 | `AUTH0_EMAIL_VERIFIED_CLAIM` | `email_verified` | Boolean verified-email claim |
 | `AUTH0_MFA_CLAIM` | `https://height-safety.example/claims/mfa_satisfied` | Boolean custom access-token claim, or an array containing `mfa` |
 | `AUTH0_USE_USERINFO` | `true` | Retrieve the profile from Auth0 `/userinfo` using the validated access token |
+| `INVITATION_DELIVERY_URL` | none | Private application mail/messaging endpoint that receives a one-time invitation token |
+| `INVITATION_DELIVERY_TOKEN` | none | Bearer token for the configured invitation-delivery endpoint; keep it in the runtime secret store |
+| `INVITATION_DELIVERY_TIMEOUT_MS` | `10000` | HTTP delivery timeout in milliseconds |
 
 The adapter validates the JWT signature against the tenant JWKS, issuer,
 audience, expiration and `RS256` algorithm before reading identity claims. It
@@ -119,27 +122,33 @@ Auth0 Post-Login Action and keep its namespace stable with the
 
 ## Invitation status
 
-The provider adapter currently verifies Auth0 identities but deliberately does
-not send invitations. The application invitation is a one-time digest-bound
-token carrying the company and product role; an Auth0 Organization invitation
-alone cannot replace that application control. The next invitation transport
-must deliver the application token without putting it in logs or an
-unvalidated provider claim, then retain the existing email-match, expiry,
-one-time-use and tenant checks.
+The application invitation remains a one-time digest-bound token carrying the
+company and product role; an Auth0 Organization invitation alone cannot replace
+that application control. The API now has a provider-neutral HTTP delivery
+adapter. When the three `INVITATION_DELIVERY_*` settings are configured, it
+POSTs the token to the owner-controlled private mail/messaging endpoint using a
+Bearer token, without logging or persisting the token. Delivery is fail-closed:
+if the endpoint is absent or unavailable, the invitation is revoked and no
+usable invitation is returned. The adapter requires HTTPS outside loopback
+development endpoints.
 
-See Auth0's [organization invitation API](https://auth0.com/docs/api/management/v2/organizations/post-invitations)
-when designing that separate adapter. It requires a protected Management API
-client/token and must not be exercised from the browser or Android app.
+The endpoint itself remains an owner-provisioned integration. Auth0's
+[organization invitation API](https://auth0.com/docs/api/management/v2/organizations/post-invitations)
+may be used by that integration, but its Management API credential must remain
+server-side and must never be placed in the browser or Android app.
 
 ## Values that remain open
 
 - Auth0 tenant/application creation and secret storage are manual owner steps.
-- Durable API `AuthStore` and append-only audit adapters are not yet wired to
-  Cloud SQL.
+- Durable API `AuthStore`, site/register, job/assignment, sync and append-only
+  audit adapters are wired for the local PostgreSQL runtime; Cloud SQL
+  deployment, backup and operational configuration remain open.
 - Web/Android Auth0 login is not a substitute for the API opaque application
   session exchange.
-- Invitation-token delivery, session renewal/revalidation policy and
-  authenticated recovery/upload transport remain later 3C/3D integration.
+- Session renewal, `/auth/me` revalidation and authenticated inspector photo
+  upload are implemented behind the application boundary. Administrator
+  recovery upload, provider endpoint configuration and production operational
+  verification remain later 3C/3D work.
 - No real customer data should be used until G-05 and the retention/recovery
   gates are closed.
 

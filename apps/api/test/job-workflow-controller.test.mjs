@@ -98,17 +98,17 @@ function makeController(
   return new JobWorkflowController(authService, fixture.service);
 }
 
-function prepareSite(fixture) {
+async function prepareSite(fixture) {
   const office = principal('company-a', 'office_reviewer', 'office-a');
-  const client = fixture.siteRegisterService.createClient(office, {
+  const client = await fixture.siteRegisterService.createClient(office, {
     name: 'Client A',
   });
-  const site = fixture.siteRegisterService.createSite(office, {
+  const site = await fixture.siteRegisterService.createSite(office, {
     clientId: client.clientId,
     name: 'Site A',
     jurisdiction: 'QLD',
   });
-  fixture.siteRegisterService.createAnchor(office, site.siteId, {
+  await fixture.siteRegisterService.createAnchor(office, site.siteId, {
     registerId: 'A-001',
     location: 'North roof',
   });
@@ -120,7 +120,7 @@ const AUTHORIZATION = 'Bearer access-token';
 test('controller authenticates and serializes create, release and assignment routes', async () => {
   const fixture = makeFixture();
   const controller = makeController(fixture);
-  const site = prepareSite(fixture);
+  const site = await prepareSite(fixture);
 
   const draft = await controller.createJob(AUTHORIZATION, 'company-a', {
     siteId: site.siteId,
@@ -160,16 +160,18 @@ test('controller authenticates and serializes create, release and assignment rou
   assert.equal(pack.site.jurisdiction, 'QLD');
   assert.equal(pack.anchors.length, 1);
   assert.equal(pack.anchors[0].registerId, 'A-001');
-  fixture.siteRegisterService.updateSite(
+  await fixture.siteRegisterService.updateSite(
     principal('company-a', 'office_reviewer', 'office-a'),
     site.siteId,
     { name: 'Changed after release' },
   );
-  const anchor = fixture.siteRegisterService.listAnchors(
-    principal('company-a', 'office_reviewer', 'office-a'),
-    site.siteId,
+  const anchor = (
+    await fixture.siteRegisterService.listAnchors(
+      principal('company-a', 'office_reviewer', 'office-a'),
+      site.siteId,
+    )
   )[0];
-  fixture.siteRegisterService.updateAnchor(
+  await fixture.siteRegisterService.updateAnchor(
     principal('company-a', 'office_reviewer', 'office-a'),
     site.siteId,
     anchor.anchorId,
@@ -191,7 +193,7 @@ test('controller authenticates and serializes create, release and assignment rou
 test('controller maps auth, role, conflict and persistence failures', async () => {
   const fixture = makeFixture();
   const controller = makeController(fixture);
-  const site = prepareSite(fixture);
+  const site = await prepareSite(fixture);
   const draft = await controller.createJob(AUTHORIZATION, 'company-a', {
     siteId: site.siteId,
     reference: 'JOB-002',

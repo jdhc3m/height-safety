@@ -17,7 +17,14 @@ import {
   UnconfiguredJobWorkflowMemberDirectory,
 } from './job-workflow.types';
 import { UnconfiguredJobWorkflowStore } from './job-workflow-store';
+import {
+  PostgresJobWorkflowMemberDirectory,
+  PostgresJobWorkflowStore,
+} from './postgres-job-workflow-store';
 import { JobWorkflowService } from './job-workflow-service';
+import { DatabaseModule, POSTGRES_DATABASE } from '../database/database.module';
+import { PostgresAuditSink } from '../database/postgres-audit-sink';
+import type { SqlDatabase } from '../database/postgres-database';
 
 export const JOB_WORKFLOW_STORE = Symbol('JOB_WORKFLOW_STORE');
 export const JOB_WORKFLOW_MEMBER_DIRECTORY = Symbol(
@@ -28,17 +35,34 @@ export const JOB_WORKFLOW_CLOCK = Symbol('JOB_WORKFLOW_CLOCK');
 export const JOB_WORKFLOW_ID_GENERATOR = Symbol('JOB_WORKFLOW_ID_GENERATOR');
 
 @Module({
-  imports: [AuthModule, SiteRegisterModule],
+  imports: [AuthModule, SiteRegisterModule, DatabaseModule],
   controllers: [JobWorkflowController],
   providers: [
-    { provide: JOB_WORKFLOW_STORE, useClass: UnconfiguredJobWorkflowStore },
+    {
+      provide: JOB_WORKFLOW_STORE,
+      useFactory: (database: SqlDatabase | undefined): JobWorkflowStore =>
+        database
+          ? new PostgresJobWorkflowStore(database)
+          : new UnconfiguredJobWorkflowStore(),
+      inject: [POSTGRES_DATABASE],
+    },
     {
       provide: JOB_WORKFLOW_MEMBER_DIRECTORY,
-      useClass: UnconfiguredJobWorkflowMemberDirectory,
+      useFactory: (
+        database: SqlDatabase | undefined,
+      ): JobWorkflowMemberDirectory =>
+        database
+          ? new PostgresJobWorkflowMemberDirectory(database)
+          : new UnconfiguredJobWorkflowMemberDirectory(),
+      inject: [POSTGRES_DATABASE],
     },
     {
       provide: JOB_WORKFLOW_AUDIT_SINK,
-      useClass: NoopJobWorkflowAuditSink,
+      useFactory: (database: SqlDatabase | undefined): JobWorkflowAuditSink =>
+        database
+          ? new PostgresAuditSink(database)
+          : new NoopJobWorkflowAuditSink(),
+      inject: [POSTGRES_DATABASE],
     },
     { provide: JOB_WORKFLOW_CLOCK, useValue: systemJobWorkflowClock },
     {

@@ -42,8 +42,8 @@ function principal(companyId, role, userId) {
   };
 }
 
-function expectFailure(action, code) {
-  assert.throws(action, (error) => {
+async function expectFailure(action, code) {
+  await assert.rejects(action, (error) => {
     assert.ok(error instanceof JobWorkflowFailure);
     assert.equal(error.code, code);
     return true;
@@ -118,17 +118,17 @@ function makeHarness() {
   return { clock, jobAudit, members, service, siteRegisterService };
 }
 
-function prepareJob(harness, companyId = 'company-a') {
+async function prepareJob(harness, companyId = 'company-a') {
   const office = principal(companyId, 'office_reviewer', 'office-a');
-  const client = harness.siteRegisterService.createClient(office, {
+  const client = await harness.siteRegisterService.createClient(office, {
     name: 'Client A',
   });
-  const site = harness.siteRegisterService.createSite(office, {
+  const site = await harness.siteRegisterService.createSite(office, {
     clientId: client.clientId,
     name: 'Site A',
     jurisdiction: 'NSW',
   });
-  const job = harness.service.createJob(office, {
+  const job = await harness.service.createJob(office, {
     siteId: site.siteId,
     reference: `job-reference-${companyId}`,
     plannedDate: '2026-09-15',
@@ -136,9 +136,9 @@ function prepareJob(harness, companyId = 'company-a') {
   return { client, job, office, site };
 }
 
-test('creates, releases and claims tenant-scoped jobs with explicit site jurisdiction', () => {
+test('creates, releases and claims tenant-scoped jobs with explicit site jurisdiction', async () => {
   const harness = makeHarness();
-  const { job, office, site } = prepareJob(harness);
+  const { job, office, site } = await prepareJob(harness);
   const inspector = principal('company-a', 'inspector', 'inspector-a');
 
   assert.equal(job.workflowStatus, 'draft');
@@ -146,22 +146,22 @@ test('creates, releases and claims tenant-scoped jobs with explicit site jurisdi
   assert.equal(job.jobPackVersion, 1);
   assert.equal(job.plannedDate, '2026-09-15');
 
-  const released = harness.service.releaseJob(office, job.jobId);
+  const released = await harness.service.releaseJob(office, job.jobId);
   assert.equal(released.job.workflowStatus, 'released');
   assert.equal(released.assignment, null);
-  harness.siteRegisterService.updateSite(office, site.siteId, {
+  await harness.siteRegisterService.updateSite(office, site.siteId, {
     jurisdiction: 'QLD',
   });
   assert.equal(
-    harness.service.getJob(office, job.jobId).job.jurisdiction,
+    (await harness.service.getJob(office, job.jobId)).job.jurisdiction,
     'NSW',
   );
   assert.deepEqual(
-    harness.service.listJobs(inspector).map((item) => item.job.jobId),
+    (await harness.service.listJobs(inspector)).map((item) => item.job.jobId),
     [job.jobId],
   );
 
-  const claimed = harness.service.claimJob(inspector, job.jobId);
+  const claimed = await harness.service.claimJob(inspector, job.jobId);
   assert.equal(claimed.job.workflowStatus, 'assigned');
   assert.equal(claimed.assignment.inspectorUserId, 'inspector-a');
   assert.equal(claimed.assignment.assignmentType, 'claimed');
@@ -171,7 +171,7 @@ test('creates, releases and claims tenant-scoped jobs with explicit site jurisdi
     '2026-08-31T00:00:00.000Z',
   );
 
-  const replay = harness.service.claimJob(inspector, job.jobId);
+  const replay = await harness.service.claimJob(inspector, job.jobId);
   assert.equal(replay.assignment.assignmentId, claimed.assignment.assignmentId);
   assert.deepEqual(
     harness.jobAudit.events.map((event) => event.action),
@@ -179,20 +179,20 @@ test('creates, releases and claims tenant-scoped jobs with explicit site jurisdi
   );
 });
 
-test('office assignment validates active inspectors and keeps one primary assignment', () => {
+test('office assignment validates active inspectors and keeps one primary assignment', async () => {
   const harness = makeHarness();
-  const { job, office } = prepareJob(harness);
+  const { job, office } = await prepareJob(harness);
 
-  expectFailure(
+  await expectFailure(
     () =>
       harness.service.assignJob(office, job.jobId, {
         inspectorUserId: 'inactive-inspector',
       }),
     'NOT_FOUND',
   );
-  harness.service.releaseJob(office, job.jobId);
+  await harness.service.releaseJob(office, job.jobId);
 
-  const assigned = harness.service.assignJob(office, job.jobId, {
+  const assigned = await harness.service.assignJob(office, job.jobId, {
     inspectorUserId: 'inspector-a',
   });
   assert.equal(assigned.job.workflowStatus, 'assigned');
@@ -200,7 +200,7 @@ test('office assignment validates active inspectors and keeps one primary assign
   assert.equal(assigned.assignment.assignedByUserId, 'office-a');
   assert.equal(assigned.assignment.claimedAt, null);
 
-  assert.throws(
+  await assert.rejects(
     () =>
       harness.service.assignJob(office, job.jobId, {
         inspectorUserId: 'inspector-b',
@@ -214,29 +214,29 @@ test('office assignment validates active inspectors and keeps one primary assign
   );
 });
 
-test('release rejects a job when the site context changed after job creation', () => {
+test('release rejects a job when the site context changed after job creation', async () => {
   const harness = makeHarness();
-  const { job, office, site } = prepareJob(harness);
+  const { job, office, site } = await prepareJob(harness);
 
-  harness.siteRegisterService.updateSite(office, site.siteId, {
+  await harness.siteRegisterService.updateSite(office, site.siteId, {
     jurisdiction: 'QLD',
   });
 
-  expectFailure(
+  await expectFailure(
     () => harness.service.releaseJob(office, job.jobId),
     'CONFLICT',
   );
 });
 
-test('concurrent claim attempts leave one primary assignment and expose current state', () => {
+test('concurrent claim attempts leave one primary assignment and expose current state', async () => {
   const harness = makeHarness();
-  const { job, office } = prepareJob(harness);
-  harness.service.releaseJob(office, job.jobId);
+  const { job, office } = await prepareJob(harness);
+  await harness.service.releaseJob(office, job.jobId);
   const inspectorA = principal('company-a', 'inspector', 'inspector-a');
   const inspectorB = principal('company-a', 'inspector', 'inspector-b');
 
-  const first = harness.service.claimJob(inspectorA, job.jobId);
-  assert.throws(
+  const first = await harness.service.claimJob(inspectorA, job.jobId);
+  await assert.rejects(
     () => harness.service.claimJob(inspectorB, job.jobId),
     (error) => {
       assert.ok(error instanceof JobWorkflowFailure);
@@ -249,24 +249,25 @@ test('concurrent claim attempts leave one primary assignment and expose current 
     },
   );
   assert.equal(
-    harness.service.getJob(inspectorA, job.jobId).assignment.inspectorUserId,
+    (await harness.service.getJob(inspectorA, job.jobId)).assignment
+      .inspectorUserId,
     'inspector-a',
   );
-  expectFailure(
+  await expectFailure(
     () => harness.service.getJob(inspectorB, job.jobId),
     'NOT_FOUND',
   );
   assert.equal(
-    harness.service
-      .listJobs(inspectorB)
-      .some((item) => item.job.jobId === job.jobId),
+    (await harness.service.listJobs(inspectorB)).some(
+      (item) => item.job.jobId === job.jobId,
+    ),
     false,
   );
 });
 
-test('enforces roles, tenant isolation and valid planned dates', () => {
+test('enforces roles, tenant isolation and valid planned dates', async () => {
   const harness = makeHarness();
-  const { job, office } = prepareJob(harness);
+  const { job, office } = await prepareJob(harness);
   const inspector = principal('company-a', 'inspector', 'inspector-a');
   const unknownInspector = principal(
     'company-a',
@@ -275,16 +276,19 @@ test('enforces roles, tenant isolation and valid planned dates', () => {
   );
   const officeB = principal('company-b', 'office_reviewer', 'office-b');
 
-  expectFailure(
+  await expectFailure(
     () => harness.service.releaseJob(inspector, job.jobId),
     'ROLE_FORBIDDEN',
   );
-  expectFailure(
+  await expectFailure(
     () => harness.service.claimJob(unknownInspector, job.jobId),
     'NOT_FOUND',
   );
-  expectFailure(() => harness.service.getJob(officeB, job.jobId), 'NOT_FOUND');
-  expectFailure(
+  await expectFailure(
+    () => harness.service.getJob(officeB, job.jobId),
+    'NOT_FOUND',
+  );
+  await expectFailure(
     () =>
       harness.service.createJob(office, {
         siteId: 'missing-site',
@@ -292,7 +296,7 @@ test('enforces roles, tenant isolation and valid planned dates', () => {
       }),
     'NOT_FOUND',
   );
-  expectFailure(
+  await expectFailure(
     () =>
       harness.service.createJob(office, {
         siteId: job.siteId,

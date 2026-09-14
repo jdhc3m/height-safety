@@ -356,6 +356,8 @@ public class PhotoUploadQueueDrainer(
     private val transport: PhotoUploadTransport,
     private val nowEpochMillis: () -> Long,
     private val chunkSizeBytes: Int = DEFAULT_CHUNK_SIZE_BYTES,
+    /** Limits recovery and selection to the authenticated tenant when set. */
+    private val companyId: String? = null,
 ) {
     init {
         require(chunkSizeBytes > 0) { "photo upload chunk size must be positive" }
@@ -363,13 +365,28 @@ public class PhotoUploadQueueDrainer(
 
     public suspend fun drain(): PhotoUploadDrainResult {
         val recoveryTime = checkedNow()
-        store.recoverInterruptedPhotoUploads(recoveryTime)
+        if (companyId == null) {
+            store.recoverInterruptedPhotoUploads(recoveryTime)
+        } else {
+            store.loadPhotoUploads(companyId)
+                .filter { it.state == PhotoUploadQueueState.UPLOADING }
+                .forEach { upload ->
+                    store.savePhotoUpload(upload.recoverInterrupted(recoveryTime))
+                }
+        }
 
         var attempted = 0
         var uploaded = 0
         var failed = 0
         while (true) {
-            val queued = store.loadNextEligiblePhotoUpload() ?: break
+            val queued = if (companyId == null) {
+                store.loadNextEligiblePhotoUpload()
+            } else {
+                store.loadPhotoUploads(companyId).firstOrNull { upload ->
+                    upload.state == PhotoUploadQueueState.PENDING ||
+                        upload.state == PhotoUploadQueueState.FAILED
+                }
+            } ?: break
             val started = queued.beginUpload(checkedNow())
             store.savePhotoUpload(started)
             attempted += 1

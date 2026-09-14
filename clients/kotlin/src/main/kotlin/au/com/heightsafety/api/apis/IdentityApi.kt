@@ -72,6 +72,19 @@ interface IdentityApi {
     suspend fun getCurrentAuth(@Header("x-company-id") xCompanyId: kotlin.String): Response<AuthMeResponseDto>
 
     /**
+     * POST auth/sessions/renew
+     * Renew a still-live application session after membership revalidation
+     * 
+     * Responses:
+     *  - 201: 
+     *
+     * @param xCompanyId 
+     * @return [SessionResponseDto]
+     */
+    @POST("auth/sessions/renew")
+    suspend fun renewSession(@Header("x-company-id") xCompanyId: kotlin.String): Response<SessionResponseDto>
+
+    /**
      * POST auth/sessions/revoke
      * Revoke the current application session
      * 

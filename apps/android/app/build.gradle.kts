@@ -7,6 +7,9 @@ plugins {
 val auth0Domain = providers.gradleProperty("auth0Domain").orNull.orEmpty()
 val auth0ClientId = providers.gradleProperty("auth0ClientId").orNull.orEmpty()
 val auth0ApiAudience = providers.gradleProperty("auth0ApiAudience").orNull.orEmpty()
+val apiBaseUrl = providers.gradleProperty("apiBaseUrl").orNull?.trim()
+    ?.takeIf(String::isNotEmpty)
+    ?: "https://api.example.test/api/v1/"
 
 android {
     namespace = "au.com.heightsafety.app"
@@ -28,6 +31,7 @@ android {
         resValue("string", "com_auth0_client_id", auth0ClientId)
         resValue("string", "com_auth0_domain", auth0Domain)
         resValue("string", "auth0_api_audience", auth0ApiAudience)
+        resValue("string", "api_base_url", apiBaseUrl)
     }
 
     buildFeatures {
@@ -58,6 +62,7 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.5.3")
     implementation("androidx.camera:camera-view:1.5.3")
     implementation("androidx.compose.foundation:foundation:1.9.0")
+    implementation("androidx.compose.material:material-icons-extended:1.7.8")
     implementation("androidx.compose.material3:material3:1.3.2")
     implementation("androidx.compose.ui:ui-tooling-preview:1.9.0")
     implementation("androidx.core:core-ktx:1.15.0")

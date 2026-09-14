@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../identity/auth.module';
+import { DatabaseModule, POSTGRES_DATABASE } from '../database/database.module';
+import type { SqlDatabase } from '../database/postgres-database';
 import { SyncController } from './sync.controller';
 import {
   NoopSyncMutationPayloadApplier,
@@ -10,6 +12,17 @@ import {
   type SyncMutationStore,
 } from './sync.types';
 import { UnconfiguredSyncMutationStore } from './sync-store';
+import { PostgresSyncMutationStore } from './postgres-sync-store';
+import {
+  LocalPrivatePhotoObjectStore,
+  privatePhotoObjectRootFromEnvironment,
+} from './private-photo-object-store';
+import {
+  PHOTO_UPLOAD_SERVICE,
+  PhotoUploadService,
+  UnconfiguredPhotoUploadService,
+  type PhotoUploadServiceLike,
+} from './photo-upload-service';
 import {
   secureSyncIdGenerator,
   SyncService,
@@ -24,15 +37,37 @@ export const SYNC_MUTATION_PAYLOAD_APPLIER = Symbol(
 );
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, DatabaseModule],
   controllers: [SyncController],
   providers: [
-    { provide: SYNC_MUTATION_STORE, useClass: UnconfiguredSyncMutationStore },
+    {
+      provide: SYNC_MUTATION_STORE,
+      useFactory: (database: SqlDatabase | undefined): SyncMutationStore =>
+        database
+          ? new PostgresSyncMutationStore(database)
+          : new UnconfiguredSyncMutationStore(),
+      inject: [POSTGRES_DATABASE],
+    },
     { provide: SYNC_CLOCK, useValue: systemSyncClock },
     { provide: SYNC_ID_GENERATOR, useValue: secureSyncIdGenerator },
     {
       provide: SYNC_MUTATION_PAYLOAD_APPLIER,
       useClass: NoopSyncMutationPayloadApplier,
+    },
+    {
+      provide: PHOTO_UPLOAD_SERVICE,
+      useFactory: (
+        database: SqlDatabase | undefined,
+      ): PhotoUploadServiceLike =>
+        database
+          ? new PhotoUploadService(
+              database,
+              new LocalPrivatePhotoObjectStore(
+                privatePhotoObjectRootFromEnvironment(),
+              ),
+            )
+          : new UnconfiguredPhotoUploadService(),
+      inject: [POSTGRES_DATABASE],
     },
     {
       provide: SyncService,

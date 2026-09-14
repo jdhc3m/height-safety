@@ -276,6 +276,65 @@ export class SyncMutationRequestDto {
   payload!: SyncInspectionSubmissionPayloadDto | null;
 }
 
+export class PhotoUploadChunkDto {
+  @ApiProperty({ example: 'photo-001' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  mediaId!: string;
+
+  @ApiProperty({ example: 'photo-001' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  localId!: string;
+
+  @ApiProperty({ example: 'company-a/anchor-photos/photo-001.jpg' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(512)
+  storageReference!: string;
+
+  @ApiProperty({ example: 'sha256-photo-001' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  checksum!: string;
+
+  @ApiPropertyOptional({ nullable: true, example: 'image/jpeg' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  contentType!: string | null;
+
+  @ApiProperty({ minimum: 1, example: 2048 })
+  @IsInt()
+  @Min(1)
+  totalBytes!: number;
+
+  @ApiProperty({ minimum: 0, example: 0 })
+  @IsInt()
+  @Min(0)
+  offset!: number;
+
+  @ApiProperty({ description: 'Base64 encoded bytes for this chunk.' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(700_000)
+  bytesBase64!: string;
+}
+
+export class PhotoUploadChunkResponseDto {
+  @ApiProperty({ example: 'photo-001' })
+  mediaId!: string;
+
+  @ApiProperty({ minimum: 0, example: 2048 })
+  nextOffset!: number;
+
+  @ApiProperty({ example: true })
+  uploaded!: boolean;
+}
+
 export class SyncMutationConflictDto {
   @ApiProperty({ example: 'conflict-001' })
   conflictId!: string;

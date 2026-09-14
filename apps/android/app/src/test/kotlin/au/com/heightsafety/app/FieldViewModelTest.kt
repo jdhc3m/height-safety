@@ -73,6 +73,34 @@ class FieldViewModelTest {
     }
 
     @Test
+    fun nearExpirySessionIsRenewedBeforeAuthorisedJobLoad() = runTest {
+        val gateway = FakeGateway(
+            jobs = listOf(
+                job(
+                    "assigned",
+                    companyId = "company-a",
+                    assignment = assignment("company-a", "job-a", "inspector-a"),
+                ),
+            ),
+            sessionExpiresAtEpochMillis = 10_000L,
+        )
+        gateway.renewedSessionExpiryEpochMillis = 1_000_000L
+        val store = FakeFieldSessionStore()
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            sessionStore = store,
+        )
+
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+
+        assertEquals(1, gateway.renewSessionCallCount)
+        assertEquals(1_000_000L, store.session?.expiresAtEpochMillis)
+        assertTrue(viewModel.uiState.value is FieldUiState.JobsLoaded)
+    }
+
+    @Test
     fun sameCompanyJobAssignedToAnotherInspectorIsHidden() = runTest {
         val gateway = FakeGateway(
             jobs = listOf(
@@ -936,6 +964,8 @@ class FieldViewModelTest {
         var revokeCalled = false
         var clearSessionCallCount = 0
         var restoreSessionCallCount = 0
+        var renewSessionCallCount = 0
+        var renewedSessionExpiryEpochMillis: Long? = null
 
         override suspend fun createSession(
             companyId: String,
@@ -962,6 +992,13 @@ class FieldViewModelTest {
             restoreSessionCallCount += 1
             restoreFailure?.let { throw it }
             return session
+        }
+
+        override suspend fun renewSession(session: FieldSession): FieldSession {
+            renewSessionCallCount += 1
+            return renewedSessionExpiryEpochMillis?.let {
+                session.copy(expiresAtEpochMillis = it)
+            } ?: session
         }
 
         override suspend fun claimJob(

@@ -40,6 +40,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 
+private const val SESSION_RENEWAL_WINDOW_MILLIS = 5 * 60 * 1000L
+
 enum class SyncState {
     SYNCHRONISING,
     SYNCHRONISED,
@@ -178,6 +180,7 @@ class FieldViewModel(
     private val schedulePhotoUpload: () -> Unit = {},
     private val scheduleAuthenticatedMutationSync: (FieldSession) -> Unit = {},
     private val clearAuthenticatedMutationSync: () -> Unit = {},
+    private val scheduleAuthenticatedPhotoUpload: (FieldSession) -> Unit = {},
     private val nowEpochMillis: () -> Long = { System.currentTimeMillis() },
     private val deviceAuthenticationGate: DeviceAuthenticationGate,
     private val inspectionIdGenerator: () -> String = { UUID.randomUUID().toString() },
@@ -495,7 +498,11 @@ class FieldViewModel(
                 }
                 val resume = lockedUiState
                 lockedUiState = null
-                if (resume == null || resume is FieldUiState.AppLocked) {
+                if (
+                    resume == null ||
+                    resume is FieldUiState.AppLocked ||
+                    sessionNeedsRenewal(currentSession)
+                ) {
                     loadJobs(currentSession)
                 } else {
                     _uiState.value = resume
@@ -919,6 +926,7 @@ class FieldViewModel(
                 if (current.review.evidence.any { it.photos.isNotEmpty() }) {
                     try {
                         schedulePhotoUpload()
+                        scheduleAuthenticatedPhotoUpload(currentSession)
                     } catch (error: CancellationException) {
                         throw error
                     } catch (_: Exception) {
@@ -1062,6 +1070,7 @@ class FieldViewModel(
                 if (saved.photos.isNotEmpty()) {
                     try {
                         schedulePhotoUpload()
+                        scheduleAuthenticatedPhotoUpload(currentSession)
                     } catch (error: CancellationException) {
                         throw error
                     } catch (_: Exception) {
@@ -1204,18 +1213,22 @@ class FieldViewModel(
             return
         }
 
-        val account = currentSession.toAccountSummary()
+        var activeSession = currentSession
+        var account = currentSession.toAccountSummary()
         _uiState.value = FieldUiState.LoadingJobs(account)
         try {
+            activeSession = renewIfNeeded(currentSession)
+            account = activeSession.toAccountSummary()
+            _uiState.value = FieldUiState.LoadingJobs(account)
             val jobs = visibleJobsForInspector(
-                currentSession,
-                gateway.listAuthorizedJobs(currentSession),
+                activeSession,
+                gateway.listAuthorizedJobs(activeSession),
             )
             lastJobs = jobs
             offlineAccessSession?.refreshOnline(
                 reachable = true,
                 serverAccountStatus = OfflineAccountStatus.ACTIVE,
-                actorUserId = currentSession.userId,
+                actorUserId = activeSession.userId,
             )
             _uiState.value = if (jobs.isEmpty()) {
                 FieldUiState.EmptyJobs(account)
@@ -1226,7 +1239,7 @@ class FieldViewModel(
             throw error
         } catch (error: Throwable) {
             if (error.isServerAuthorizationFailure()) {
-                notifyServerRevocation(currentSession)
+                notifyServerRevocation(activeSession)
             } else if (error.isSessionExpired()) {
                 expireSession()
             } else {
@@ -1238,6 +1251,34 @@ class FieldViewModel(
             }
         }
     }
+
+    private suspend fun renewIfNeeded(currentSession: FieldSession): FieldSession {
+        if (!sessionNeedsRenewal(currentSession)) return currentSession
+
+        val renewed = gateway.renewSession(currentSession)
+        if (
+            renewed.companyId != currentSession.companyId ||
+            renewed.sessionId != currentSession.sessionId ||
+            renewed.userId != currentSession.userId ||
+            renewed.email != currentSession.email
+        ) {
+            throw FieldGatewayException(
+                GatewayFailureReason.TENANT_MISMATCH,
+                "renewed session does not match the signed-in account",
+            )
+        }
+        requireInspectorSession(renewed)
+        if (renewed.isExpired(nowEpochMillis())) {
+            throw FieldSessionExpiredException()
+        }
+        session = renewed
+        sessionStore?.saveSession(renewed)
+        return renewed
+    }
+
+    private fun sessionNeedsRenewal(currentSession: FieldSession): Boolean =
+        currentSession.expiresAtEpochMillis - nowEpochMillis() <=
+            SESSION_RENEWAL_WINDOW_MILLIS
 
     private fun expireSession() {
         session = null

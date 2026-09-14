@@ -112,8 +112,8 @@ function identity(subject, email, mfaSatisfied = false, emailVerified = true) {
   return { subject, email, mfaSatisfied, emailVerified };
 }
 
-function expectAuthFailure(action, code) {
-  assert.throws(action, (error) => {
+async function expectAuthFailure(action, code) {
+  await assert.rejects(action, (error) => {
     assert.ok(error instanceof AuthFailure);
     assert.equal(error.code, code);
     return true;
@@ -122,11 +122,11 @@ function expectAuthFailure(action, code) {
 
 test('invitation acceptance is verified, one-time and Administrator-controlled', async () => {
   const { service, store, provider, audit, clock } = makeHarness();
-  const adminSession = service.createSession(
+  const adminSession = await service.createSession(
     'company-a',
     identity('subject-admin-a', 'admin-a@example.test', true),
   );
-  const admin = service.authenticateSession(
+  const admin = await service.authenticateSession(
     'company-a',
     adminSession.accessToken,
   );
@@ -156,17 +156,17 @@ test('invitation acceptance is verified, one-time and Administrator-controlled',
     false,
   );
 
-  const accepted = service.acceptInvitation(
+  const accepted = await service.acceptInvitation(
     'company-a',
     delivered.invitationToken,
     identity('subject-new-inspector', 'NEW-INSPECTOR@example.test'),
   );
   assert.equal(accepted.user.role, 'inspector');
   assert.equal(
-    service.authenticateSession('company-a', accepted.accessToken).role,
+    (await service.authenticateSession('company-a', accepted.accessToken)).role,
     'inspector',
   );
-  expectAuthFailure(
+  await expectAuthFailure(
     () =>
       service.acceptInvitation(
         'company-a',
@@ -176,11 +176,11 @@ test('invitation acceptance is verified, one-time and Administrator-controlled',
     'INVITATION_ALREADY_USED',
   );
 
-  const reviewerSession = service.createSession(
+  const reviewerSession = await service.createSession(
     'company-a',
     identity('subject-reviewer-a', 'reviewer-a@example.test'),
   );
-  const reviewer = service.authenticateSession(
+  const reviewer = await service.authenticateSession(
     'company-a',
     reviewerSession.accessToken,
   );
@@ -199,10 +199,10 @@ test('invitation acceptance is verified, one-time and Administrator-controlled',
   );
 });
 
-test('Administrator MFA is required while Inspector and reviewer MFA remains optional', () => {
+test('Administrator MFA is required while Inspector and reviewer MFA remains optional', async () => {
   const { service } = makeHarness();
 
-  expectAuthFailure(
+  await expectAuthFailure(
     () =>
       service.createSession(
         'company-a',
@@ -212,28 +212,32 @@ test('Administrator MFA is required while Inspector and reviewer MFA remains opt
   );
 
   assert.equal(
-    service.createSession(
-      'company-a',
-      identity('subject-inspector-a', 'inspector-a@example.test', false),
+    (
+      await service.createSession(
+        'company-a',
+        identity('subject-inspector-a', 'inspector-a@example.test', false),
+      )
     ).user.role,
     'inspector',
   );
   assert.equal(
-    service.createSession(
-      'company-a',
-      identity('subject-reviewer-a', 'reviewer-a@example.test', false),
+    (
+      await service.createSession(
+        'company-a',
+        identity('subject-reviewer-a', 'reviewer-a@example.test', false),
+      )
     ).user.role,
     'office_reviewer',
   );
 });
 
-test('session revocation and current membership claims are enforced', () => {
+test('session revocation and current membership claims are enforced', async () => {
   const { service, store, clock } = makeHarness();
-  const inspectorSession = service.createSession(
+  const inspectorSession = await service.createSession(
     'company-a',
     identity('subject-inspector-a', 'inspector-a@example.test'),
   );
-  const inspector = service.authenticateSession(
+  const inspector = await service.authenticateSession(
     'company-a',
     inspectorSession.accessToken,
   );
@@ -246,7 +250,7 @@ test('session revocation and current membership claims are enforced', () => {
     role: 'administrator',
     updatedAt: clock.now(),
   });
-  expectAuthFailure(
+  await expectAuthFailure(
     () =>
       service.authenticateSession('company-a', inspectorSession.accessToken),
     'MFA_REQUIRED',
@@ -256,11 +260,11 @@ test('session revocation and current membership claims are enforced', () => {
     ...inspectorUser,
     updatedAt: clock.now(),
   });
-  const adminSession = service.createSession(
+  const adminSession = await service.createSession(
     'company-a',
     identity('subject-admin-a', 'admin-a@example.test', true),
   );
-  const admin = service.authenticateSession(
+  const admin = await service.authenticateSession(
     'company-a',
     adminSession.accessToken,
   );
@@ -269,25 +273,52 @@ test('session revocation and current membership claims are enforced', () => {
     hashSecret(inspectorSession.accessToken),
   );
   assert.ok(inspectorSessionRecord);
-  service.revokeSession(admin, inspectorSessionRecord.sessionId);
-  expectAuthFailure(
+  await service.revokeSession(admin, inspectorSessionRecord.sessionId);
+  await expectAuthFailure(
     () =>
       service.authenticateSession('company-a', inspectorSession.accessToken),
     'SESSION_REVOKED',
   );
 
-  const companyBSession = service.createSession(
+  const companyBSession = await service.createSession(
     'company-b',
     identity('subject-inspector-b', 'inspector-b@example.test'),
   );
-  expectAuthFailure(
+  await expectAuthFailure(
     () => service.authenticateSession('company-a', companyBSession.accessToken),
     'SESSION_NOT_FOUND',
   );
 
   clock.advance(16 * 60 * 1000);
-  expectAuthFailure(
+  await expectAuthFailure(
     () => service.authenticateSession('company-b', companyBSession.accessToken),
+    'SESSION_EXPIRED',
+  );
+});
+
+test('live sessions renew after membership revalidation and expired sessions cannot renew', async () => {
+  const { service, clock, audit } = makeHarness();
+  const created = await service.createSession(
+    'company-a',
+    identity('subject-inspector-a', 'inspector-a@example.test'),
+  );
+
+  clock.advance(10 * 60 * 1000);
+  const renewed = await service.renewSession('company-a', created.accessToken);
+
+  assert.equal(renewed.accessToken, created.accessToken);
+  assert.equal(
+    renewed.expiresAt.getTime(),
+    clock.now().getTime() + 15 * 60 * 1000,
+  );
+  assert.equal(
+    audit.events.some((event) => event.action === 'session.renewed'),
+    true,
+  );
+
+  clock.advance(16 * 60 * 1000);
+  await expectAuthFailure(
+    () => service.renewSession('company-a', created.accessToken),
     'SESSION_EXPIRED',
   );
 });

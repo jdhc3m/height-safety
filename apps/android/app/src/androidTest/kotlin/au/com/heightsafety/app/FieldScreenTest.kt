@@ -376,6 +376,7 @@ class FieldScreenTest {
             jobPackVersion = 7L,
             inspectionId = "inspection-001",
             expectedAnchorId = "anchor-001",
+            recordedOutcome = RecordedOutcome.DEFECTIVE,
             createdAtEpochMillis = 1_000L,
         )
         var updatedDraft: AnchorInspectionDraft? = null
@@ -413,6 +414,12 @@ class FieldScreenTest {
             .performScrollTo()
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Removed from service recorded")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Defect description")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("No photos attached")
             .performScrollTo()
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Capture photo")

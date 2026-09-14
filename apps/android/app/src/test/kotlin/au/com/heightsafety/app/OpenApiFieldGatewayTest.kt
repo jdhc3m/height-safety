@@ -97,6 +97,36 @@ class OpenApiFieldGatewayTest {
     }
 
     @Test
+    fun renewSessionRevalidatesMembershipAndUsesRenewedExpiry() = runTest {
+        val identityApi = FakeIdentityApi(
+            sessionResponse = Response.success(
+                sessionResponse().copy(
+                    expiresAt = OffsetDateTime.parse("1970-01-01T00:00:03Z"),
+                ),
+            ),
+            currentResponse = Response.success(
+                currentAuthResponse().copy(
+                    mfaSatisfied = true,
+                    sessionExpiresAt = OffsetDateTime.parse("1970-01-01T00:00:04Z"),
+                ),
+            ),
+        )
+        val bearerTokens = mutableListOf<String>()
+        val gateway = OpenApiFieldGateway(
+            identityApi = identityApi,
+            jobWorkflowApi = FakeJobWorkflowApi(Response.success(emptyList())),
+            bearerTokenSink = bearerTokens::add,
+        )
+
+        val renewed = gateway.renewSession(fieldSession())
+
+        assertEquals(4_000L, renewed.expiresAtEpochMillis)
+        assertTrue(renewed.mfaSatisfied)
+        assertEquals(listOf("session-token"), bearerTokens)
+        assertEquals("company-a", identityApi.currentAuthCompanyId)
+    }
+
+    @Test
     fun listJobsMapsAndPreservesAuthoritativeFields() = runTest {
         val gateway = OpenApiFieldGateway(
             identityApi = FakeIdentityApi(
@@ -226,6 +256,10 @@ class OpenApiFieldGatewayTest {
         override suspend fun createSession(
             xCompanyId: String,
             providerAccessTokenDto: ProviderAccessTokenDto,
+        ): Response<SessionResponseDto> = sessionResponse
+
+        override suspend fun renewSession(
+            xCompanyId: String,
         ): Response<SessionResponseDto> = sessionResponse
 
         override suspend fun getCurrentAuth(xCompanyId: String): Response<AuthMeResponseDto> {

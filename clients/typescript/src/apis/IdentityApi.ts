@@ -68,6 +68,10 @@ export interface GetCurrentAuthRequest {
     xCompanyId: string;
 }
 
+export interface RenewSessionRequest {
+    xCompanyId: string;
+}
+
 export interface RevokeCurrentSessionRequest {
     xCompanyId: string;
 }
@@ -312,6 +316,62 @@ export class IdentityApi extends runtime.BaseAPI {
      */
     async getCurrentAuth(requestParameters: GetCurrentAuthRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthMeResponseDto> {
         const response = await this.getCurrentAuthRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for renewSession without sending the request
+     */
+    async renewSessionRequestOpts(requestParameters: RenewSessionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['xCompanyId'] == null) {
+            throw new runtime.RequiredError(
+                'xCompanyId',
+                'Required parameter "xCompanyId" was null or undefined when calling renewSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (requestParameters['xCompanyId'] != null) {
+            headerParameters['x-company-id'] = String(requestParameters['xCompanyId']);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("access-token", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/auth/sessions/renew`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Renew a still-live application session after membership revalidation
+     */
+    async renewSessionRaw(requestParameters: RenewSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SessionResponseDto>> {
+        const requestOptions = await this.renewSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SessionResponseDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Renew a still-live application session after membership revalidation
+     */
+    async renewSession(requestParameters: RenewSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionResponseDto> {
+        const response = await this.renewSessionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

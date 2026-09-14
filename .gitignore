@@ -7,6 +7,9 @@ private-sources/*
 .idea/
 .vscode/
 
+# Android SDK location is machine-specific.
+apps/android/local.properties
+
 node_modules/
 .pnpm-store/
 dist/
@@ -27,6 +30,9 @@ apps/android/data/build/
 apps/android/domain/build/
 apps/web/.next/
 apps/web/tsconfig.tsbuildinfo
+
+# Local development object bytes; production uses a private object provider.
+.height-safety-objects/
 
 # Local agent skill packs and metadata
 .agents/skills/

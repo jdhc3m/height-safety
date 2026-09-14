@@ -8,6 +8,7 @@ All URIs are relative to */api/v1*
 | [**createInvitation**](IdentityApi.md#createinvitation) | **POST** /auth/invitations | Create an invitation for a company user |
 | [**createSession**](IdentityApi.md#createsession) | **POST** /auth/sessions | Create an application session from a provider access token |
 | [**getCurrentAuth**](IdentityApi.md#getcurrentauth) | **GET** /auth/me | Read current session membership and role |
+| [**renewSession**](IdentityApi.md#renewsession) | **POST** /auth/sessions/renew | Renew a still-live application session after membership revalidation |
 | [**revokeCurrentSession**](IdentityApi.md#revokecurrentsession) | **POST** /auth/sessions/revoke | Revoke the current application session |
 
 
@@ -285,6 +286,75 @@ example().catch(console.error);
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## renewSession
+
+> SessionResponseDto renewSession(xCompanyId)
+
+Renew a still-live application session after membership revalidation
+
+### Example
+
+```ts
+import {
+  Configuration,
+  IdentityApi,
+} from '@height-safety/api-client';
+import type { RenewSessionRequest } from '@height-safety/api-client';
+
+async function example() {
+  console.log("🚀 Testing @height-safety/api-client SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: access-token
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  const body = {
+    // string
+    xCompanyId: xCompanyId_example,
+  } satisfies RenewSessionRequest;
+
+  try {
+    const data = await api.renewSession(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **xCompanyId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**SessionResponseDto**](SessionResponseDto.md)
+
+### Authorization
+
+[access-token](../README.md#access-token)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

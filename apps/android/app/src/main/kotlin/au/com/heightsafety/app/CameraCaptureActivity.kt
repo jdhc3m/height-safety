@@ -199,7 +199,7 @@ public class CameraCaptureActivity : ComponentActivity() {
         ) == PackageManager.PERMISSION_GRANTED
 
         setContent {
-            MaterialTheme {
+            SignalFieldTheme {
                 CameraCaptureContent(
                     permissionGranted = permissionGranted,
                     captureInProgress = captureInProgress,

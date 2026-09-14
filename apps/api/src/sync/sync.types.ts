@@ -136,17 +136,32 @@ export interface SyncMutationStore {
   findByMutationId(
     companyId: string,
     mutationId: string,
-  ): SyncMutationRecord | undefined;
+  ): SyncMutationRecord | undefined | Promise<SyncMutationRecord | undefined>;
   findByIdempotencyKey(
     companyId: string,
     idempotencyKey: string,
-  ): SyncMutationRecord | undefined;
+  ): SyncMutationRecord | undefined | Promise<SyncMutationRecord | undefined>;
   currentEntityVersion(
     companyId: string,
     entityType: string,
     entityId: string,
-  ): number | undefined;
-  save(record: SyncMutationRecord): void;
+  ): number | undefined | Promise<number | undefined>;
+  save(record: SyncMutationRecord): void | Promise<void>;
+}
+
+/**
+ * Runtime stores may process the mutation and its evidence in one database
+ * transaction. The service keeps the smaller store methods for protocol tests
+ * and uses this optional port when durable persistence is available.
+ */
+export interface SyncMutationAtomicProcessor {
+  submitAtomically(
+    principal: AuthPrincipal,
+    request: SyncMutationRequest,
+    requestSha256: string,
+    acknowledgedAt: Date,
+    createConflictId: () => string,
+  ): Promise<SyncMutationResponse>;
 }
 
 export interface SyncMutationPayloadApplier {
@@ -155,7 +170,24 @@ export interface SyncMutationPayloadApplier {
     principal: AuthPrincipal,
     request: SyncMutationRequest,
     acknowledgedAt: Date,
-  ): boolean;
+  ): boolean | Promise<boolean>;
+}
+
+export type PhotoUploadFailureCode =
+  | 'INVALID_INPUT'
+  | 'ROLE_FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'CONFLICT'
+  | 'PERSISTENCE_UNAVAILABLE';
+
+export class PhotoUploadFailure extends Error {
+  constructor(
+    readonly code: PhotoUploadFailureCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'PhotoUploadFailure';
+  }
 }
 
 export class NoopSyncMutationPayloadApplier

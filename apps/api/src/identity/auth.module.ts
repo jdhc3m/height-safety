@@ -15,10 +15,15 @@ import {
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth-service';
 import { UnconfiguredAuthStore } from './auth-store';
+import { PostgresAuthStore } from './postgres-auth-store';
+import { DatabaseModule, POSTGRES_DATABASE } from '../database/database.module';
+import { PostgresAuditSink } from '../database/postgres-audit-sink';
+import type { SqlDatabase } from '../database/postgres-database';
 import {
   Auth0IdentityProvider,
   auth0IdentityProviderConfigFromEnvironment,
 } from './auth0-identity-provider';
+import { invitationDeliveryFromEnvironment } from './invitation-delivery';
 
 export const AUTH_STORE = Symbol('AUTH_STORE');
 export const IDENTITY_PROVIDER = Symbol('IDENTITY_PROVIDER');
@@ -34,19 +39,36 @@ export const DEFAULT_AUTH_CONFIG: AuthConfig = {
 };
 
 @Module({
+  imports: [DatabaseModule],
   controllers: [AuthController],
   providers: [
-    { provide: AUTH_STORE, useClass: UnconfiguredAuthStore },
+    {
+      provide: AUTH_STORE,
+      useFactory: (database: SqlDatabase | undefined): AuthStore =>
+        database
+          ? new PostgresAuthStore(database)
+          : new UnconfiguredAuthStore(),
+      inject: [POSTGRES_DATABASE],
+    },
     {
       provide: IDENTITY_PROVIDER,
       useFactory: (): IdentityProvider => {
         const config = auth0IdentityProviderConfigFromEnvironment();
         return config
-          ? new Auth0IdentityProvider(config)
+          ? new Auth0IdentityProvider(
+              config,
+              undefined,
+              invitationDeliveryFromEnvironment(),
+            )
           : new UnconfiguredIdentityProvider();
       },
     },
-    { provide: AUTH_AUDIT_SINK, useClass: NoopAuthAuditSink },
+    {
+      provide: AUTH_AUDIT_SINK,
+      useFactory: (database: SqlDatabase | undefined): AuthAuditSink =>
+        database ? new PostgresAuditSink(database) : new NoopAuthAuditSink(),
+      inject: [POSTGRES_DATABASE],
+    },
     { provide: AUTH_CLOCK, useValue: systemAuthClock },
     { provide: AUTH_TOKEN_GENERATOR, useValue: secureAuthTokenGenerator },
     { provide: AUTH_CONFIG, useValue: DEFAULT_AUTH_CONFIG },

@@ -8,7 +8,6 @@ import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,7 +56,7 @@ class DebugDemoActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableSignalFieldEdgeToEdge()
 
         val gateway = DebugDemoGateway()
         val localStore = EncryptedJobPackStore(
@@ -106,7 +105,7 @@ class DebugDemoActivity : ComponentActivity() {
             }.also { fieldViewModel = it }
             val state by viewModel.uiState.collectAsState()
 
-            MaterialTheme {
+            SignalFieldTheme {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()

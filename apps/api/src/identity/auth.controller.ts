@@ -84,7 +84,7 @@ export class AuthController {
   ): Promise<InvitationResponseDto> {
     try {
       const companyId = requireCompanyId(companyIdHeader);
-      const principal = this.authService.authenticateSession(
+      const principal = await this.authService.authenticateSession(
         companyId,
         requireBearerToken(authorization),
       );
@@ -159,7 +159,7 @@ export class AuthController {
     @Headers('x-company-id') companyIdHeader: string | undefined,
   ): Promise<AuthMeResponseDto> {
     try {
-      const principal = this.authService.authenticateSession(
+      const principal = await this.authService.authenticateSession(
         requireCompanyId(companyIdHeader),
         requireBearerToken(authorization),
       );
@@ -182,12 +182,36 @@ export class AuthController {
     @Headers('x-company-id') companyIdHeader: string | undefined,
   ): Promise<SessionRevokedResponseDto> {
     try {
-      const principal = this.authService.authenticateSession(
+      const principal = await this.authService.authenticateSession(
         requireCompanyId(companyIdHeader),
         requireBearerToken(authorization),
       );
-      this.authService.revokeSession(principal);
+      await this.authService.revokeSession(principal);
       return { revoked: true };
+    } catch (error) {
+      return toAuthHttpException(error);
+    }
+  }
+
+  @Post('sessions/renew')
+  @ApiBearerAuth('access-token')
+  @ApiHeader({ name: 'x-company-id', required: true })
+  @ApiOperation({
+    operationId: 'renewSession',
+    summary:
+      'Renew a still-live application session after membership revalidation',
+  })
+  @ApiResponse({ status: 201, type: SessionResponseDto })
+  async renewCurrentSession(
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-company-id') companyIdHeader: string | undefined,
+  ): Promise<SessionResponseDto> {
+    try {
+      const session = await this.authService.renewSession(
+        requireCompanyId(companyIdHeader),
+        requireBearerToken(authorization),
+      );
+      return toSessionResponse(session);
     } catch (error) {
       return toAuthHttpException(error);
     }

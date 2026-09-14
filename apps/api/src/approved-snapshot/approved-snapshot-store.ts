@@ -61,23 +61,23 @@ export class InMemoryApprovedSnapshotStore implements ApprovedSnapshotStore {
   private readonly snapshots = new Map<string, ApprovedSnapshot>();
   private readonly approvals = new Map<string, ApprovedSnapshot>();
 
-  findById(
+  async findById(
     companyId: string,
     snapshotId: string,
-  ): ApprovedSnapshot | undefined {
+  ): Promise<ApprovedSnapshot | undefined> {
     const snapshot = this.snapshots.get(key(companyId, snapshotId));
     return snapshot ? copyApprovedSnapshot(snapshot) : undefined;
   }
 
-  findByApprovalId(
+  async findByApprovalId(
     companyId: string,
     approvalId: string,
-  ): ApprovedSnapshot | undefined {
+  ): Promise<ApprovedSnapshot | undefined> {
     const snapshot = this.approvals.get(key(companyId, approvalId));
     return snapshot ? copyApprovedSnapshot(snapshot) : undefined;
   }
 
-  create(snapshot: ApprovedSnapshot): void {
+  async create(snapshot: ApprovedSnapshot): Promise<void> {
     const snapshotKey = key(snapshot.companyId, snapshot.snapshotId);
     if (this.snapshots.has(snapshotKey)) {
       throw new ApprovedSnapshotFailure(

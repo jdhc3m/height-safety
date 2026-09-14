@@ -147,7 +147,7 @@ export class AuthService {
       revokedAt: null,
     };
 
-    this.options.store.createInvitation(invitation);
+    await this.options.store.createInvitation(invitation);
     try {
       await this.options.identityProvider.sendInvitation({
         companyId: actor.companyId,
@@ -158,7 +158,11 @@ export class AuthService {
         expiresAt,
       });
     } catch (error) {
-      this.options.store.revokeInvitation(actor.companyId, invitationId, now);
+      await this.options.store.revokeInvitation(
+        actor.companyId,
+        invitationId,
+        now,
+      );
       if (error instanceof AuthFailure) {
         throw error;
       }
@@ -168,7 +172,7 @@ export class AuthService {
       );
     }
 
-    this.recordAudit({
+    await this.recordAudit({
       companyId: actor.companyId,
       actorUserId: actor.userId,
       action: 'invitation.created',
@@ -204,14 +208,14 @@ export class AuthService {
     return this.acceptInvitation(companyId, invitationToken, identity);
   }
 
-  acceptInvitation(
+  async acceptInvitation(
     companyId: string,
     invitationToken: string,
     identity: VerifiedIdentity,
-  ): SessionResult {
+  ): Promise<SessionResult> {
     const verifiedIdentity = assertVerifiedIdentity(identity);
     const now = this.clock.now();
-    const invitation = this.options.store.getInvitationByTokenHash(
+    const invitation = await this.options.store.getInvitationByTokenHash(
       companyId,
       hashSecret(invitationToken),
     );
@@ -248,13 +252,13 @@ export class AuthService {
       createdAt: copyDate(now),
       updatedAt: copyDate(now),
     };
-    this.options.store.completeInvitation(
+    await this.options.store.completeInvitation(
       companyId,
       invitation.tokenHash,
       user,
       now,
     );
-    this.recordAudit({
+    await this.recordAudit({
       companyId,
       actorUserId: user.userId,
       action: 'invitation.accepted',
@@ -267,10 +271,13 @@ export class AuthService {
     return this.issueSession(user, verifiedIdentity.mfaSatisfied, now);
   }
 
-  createSession(companyId: string, identity: VerifiedIdentity): SessionResult {
+  async createSession(
+    companyId: string,
+    identity: VerifiedIdentity,
+  ): Promise<SessionResult> {
     const verifiedIdentity = assertVerifiedIdentity(identity);
     const now = this.clock.now();
-    const user = this.options.store.getUserByIdentity(
+    const user = await this.options.store.getUserByIdentity(
       companyId,
       verifiedIdentity.subject,
     );
@@ -294,9 +301,12 @@ export class AuthService {
     return this.issueSession(user, verifiedIdentity.mfaSatisfied, now);
   }
 
-  authenticateSession(companyId: string, accessToken: string): AuthPrincipal {
+  async authenticateSession(
+    companyId: string,
+    accessToken: string,
+  ): Promise<AuthPrincipal> {
     const now = this.clock.now();
-    const session = this.options.store.getSessionByTokenHash(
+    const session = await this.options.store.getSessionByTokenHash(
       companyId,
       hashSecret(accessToken),
     );
@@ -310,7 +320,7 @@ export class AuthService {
       throw new AuthFailure('SESSION_EXPIRED', 'session has expired');
     }
 
-    const user = this.options.store.getUser(companyId, session.userId);
+    const user = await this.options.store.getUser(companyId, session.userId);
     if (!user || user.identitySubject !== session.identitySubject) {
       throw new AuthFailure('SESSION_INVALID', 'session membership is invalid');
     }
@@ -321,6 +331,10 @@ export class AuthService {
     // a long-lived token claim. A promotion to Administrator therefore cannot
     // bypass the MFA requirement on an older Inspector session.
     assertMfaPolicy(user.role, session.mfaSatisfied);
+
+    if (this.options.store.touchSession) {
+      await this.options.store.touchSession(companyId, session.sessionId, now);
+    }
 
     return {
       companyId,
@@ -335,8 +349,54 @@ export class AuthService {
     };
   }
 
-  revokeSession(actor: AuthPrincipal, targetSessionId = actor.sessionId): void {
-    const target = this.options.store.getSession(
+  /**
+   * Extends a still-live opaque application session after revalidating current
+   * membership. Expired or revoked sessions can never be renewed.
+   */
+  async renewSession(
+    companyId: string,
+    accessToken: string,
+  ): Promise<SessionResult> {
+    const principal = await this.authenticateSession(companyId, accessToken);
+    const renewedAt = this.clock.now();
+    const expiresAt = new Date(
+      renewedAt.getTime() + this.options.config.sessionTtlMs,
+    );
+    const renewed = await this.options.store.renewSession(
+      companyId,
+      hashSecret(accessToken),
+      renewedAt,
+      expiresAt,
+    );
+    if (!renewed) {
+      throw new AuthFailure('SESSION_EXPIRED', 'session has expired');
+    }
+    await this.recordAudit({
+      companyId,
+      actorUserId: principal.userId,
+      action: 'session.renewed',
+      targetType: 'user_session',
+      targetId: principal.sessionId,
+      occurredAt: renewedAt,
+      metadata: { role: principal.role },
+    });
+    return {
+      accessToken,
+      companyId,
+      expiresAt: copyDate(renewed.expiresAt),
+      user: {
+        userId: principal.userId,
+        email: principal.email,
+        role: principal.role,
+      },
+    };
+  }
+
+  async revokeSession(
+    actor: AuthPrincipal,
+    targetSessionId = actor.sessionId,
+  ): Promise<void> {
+    const target = await this.options.store.getSession(
       actor.companyId,
       targetSessionId,
     );
@@ -351,8 +411,12 @@ export class AuthService {
     }
 
     const now = this.clock.now();
-    this.options.store.revokeSession(actor.companyId, targetSessionId, now);
-    this.recordAudit({
+    await this.options.store.revokeSession(
+      actor.companyId,
+      targetSessionId,
+      now,
+    );
+    await this.recordAudit({
       companyId: actor.companyId,
       actorUserId: actor.userId,
       action: 'session.revoked',
@@ -382,11 +446,11 @@ export class AuthService {
     return this.options.identityProvider.verifyAccessToken(providerAccessToken);
   }
 
-  private issueSession(
+  private async issueSession(
     user: UserRecord,
     mfaSatisfied: boolean,
     issuedAt: Date,
-  ): SessionResult {
+  ): Promise<SessionResult> {
     const accessToken = this.tokenGenerator.createOpaqueToken();
     const expiresAt = new Date(
       issuedAt.getTime() + this.options.config.sessionTtlMs,
@@ -403,8 +467,8 @@ export class AuthService {
       lastSeenAt: copyDate(issuedAt),
       revokedAt: null,
     };
-    this.options.store.createSession(session);
-    this.recordAudit({
+    await this.options.store.createSession(session);
+    await this.recordAudit({
       companyId: user.companyId,
       actorUserId: user.userId,
       action: 'session.created',
@@ -432,7 +496,7 @@ export class AuthService {
     }
   }
 
-  private recordAudit(event: AuthAuditEvent): void {
-    this.auditSink.record(event);
+  private async recordAudit(event: AuthAuditEvent): Promise<void> {
+    await this.auditSink.record(event);
   }
 }

@@ -3,7 +3,6 @@ package au.com.heightsafety.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,14 +25,32 @@ import au.com.heightsafety.domain.SupportedJurisdiction
 class ReferenceActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent { ReferenceGallery() }
+        enableSignalFieldEdgeToEdge()
+        val requestedFrame = intent.getStringExtra("reference_frame")
+        setContent {
+            when (requestedFrame) {
+                "job_pack" -> ReferenceStandalone(referenceJobPackState())
+                "defective_anchor" -> ReferenceStandalone(referenceDefectiveAnchorState())
+                else -> ReferenceGallery()
+            }
+        }
     }
 }
 
 @Composable
+private fun ReferenceStandalone(state: FieldUiState) {
+    FieldScreen(
+        state = state,
+        onSignIn = {},
+        onRetry = {},
+        onRefresh = {},
+        onSignOut = {},
+    )
+}
+
+@Composable
 private fun ReferenceGallery() {
-    MaterialTheme {
+    SignalFieldTheme {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -60,6 +77,13 @@ private fun ReferenceGallery() {
                 ReferenceFrame(
                     "Jobs loaded",
                     FieldUiState.JobsLoaded(referenceAccount(), listOf(referenceJob())),
+                )
+            }
+            item { ReferenceFrame("Job pack", referenceJobPackState()) }
+            item {
+                ReferenceFrame(
+                    "Anchor capture — defective",
+                    referenceDefectiveAnchorState(),
                 )
             }
             item { ReferenceFrame("Empty jobs", FieldUiState.EmptyJobs(referenceAccount())) }

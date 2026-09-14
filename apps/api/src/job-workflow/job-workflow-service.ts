@@ -179,11 +179,14 @@ function copyBundle(bundle: JobBundle): JobBundle {
 export class JobWorkflowService {
   constructor(private readonly options: JobWorkflowServiceOptions) {}
 
-  createJob(principal: AuthPrincipal, input: CreateJobInput): JobRecord {
+  async createJob(
+    principal: AuthPrincipal,
+    input: CreateJobInput,
+  ): Promise<JobRecord> {
     assertCanManageJobs(principal);
     assertObjectInput(input, 'job');
     const siteId = requiredId(input.siteId, 'siteId');
-    const site = this.requireSite(principal, siteId);
+    const site = await this.requireSite(principal, siteId);
     const now = this.now();
     const job: JobRecord = {
       companyId: principal.companyId,
@@ -202,38 +205,43 @@ export class JobWorkflowService {
       updatedAt: copyDate(now),
     };
 
-    this.options.store.createJob(job);
-    this.recordAudit(principal, 'job.created', job.jobId, {
+    await this.options.store.createJob(job);
+    await this.recordAudit(principal, 'job.created', job.jobId, {
       jurisdiction: job.jurisdiction,
       jobPackVersion: job.jobPackVersion,
     });
     return copyJob(job);
   }
 
-  listJobs(principal: AuthPrincipal): readonly JobBundle[] {
-    const jobs = this.options.store.listJobs(principal.companyId);
+  async listJobs(principal: AuthPrincipal): Promise<readonly JobBundle[]> {
+    const jobs = await this.options.store.listJobs(principal.companyId);
     if (principal.role !== 'inspector') {
       assertCanManageJobs(principal);
-      return jobs.map((job) => this.bundle(job));
+      return Promise.all(jobs.map((job) => this.bundle(job)));
     }
 
-    return jobs
-      .filter((job) => {
-        const assignment = this.options.store.getPrimaryAssignment(
-          principal.companyId,
-          job.jobId,
-        );
-        return (
-          job.workflowStatus === 'released' ||
-          assignment?.inspectorUserId === principal.userId
-        );
-      })
-      .map((job) => this.bundle(job));
+    const visible: JobBundle[] = [];
+    for (const job of jobs) {
+      const assignment = await this.options.store.getPrimaryAssignment(
+        principal.companyId,
+        job.jobId,
+      );
+      if (
+        job.workflowStatus === 'released' ||
+        assignment?.inspectorUserId === principal.userId
+      ) {
+        visible.push(await this.bundle(job));
+      }
+    }
+    return visible;
   }
 
-  getJob(principal: AuthPrincipal, jobId: string): JobBundle {
+  async getJob(principal: AuthPrincipal, jobId: string): Promise<JobBundle> {
     const normalizedJobId = requiredId(jobId, 'jobId');
-    const job = this.options.store.getJob(principal.companyId, normalizedJobId);
+    const job = await this.options.store.getJob(
+      principal.companyId,
+      normalizedJobId,
+    );
     if (!job) {
       throw new JobWorkflowFailure('NOT_FOUND', 'job was not found');
     }
@@ -242,7 +250,7 @@ export class JobWorkflowService {
       return this.bundle(job);
     }
 
-    const assignment = this.options.store.getPrimaryAssignment(
+    const assignment = await this.options.store.getPrimaryAssignment(
       principal.companyId,
       normalizedJobId,
     );
@@ -255,13 +263,16 @@ export class JobWorkflowService {
     return { job: copyJob(job), assignment: copyAssignment(assignment) };
   }
 
-  getJobPack(principal: AuthPrincipal, jobId: string): JobPackBundle {
+  async getJobPack(
+    principal: AuthPrincipal,
+    jobId: string,
+  ): Promise<JobPackBundle> {
     assertInspector(principal);
-    const bundle = this.getJob(principal, jobId);
+    const bundle = await this.getJob(principal, jobId);
     if (bundle.assignment?.inspectorUserId !== principal.userId) {
       throw new JobWorkflowFailure('NOT_FOUND', 'job was not found');
     }
-    const snapshot = this.options.store.getJobPackSnapshot(
+    const snapshot = await this.options.store.getJobPackSnapshot(
       principal.companyId,
       bundle.job.jobId,
       bundle.job.jobPackVersion,
@@ -305,37 +316,40 @@ export class JobWorkflowService {
     };
   }
 
-  releaseJob(principal: AuthPrincipal, jobId: string): JobBundle {
+  async releaseJob(
+    principal: AuthPrincipal,
+    jobId: string,
+  ): Promise<JobBundle> {
     assertCanManageJobs(principal);
     const normalizedJobId = requiredId(jobId, 'jobId');
-    const existing = this.options.store.getJob(
+    const existing = await this.options.store.getJob(
       principal.companyId,
       normalizedJobId,
     );
     const updatedAt = this.now();
     const job =
       existing?.workflowStatus === 'draft'
-        ? this.options.store.releaseJob(
+        ? await this.options.store.releaseJob(
             principal.companyId,
             normalizedJobId,
             updatedAt,
-            this.captureJobPackSnapshot(principal, existing),
+            await this.captureJobPackSnapshot(principal, existing),
           )
-        : this.options.store.releaseJob(
+        : await this.options.store.releaseJob(
             principal.companyId,
             normalizedJobId,
             updatedAt,
           );
-    this.recordAudit(principal, 'job.released', job.jobId, {
+    await this.recordAudit(principal, 'job.released', job.jobId, {
       jurisdiction: job.jurisdiction,
       jobPackVersion: job.jobPackVersion,
     });
     return this.bundle(job);
   }
 
-  claimJob(principal: AuthPrincipal, jobId: string): JobBundle {
+  async claimJob(principal: AuthPrincipal, jobId: string): Promise<JobBundle> {
     assertInspector(principal);
-    this.requireEligibleInspector(principal.companyId, principal.userId);
+    await this.requireEligibleInspector(principal.companyId, principal.userId);
     const normalizedJobId = requiredId(jobId, 'jobId');
     const now = this.now();
     const assignment: JobAssignmentRecord = {
@@ -349,14 +363,14 @@ export class JobWorkflowService {
       assignedAt: copyDate(now),
       claimedAt: copyDate(now),
     };
-    const result = this.options.store.createPrimaryAssignment(
+    const result = await this.options.store.createPrimaryAssignment(
       principal.companyId,
       normalizedJobId,
       assignment,
       now,
     );
     if (!result.replayed) {
-      this.recordAudit(principal, 'job.claimed', result.job.jobId, {
+      await this.recordAudit(principal, 'job.claimed', result.job.jobId, {
         assignmentId: result.assignment.assignmentId,
         assignmentType: result.assignment.assignmentType,
         inspectorUserId: result.assignment.inspectorUserId,
@@ -369,11 +383,11 @@ export class JobWorkflowService {
     };
   }
 
-  assignJob(
+  async assignJob(
     principal: AuthPrincipal,
     jobId: string,
     input: AssignJobInput,
-  ): JobBundle {
+  ): Promise<JobBundle> {
     assertCanManageJobs(principal);
     assertObjectInput(input, 'assignment');
     const normalizedJobId = requiredId(jobId, 'jobId');
@@ -381,7 +395,7 @@ export class JobWorkflowService {
       input.inspectorUserId,
       'inspectorUserId',
     );
-    this.requireEligibleInspector(principal.companyId, inspectorUserId);
+    await this.requireEligibleInspector(principal.companyId, inspectorUserId);
     const now = this.now();
     const assignment: JobAssignmentRecord = {
       companyId: principal.companyId,
@@ -394,14 +408,14 @@ export class JobWorkflowService {
       assignedAt: copyDate(now),
       claimedAt: null,
     };
-    const result = this.options.store.createPrimaryAssignment(
+    const result = await this.options.store.createPrimaryAssignment(
       principal.companyId,
       normalizedJobId,
       assignment,
       now,
     );
     if (!result.replayed) {
-      this.recordAudit(principal, 'job.assigned', result.job.jobId, {
+      await this.recordAudit(principal, 'job.assigned', result.job.jobId, {
         assignmentId: result.assignment.assignmentId,
         assignmentType: result.assignment.assignmentType,
         inspectorUserId: result.assignment.inspectorUserId,
@@ -414,24 +428,29 @@ export class JobWorkflowService {
     };
   }
 
-  private bundle(job: JobRecord): JobBundle {
+  private async bundle(job: JobRecord): Promise<JobBundle> {
     return copyBundle({
       job,
       assignment:
-        this.options.store.getPrimaryAssignment(job.companyId, job.jobId) ??
-        null,
+        (await this.options.store.getPrimaryAssignment(
+          job.companyId,
+          job.jobId,
+        )) ?? null,
     });
   }
 
-  private captureJobPackSnapshot(
+  private async captureJobPackSnapshot(
     principal: AuthPrincipal,
     job: JobRecord,
-  ): JobPackSnapshot {
+  ): Promise<JobPackSnapshot> {
     let site: SiteRecord;
     let anchors: readonly AnchorRecord[];
     try {
-      site = this.options.siteDirectory.getSite(principal, job.siteId);
-      anchors = this.options.siteDirectory.listAnchors(principal, job.siteId);
+      site = await this.options.siteDirectory.getSite(principal, job.siteId);
+      anchors = await this.options.siteDirectory.listAnchors(
+        principal,
+        job.siteId,
+      );
     } catch (error) {
       if (error instanceof SiteRegisterFailure) {
         throw new JobWorkflowFailure(error.code, error.message);
@@ -471,9 +490,12 @@ export class JobWorkflowService {
     });
   }
 
-  private requireSite(principal: AuthPrincipal, siteId: string) {
+  private async requireSite(
+    principal: AuthPrincipal,
+    siteId: string,
+  ): Promise<SiteRecord> {
     try {
-      return this.options.siteDirectory.getSite(principal, siteId);
+      return await this.options.siteDirectory.getSite(principal, siteId);
     } catch (error) {
       if (error instanceof SiteRegisterFailure) {
         throw new JobWorkflowFailure(error.code, error.message);
@@ -482,8 +504,14 @@ export class JobWorkflowService {
     }
   }
 
-  private requireEligibleInspector(companyId: string, userId: string): void {
-    const member = this.options.memberDirectory.getMember(companyId, userId);
+  private async requireEligibleInspector(
+    companyId: string,
+    userId: string,
+  ): Promise<void> {
+    const member = await this.options.memberDirectory.getMember(
+      companyId,
+      userId,
+    );
     if (
       !member ||
       member.companyId !== companyId ||
@@ -506,13 +534,13 @@ export class JobWorkflowService {
     return copyDate(now);
   }
 
-  private recordAudit(
+  private async recordAudit(
     principal: AuthPrincipal,
     action: string,
     jobId: string,
     metadata: Readonly<Record<string, string | number | boolean>>,
-  ): void {
-    this.options.auditSink.record({
+  ): Promise<void> {
+    await this.options.auditSink.record({
       companyId: principal.companyId,
       actorUserId: principal.userId,
       action,

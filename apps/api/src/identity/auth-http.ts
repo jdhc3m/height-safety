@@ -40,7 +40,7 @@ export function authenticateSession(
   authService: AuthService,
   authorization: string | undefined,
   companyIdHeader: string | undefined,
-): AuthPrincipal {
+): Promise<AuthPrincipal> {
   return authService.authenticateSession(
     requireCompanyId(companyIdHeader),
     requireBearerToken(authorization),

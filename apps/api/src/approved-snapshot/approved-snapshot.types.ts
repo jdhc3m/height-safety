@@ -99,12 +99,15 @@ export interface ApprovedSnapshotResult {
  * immutability guarantees.
  */
 export interface ApprovedSnapshotStore {
-  findById(companyId: string, snapshotId: string): ApprovedSnapshot | undefined;
+  findById(
+    companyId: string,
+    snapshotId: string,
+  ): Promise<ApprovedSnapshot | undefined>;
   findByApprovalId(
     companyId: string,
     approvalId: string,
-  ): ApprovedSnapshot | undefined;
-  create(snapshot: ApprovedSnapshot): void;
+  ): Promise<ApprovedSnapshot | undefined>;
+  create(snapshot: ApprovedSnapshot): Promise<void>;
 }
 
 export interface ApprovedSnapshotAuditEvent {
@@ -118,7 +121,7 @@ export interface ApprovedSnapshotAuditEvent {
 }
 
 export interface ApprovedSnapshotAuditSink {
-  record(event: ApprovedSnapshotAuditEvent): void;
+  record(event: ApprovedSnapshotAuditEvent): void | Promise<void>;
 }
 
 export class NoopApprovedSnapshotAuditSink
@@ -161,21 +164,21 @@ export class UnconfiguredApprovedSnapshotStore
     );
   }
 
-  findById(
+  async findById(
     _companyId: string,
     _snapshotId: string,
-  ): ApprovedSnapshot | undefined {
+  ): Promise<ApprovedSnapshot | undefined> {
     return this.unavailable();
   }
 
-  findByApprovalId(
+  async findByApprovalId(
     _companyId: string,
     _approvalId: string,
-  ): ApprovedSnapshot | undefined {
+  ): Promise<ApprovedSnapshot | undefined> {
     return this.unavailable();
   }
 
-  create(_snapshot: ApprovedSnapshot): void {
+  async create(_snapshot: ApprovedSnapshot): Promise<void> {
     this.unavailable();
   }
 }

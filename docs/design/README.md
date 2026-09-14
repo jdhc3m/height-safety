@@ -1,7 +1,8 @@
 # Stage 3B design reference pack
 
-Status: ready for owner validation. Design-only alignment; no Android screen
-redesign is approved or implemented by this pass.
+Status: ready for owner validation. The researched light palette is applied to
+the current Android theme and semantic states; the full Signal Field screen
+redesign remains a candidate and is not approved by this pass.
 
 ## Start here
 
@@ -13,6 +14,38 @@ redesign is approved or implemented by this pass.
    — dependency-free simulation of the built flow plus labelled future direction.
 4. [Portable Brilliant storyboard](height-safety-3b-flow.bl)
    — editable static storyboard source.
+
+## Third mobile direction
+
+The `Signal Field` direction is a separate owner-validation candidate built
+from the current Android/debug vocabulary and synthetic values. It uses a
+measured `360 × 800dp` compact-phone reference, a daylight theme comparison,
+semantic colour-coded solid icons, and a reusable component library:
+
+- [Signal Field source notes](HEIGHT_SAFETY_3C_MOBILE_SIGNAL.md)
+- [Signal Field colour research](HEIGHT_SAFETY_3C_COLOR_RESEARCH.md)
+- [Clickable Signal Field mobile prototype](height-safety-3c-mobile-signal.html)
+- [Signal Field component library](height-safety-3c-component-library.html)
+
+The clickable mobile prototype includes four visual palette candidates —
+Signal orange, Blue horizon, Harbour + mint and Plum + teal — so the same
+workflow can be navigated while comparing themes. Blue horizon is the current
+working default for owner review. The picker changes primary, information and
+job-pack context accents while preserving semantic saved, warning and blocker
+roles. These remain owner-validation candidates, not an approved production
+theme.
+
+The prototype uses local inline domain vectors for roof-anchor and industry
+symbols, with the [Icons8 industry color set](https://icons8.com/icons/set/industry--style-color)
+retained as a style reference rather than copied artwork. The Brilliant
+masters use the same Blue horizon roles and editable field-work icon choices.
+The Android pass now uses standalone two- or three-colour icons without icon
+background tiles, subtly elevated cards, a pale-blue job context card and
+matching inset panels for conditional defect and photo states.
+
+The Brilliant `Canvas` also contains the editable native masters under
+`Signal Field native components`: `StatusChip`, `ActionButton`, `AnchorRow`,
+`EvidenceSection`, `BottomNavigation` and `JobCard`.
 
 ## Supporting reference
 

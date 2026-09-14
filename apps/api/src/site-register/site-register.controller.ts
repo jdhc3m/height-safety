@@ -136,13 +136,13 @@ export class SiteRegisterController {
     @Body() input: CreateClientDto,
   ): Promise<ClientResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
       return toClientResponse(
-        this.siteRegisterService.createClient(principal, input),
+        await this.siteRegisterService.createClient(principal, input),
       );
     } catch (error) {
       return toSiteRegisterHttpException(error);
@@ -157,14 +157,14 @@ export class SiteRegisterController {
     @Headers('x-company-id') companyId: string | undefined,
   ): Promise<readonly ClientResponseDto[]> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
-      return this.siteRegisterService
-        .listClients(principal)
-        .map(toClientResponse);
+      return (await this.siteRegisterService.listClients(principal)).map(
+        toClientResponse,
+      );
     } catch (error) {
       return toSiteRegisterHttpException(error);
     }
@@ -179,13 +179,13 @@ export class SiteRegisterController {
     @Param('clientId') clientId: string,
   ): Promise<ClientResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
       return toClientResponse(
-        this.siteRegisterService.getClient(principal, clientId),
+        await this.siteRegisterService.getClient(principal, clientId),
       );
     } catch (error) {
       return toSiteRegisterHttpException(error);
@@ -205,13 +205,13 @@ export class SiteRegisterController {
     @Body() input: UpdateClientDto,
   ): Promise<ClientResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
       return toClientResponse(
-        this.siteRegisterService.updateClient(principal, clientId, input),
+        await this.siteRegisterService.updateClient(principal, clientId, input),
       );
     } catch (error) {
       return toSiteRegisterHttpException(error);
@@ -230,13 +230,13 @@ export class SiteRegisterController {
     @Body() input: CreateSiteDto,
   ): Promise<SiteResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
       return toSiteResponse(
-        this.siteRegisterService.createSite(principal, input),
+        await this.siteRegisterService.createSite(principal, input),
       );
     } catch (error) {
       return toSiteRegisterHttpException(error);
@@ -251,12 +251,14 @@ export class SiteRegisterController {
     @Headers('x-company-id') companyId: string | undefined,
   ): Promise<readonly SiteResponseDto[]> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
-      return this.siteRegisterService.listSites(principal).map(toSiteResponse);
+      return (await this.siteRegisterService.listSites(principal)).map(
+        toSiteResponse,
+      );
     } catch (error) {
       return toSiteRegisterHttpException(error);
     }
@@ -271,13 +273,13 @@ export class SiteRegisterController {
     @Param('siteId') siteId: string,
   ): Promise<SiteResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
       return toSiteResponse(
-        this.siteRegisterService.getSite(principal, siteId),
+        await this.siteRegisterService.getSite(principal, siteId),
       );
     } catch (error) {
       return toSiteRegisterHttpException(error);
@@ -294,13 +296,13 @@ export class SiteRegisterController {
     @Body() input: UpdateSiteDto,
   ): Promise<SiteResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
       return toSiteResponse(
-        this.siteRegisterService.updateSite(principal, siteId, input),
+        await this.siteRegisterService.updateSite(principal, siteId, input),
       );
     } catch (error) {
       return toSiteRegisterHttpException(error);
@@ -320,13 +322,13 @@ export class SiteRegisterController {
     @Body() input: CreateAnchorDto,
   ): Promise<AnchorResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
       return toAnchorResponse(
-        this.siteRegisterService.createAnchor(principal, siteId, input),
+        await this.siteRegisterService.createAnchor(principal, siteId, input),
       );
     } catch (error) {
       return toSiteRegisterHttpException(error);
@@ -345,14 +347,14 @@ export class SiteRegisterController {
     @Param('siteId') siteId: string,
   ): Promise<readonly AnchorResponseDto[]> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
-      return this.siteRegisterService
-        .listAnchors(principal, siteId)
-        .map(toAnchorResponse);
+      return (
+        await this.siteRegisterService.listAnchors(principal, siteId)
+      ).map(toAnchorResponse);
     } catch (error) {
       return toSiteRegisterHttpException(error);
     }
@@ -371,13 +373,13 @@ export class SiteRegisterController {
     @Param('anchorId') anchorId: string,
   ): Promise<AnchorResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
       return toAnchorResponse(
-        this.siteRegisterService.getAnchor(principal, siteId, anchorId),
+        await this.siteRegisterService.getAnchor(principal, siteId, anchorId),
       );
     } catch (error) {
       return toSiteRegisterHttpException(error);
@@ -398,13 +400,13 @@ export class SiteRegisterController {
     @Body() input: UpdateAnchorDto,
   ): Promise<AnchorResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
       return toAnchorResponse(
-        this.siteRegisterService.updateAnchor(
+        await this.siteRegisterService.updateAnchor(
           principal,
           siteId,
           anchorId,

@@ -18,11 +18,14 @@
 | T-014 | Keep `3B-01` Android authentication provider-neutral: acquire a provider token through an injected source, exchange it through the generated OpenAPI client, verify current membership/role, and keep the resulting session in memory for this slice. | Implemented bounded direction; durable session storage remains open | Avoids selecting a deferred identity provider, keeps generated client types in Android adapters and leaves platform-secure persistence to the offline job-pack work. |
 | T-015 | Expose an inspector-only `GET /jobs/{jobId}/pack` boundary for claimed/assigned jobs and map its release-time immutable job/site/anchor snapshot into Kotlin/JVM domain values; persist the pack and application-owned lease through a company-plus-job keyed encrypted Room/SQLCipher adapter, and request device credential confirmation before app access. | Implemented bounded direction in `3B-02`; capture, sync, recovery and durable server adapters remain open | Keeps server authorisation and version context explicit, prevents later register edits from silently changing a released pack, prevents cross-tenant local key collisions, preserves the Android domain boundary (D-026), and makes lease lock/evidence preservation testable without inferring compliance or legal rules. |
 | T-016 | Keep anchor-evidence capture rules in `:domain`; persist local inspection drafts and anchor-scoped photo references in the encrypted Room adapter using a versioned schema and company/job/pack-version keys. CameraX writes JPEG bytes to app-private no-backup storage and the encrypted draft stores checksum/reference metadata. | Implemented bounded slices in `3B-03`; outbox, submission, media upload and synchronisation remain open | Allows local-first incomplete drafts while the domain exposes the full Stage 2B completion gate, preserves pack-version provenance and photo association, and keeps Android persistence outside the Kotlin/JVM field rules. |
+| T-017 | Use Google Cloud in `australia-southeast1` (Sydney) as the target platform for the bounded pilot: Cloud Run for the NestJS API, Next.js office web and separate PDF worker; Cloud Tasks for authenticated asynchronous invocation; Cloud SQL for PostgreSQL; and private Cloud Storage for media/reports. Keep provider SDKs behind the existing PostgreSQL/object-storage adapter boundaries and require operational gates before real data or production deployment. | Owner-directed target architecture (D-041); cloud mutation and production readiness remain open | Reuses the exercised Cloud Run Sydney renderer candidate, keeps the managed runtime and stateful services in one Australian region, supports usage-based container compute and preserves portability while backup/restore, retention, export, residency, runtime IAM and recovery details are completed. |
 
-Provider, authentication service, production Android encryption adoption,
-retention periods and G-05 design-partner review remain open. D-023 selects
-and proves maintained SQLCipher Android as the bounded Room candidate;
-production adoption remains conditional on its documented exit triggers. D-025
-is owner-approved for the 24-hour lease and upload-only recovery path. D-026
-keeps product Android field domain as Kotlin/JVM and defers KMP. Each
-implementation choice needs tests and an update here when materially changed.
+The GCP target is selected by D-041, but the authentication service, native
+Cloud SQL/Cloud Storage configuration, production Android encryption adoption,
+retention periods, backup/restore, export, residency, recovery targets and G-05
+design-partner review remain open. D-023 selects and proves maintained
+SQLCipher Android as the bounded Room candidate; production adoption remains
+conditional on its documented exit triggers. D-025 is owner-approved for the
+24-hour lease and upload-only recovery path. D-026 keeps product Android field
+domain as Kotlin/JVM and defers KMP. Each implementation choice needs tests
+and an update here when materially changed.

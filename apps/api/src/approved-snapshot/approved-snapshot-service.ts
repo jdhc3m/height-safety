@@ -408,10 +408,10 @@ function copyDate(value: Date): Date {
 export class ApprovedSnapshotService {
   constructor(private readonly options: ApprovedSnapshotServiceOptions) {}
 
-  create(
+  async create(
     principal: AuthPrincipal,
     source: ApprovedSnapshotSource,
-  ): ApprovedSnapshotResult {
+  ): Promise<ApprovedSnapshotResult> {
     assertCanApproveSnapshot(principal);
     const normalized = normalizeSource(source);
     if (normalized.companyId !== principal.companyId) {
@@ -441,7 +441,7 @@ export class ApprovedSnapshotService {
 
     const sourceIdentityJson = canonicalSourceIdentity(normalized);
     const sourceIdentitySha256 = sha256(sourceIdentityJson);
-    const existing = this.options.store.findByApprovalId(
+    const existing = await this.options.store.findByApprovalId(
       principal.companyId,
       normalized.approvalId,
     );
@@ -500,8 +500,30 @@ export class ApprovedSnapshotService {
       sha256: sha256(documentJson),
     };
 
-    this.options.store.create(snapshot);
-    this.options.auditSink.record({
+    try {
+      await this.options.store.create(snapshot);
+    } catch (error) {
+      // A durable store may reject a concurrent insert after both callers
+      // observed no existing approval. Re-read the approval so a retry still
+      // has exactly-once behaviour when the source is identical.
+      if (
+        error instanceof ApprovedSnapshotFailure &&
+        error.code === 'CONFLICT'
+      ) {
+        const concurrent = await this.options.store.findByApprovalId(
+          principal.companyId,
+          normalized.approvalId,
+        );
+        if (
+          concurrent &&
+          concurrent.sourceIdentitySha256 === sourceIdentitySha256
+        ) {
+          return { snapshot: copyApprovedSnapshot(concurrent), replayed: true };
+        }
+      }
+      throw error;
+    }
+    await this.options.auditSink.record({
       companyId: principal.companyId,
       actorUserId: principal.userId,
       action: 'inspection.snapshot_approved',
@@ -517,10 +539,13 @@ export class ApprovedSnapshotService {
     return { snapshot: copyApprovedSnapshot(snapshot), replayed: false };
   }
 
-  get(principal: AuthPrincipal, snapshotId: string): ApprovedSnapshot {
+  async get(
+    principal: AuthPrincipal,
+    snapshotId: string,
+  ): Promise<ApprovedSnapshot> {
     assertCanApproveSnapshot(principal);
     const normalizedSnapshotId = requiredId(snapshotId, 'snapshotId');
-    const snapshot = this.options.store.findById(
+    const snapshot = await this.options.store.findById(
       principal.companyId,
       normalizedSnapshotId,
     );

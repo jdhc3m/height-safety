@@ -8,6 +8,7 @@ All URIs are relative to */api/v1*
 | [**createInvitation**](IdentityApi.md#createInvitation) | **POST** auth/invitations | Create an invitation for a company user |
 | [**createSession**](IdentityApi.md#createSession) | **POST** auth/sessions | Create an application session from a provider access token |
 | [**getCurrentAuth**](IdentityApi.md#getCurrentAuth) | **GET** auth/me | Read current session membership and role |
+| [**renewSession**](IdentityApi.md#renewSession) | **POST** auth/sessions/renew | Renew a still-live application session after membership revalidation |
 | [**revokeCurrentSession**](IdentityApi.md#revokeCurrentSession) | **POST** auth/sessions/revoke | Revoke the current application session |
 
 
@@ -159,6 +160,46 @@ launch(Dispatchers.IO) {
 ### Return type
 
 [**AuthMeResponseDto**](AuthMeResponseDto.md)
+
+### Authorization
+
+
+Configure access-token:
+    ApiClient().setBearerToken("TOKEN")
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+
+Renew a still-live application session after membership revalidation
+
+### Example
+```kotlin
+// Import classes:
+//import au.com.heightsafety.api.*
+//import au.com.heightsafety.api.infrastructure.*
+//import au.com.heightsafety.api.models.*
+
+val apiClient = ApiClient()
+apiClient.setBearerToken("TOKEN")
+val webService = apiClient.createWebservice(IdentityApi::class.java)
+val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
+
+launch(Dispatchers.IO) {
+    val result : SessionResponseDto = webService.renewSession(xCompanyId)
+}
+```
+
+### Parameters
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **xCompanyId** | **kotlin.String**|  | |
+
+### Return type
+
+[**SessionResponseDto**](SessionResponseDto.md)
 
 ### Authorization
 

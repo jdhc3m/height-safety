@@ -75,6 +75,14 @@ class IdentityApiTest : ShouldSpec() {
             //result shouldBe ("TODO")
         }
 
+        // to test renewSession
+        should("test renewSession") {
+            // uncomment below to test renewSession
+            //val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
+            //val result : SessionResponseDto = apiInstance.renewSession(xCompanyId)
+            //result shouldBe ("TODO")
+        }
+
         // to test revokeCurrentSession
         should("test revokeCurrentSession") {
             // uncomment below to test revokeCurrentSession

@@ -81,30 +81,35 @@ export interface JobAssignmentResult {
 }
 
 export interface JobWorkflowStore {
-  createJob(job: JobRecord): void;
-  getJob(companyId: string, jobId: string): JobRecord | undefined;
-  listJobs(companyId: string): readonly JobRecord[];
+  createJob(job: JobRecord): void | Promise<void>;
+  getJob(
+    companyId: string,
+    jobId: string,
+  ): JobRecord | undefined | Promise<JobRecord | undefined>;
+  listJobs(
+    companyId: string,
+  ): readonly JobRecord[] | Promise<readonly JobRecord[]>;
   getPrimaryAssignment(
     companyId: string,
     jobId: string,
-  ): JobAssignmentRecord | undefined;
+  ): JobAssignmentRecord | undefined | Promise<JobAssignmentRecord | undefined>;
   releaseJob(
     companyId: string,
     jobId: string,
     updatedAt: Date,
     packSnapshot?: JobPackSnapshot,
-  ): JobRecord;
+  ): JobRecord | Promise<JobRecord>;
   getJobPackSnapshot(
     companyId: string,
     jobId: string,
     jobPackVersion: number,
-  ): JobPackSnapshot | undefined;
+  ): JobPackSnapshot | undefined | Promise<JobPackSnapshot | undefined>;
   createPrimaryAssignment(
     companyId: string,
     jobId: string,
     assignment: JobAssignmentRecord,
     updatedAt: Date,
-  ): JobAssignmentResult;
+  ): JobAssignmentResult | Promise<JobAssignmentResult>;
 }
 
 export interface JobWorkflowMember {
@@ -115,15 +120,21 @@ export interface JobWorkflowMember {
 }
 
 export interface JobWorkflowMemberDirectory {
-  getMember(companyId: string, userId: string): JobWorkflowMember | undefined;
+  getMember(
+    companyId: string,
+    userId: string,
+  ): JobWorkflowMember | undefined | Promise<JobWorkflowMember | undefined>;
 }
 
 export interface JobWorkflowSiteDirectory extends FieldRegisterReader {
-  getSite(principal: AuthPrincipal, siteId: string): SiteRecord;
+  getSite(
+    principal: AuthPrincipal,
+    siteId: string,
+  ): SiteRecord | Promise<SiteRecord>;
   listAnchors(
     principal: AuthPrincipal,
     siteId: string,
-  ): readonly AnchorRecord[];
+  ): readonly AnchorRecord[] | Promise<readonly AnchorRecord[]>;
 }
 
 export interface JobWorkflowClock {
@@ -145,7 +156,7 @@ export interface JobWorkflowAuditEvent {
 }
 
 export interface JobWorkflowAuditSink {
-  record(event: JobWorkflowAuditEvent): void;
+  record(event: JobWorkflowAuditEvent): void | Promise<void>;
 }
 
 export class NoopJobWorkflowAuditSink implements JobWorkflowAuditSink {

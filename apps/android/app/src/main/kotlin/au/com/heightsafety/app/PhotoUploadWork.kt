@@ -12,6 +12,9 @@ import androidx.work.WorkerParameters
 import au.com.heightsafety.data.EncryptedJobPackStore
 import au.com.heightsafety.data.LocalAnchorPhotoStorage
 import au.com.heightsafety.data.LocalAnchorPhotoUploadContentSource
+import au.com.heightsafety.api.apis.SynchronisationApi
+import au.com.heightsafety.api.infrastructure.ApiClient
+import au.com.heightsafety.domain.FieldSession
 import au.com.heightsafety.domain.OfflineAccessSession
 import au.com.heightsafety.domain.PhotoUploadDelivery
 import au.com.heightsafety.domain.PhotoUploadQueueDrainer
@@ -24,6 +27,9 @@ import java.util.concurrent.TimeUnit
 
 public object PhotoUploadWork {
     public const val UNIQUE_WORK_NAME: String = "height-safety-photo-upload-queue"
+
+    @Volatile
+    private var activeSession: FieldSession? = null
 
     public fun enqueue(context: Context) {
         val constraints = Constraints.Builder()
@@ -38,6 +44,17 @@ public object PhotoUploadWork {
                 .build(),
         )
     }
+
+    public fun enqueue(context: Context, session: FieldSession) {
+        activeSession = session
+        enqueue(context)
+    }
+
+    public fun clearSession() {
+        activeSession = null
+    }
+
+    internal fun sessionForWorker(): FieldSession? = activeSession
 }
 
 public class PhotoUploadWorker internal constructor(
@@ -75,17 +92,42 @@ public class PhotoUploadWorker internal constructor(
 }
 
 private fun defaultPhotoUploadDrainer(context: Context): PhotoUploadQueueDrainer =
-    PhotoUploadQueueDrainer(
-        store = EncryptedJobPackStore(context.applicationContext),
-        contentSource = LocalAnchorPhotoUploadContentSource(
-            LocalAnchorPhotoStorage(context.applicationContext),
-        ),
-        transport = UnconfiguredPhotoUploadTransport,
-        nowEpochMillis = { System.currentTimeMillis() },
-    )
+    PhotoUploadWork.sessionForWorker().let { session ->
+        val store = EncryptedJobPackStore(context.applicationContext)
+        val apiClient = session?.let {
+            ApiClient(
+                baseUrl = context.getString(R.string.api_base_url),
+                authNames = arrayOf("access-token"),
+            )
+        }
+        val transport = when {
+            session == null -> UnconfiguredPhotoUploadTransport
+            session.isExpired(System.currentTimeMillis()) -> SessionExpiredPhotoUploadTransport
+            else -> {
+                val authenticatedSession = session
+                val authenticatedApiClient = apiClient
+                    ?: error("authenticated photo worker API client is unavailable")
+                OpenApiPhotoUploadTransport(
+                    synchronisationApi = authenticatedApiClient
+                        .createService(SynchronisationApi::class.java),
+                    session = authenticatedSession,
+                    bearerTokenSink = authenticatedApiClient::setBearerToken,
+                )
+            }
+        }
+        PhotoUploadQueueDrainer(
+            store = store,
+            contentSource = LocalAnchorPhotoUploadContentSource(
+                LocalAnchorPhotoStorage(context.applicationContext),
+            ),
+            transport = transport,
+            nowEpochMillis = { System.currentTimeMillis() },
+            companyId = session?.companyId,
+        )
+    }
 
 private suspend fun defaultPhotoUploadAllowed(context: Context): Boolean {
-    val session = MutationOutboxWork.sessionForWorker() ?: return false
+    val session = PhotoUploadWork.sessionForWorker() ?: return false
     if (session.isExpired(System.currentTimeMillis())) return false
     val access = defaultPhotoOfflineAccessSession(context)
     return try {
@@ -98,7 +140,7 @@ private suspend fun defaultPhotoUploadAllowed(context: Context): Boolean {
 }
 
 private suspend fun reconcileDefaultPhotoAccess(context: Context) {
-    val session = MutationOutboxWork.sessionForWorker() ?: return
+    val session = PhotoUploadWork.sessionForWorker() ?: return
     val store = EncryptedJobPackStore(context.applicationContext)
     val access = defaultPhotoOfflineAccessSession(context)
     val restored = access.restore(session.companyId, session.userId)
@@ -126,5 +168,14 @@ private object UnconfiguredPhotoUploadTransport : PhotoUploadTransport {
         chunk: au.com.heightsafety.domain.PhotoUploadChunk,
     ): PhotoUploadDelivery = PhotoUploadDelivery.PermanentFailure(
         "Photo upload transport is not configured.",
+    )
+}
+
+
+private object SessionExpiredPhotoUploadTransport : PhotoUploadTransport {
+    override suspend fun upload(
+        chunk: au.com.heightsafety.domain.PhotoUploadChunk,
+    ): PhotoUploadDelivery = PhotoUploadDelivery.PermanentFailure(
+        "Active field session is expired; sign in again before uploading photos.",
     )
 }

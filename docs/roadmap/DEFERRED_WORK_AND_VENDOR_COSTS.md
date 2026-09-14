@@ -1,7 +1,8 @@
 # Deferred work and vendor-cost research
 
 **Date:** 2026-09-04
-**Status:** Research and indicative estimate; not a production-provider decision.
+**Status:** Research and indicative estimate; GCP Sydney is the bounded-pilot
+target under D-041, but this is not a production-deployment approval.
 
 This note answers which product work is still deferred and which external services
 may create a cash cost for a controlled pilot. Amounts are approximate USD list
@@ -59,7 +60,7 @@ The authoritative status and ticket order are in
 | Alternative database | AWS RDS PostgreSQL, Sydney | Current public Sydney price data indicates about **US$18.25/month** for a `db.t4g.micro` single-AZ instance plus about **US$2.76/month** for 20 GiB gp3: roughly **US$21.01/month** before backups, egress and taxes. An eligible new AWS account may have free-tier coverage for a period. See [RDS PostgreSQL pricing](https://aws.amazon.com/rds/postgresql/pricing/) and the [Sydney RDS price list](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/current/ap-southeast-2/index.json). |
 | Private photo/report storage | **Cloud Storage Standard, Sydney** | About **US$0.020/GiB-month**; 10 GiB is about **US$0.20/month**, before operations and egress. Sydney does not receive the US-only Always Free storage tier. See [Cloud Storage pricing](https://cloud.google.com/storage/pricing). |
 | API/web/PDF worker | **Cloud Run + Cloud Tasks**, Sydney | Cloud Run request-based free tier includes 180,000 vCPU-seconds, 360,000 GiB-seconds and 2 million requests per month; Cloud Tasks includes the first 1 million operations monthly. Low-volume use with scale-to-zero should be **$0 or cents**, but a minimum instance, logs, egress or other resources changes that. See [Cloud Run pricing](https://cloud.google.com/run/pricing) and [Cloud Tasks pricing](https://cloud.google.com/tasks/pricing). |
-| Authentication | **Amazon Cognito**, Sydney | Lite/Essentials direct or social sign-in has an indefinite free tier up to 10,000 MAU. TOTP authenticator-app MFA avoids SMS charges; invitation/verification email is a separate SES cost. Company membership, roles and product audit semantics still belong in our application. See [Cognito pricing](https://aws.amazon.com/cognito/pricing/), [TOTP MFA](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-settings-mfa-totp.html) and [regional data considerations](https://docs.aws.amazon.com/cognito/latest/developerguide/security-cognito-regional-data-considerations.html). |
+| Alternative authentication (not selected) | **Amazon Cognito**, Sydney | Lite/Essentials direct or social sign-in has an indefinite free tier up to 10,000 MAU. TOTP authenticator-app MFA avoids SMS charges; invitation/verification email is a separate SES cost. Company membership, roles and product audit semantics still belong in our application. See [Cognito pricing](https://aws.amazon.com/cognito/pricing/), [TOTP MFA](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-settings-mfa-totp.html) and [regional data considerations](https://docs.aws.amazon.com/cognito/latest/developerguide/security-cognito-regional-data-considerations.html). |
 | Invitation/verification email | **Amazon SES** | About **US$0.10 per 1,000 emails** after the applicable introductory allowance; no SMS vendor is needed if TOTP is used. See [SES pricing](https://aws.amazon.com/ses/pricing/). |
 | Android distribution | Android Developer Console | Limited distribution currently has **no registration fee for up to 20 devices**. Full distribution requires a **one-time US$25** registration. See [Android Developer Console distribution options](https://support.google.com/android-developer/answer/16640817?hl=en). |
 | Practitioner, legal and privacy validation | Design partner / qualified professionals | Required before a real-data pilot, but **quote-only**. This is likely to cost more than the initial cloud bill and cannot be responsibly estimated from vendor list prices. |
@@ -77,21 +78,21 @@ There are two different answers:
   spend. Keep the current local/debug path and limited Android distribution.
   This does not support real customer data or prove the production controls.
 - **Small controlled pilot with real data:** keep the app, database, private
-  storage, Cloud Run renderer and queue in **GCP Sydney**, using the already
-  exercised Cloud Run renderer candidate, and use **AWS Cognito in Sydney** for
-  invitation-only identity with TOTP MFA and SES email. A low-traffic baseline
-  is approximately **US$11.50–15/month** before backups, egress, taxes, paid
+  storage, Cloud Run services and queue in **GCP Sydney**, using the already
+  exercised Cloud Run renderer candidate. The authentication vendor remains a
+  separate open decision; keep the provider-neutral adapter until that decision
+  is made. The GCP database/storage baseline is approximately
+  **US$11.27/month** before authentication, backups, egress, taxes, paid
   support, engineering and professional validation: about US$11.07 for the
   smallest Cloud SQL instance and 20 GiB, plus roughly US$0.20 for 10 GiB of
-  object storage; compute, queue, Cognito and small email volume can remain
-  free or near-free at this scale.
+  object storage; compute and queue can remain free or near-free at this
+  scale.
 
-This is the lowest-cost option that keeps the current Australian-region and
-managed-auth direction visible, but it adds cross-cloud authentication
-operations. It is **not** an approved production architecture. Before any
-cloud mutation or real customer data, the owner still needs to approve the
-provider arrangement and close residency, backup/restore, retention, export,
-RPO/RTO and G-05/G-06 evidence questions.
+This is the lowest-cost target that keeps the current Australian-region
+services together and reuses the existing renderer evidence. It is **not** an
+approved production deployment. Before any cloud mutation or real customer
+data, the project must close residency, backup/restore, retention, export,
+RPO/RTO, runtime IAM and G-05/G-06 evidence questions.
 
 Cloud Identity Platform may appear cheaper because its first 50,000 email/social
 MAU are free, but Firebase states that Firebase Authentication processes data
@@ -113,5 +114,6 @@ see [Auth0 B2B plans](https://auth0.com/blog/whatever-you-are-building-auth0-has
 - Monthly totals: **indicative estimates**, not quotes. They exclude engineering
   time, professional review, support, backups beyond the small baseline,
   observability, egress, domains and payment-processing fees.
-- No cloud resource has been created by this research, and no production vendor
-  has been selected.
+- No cloud resource has been created by this research. GCP Sydney is the target
+  under D-041, while native provider configuration and production deployment
+  remain open.

@@ -223,10 +223,10 @@ function registerStatus(value: unknown): RegisterStatus {
 export class SiteRegisterService {
   constructor(private readonly options: SiteRegisterServiceOptions) {}
 
-  createClient(
+  async createClient(
     principal: AuthPrincipal,
     input: CreateClientInput,
-  ): ClientRecord {
+  ): Promise<ClientRecord> {
     this.assertManager(principal);
     assertObjectInput(input, 'client');
     const now = this.now();
@@ -248,19 +248,31 @@ export class SiteRegisterService {
       updatedAt: copyDate(now),
     };
 
-    this.options.store.createClient(client);
-    this.recordAudit(principal, 'client.created', 'client', client.clientId);
+    await this.options.store.createClient(client);
+    await this.recordAudit(
+      principal,
+      'client.created',
+      'client',
+      client.clientId,
+    );
     return copyClient(client);
   }
 
-  listClients(principal: AuthPrincipal): readonly ClientRecord[] {
+  async listClients(
+    principal: AuthPrincipal,
+  ): Promise<readonly ClientRecord[]> {
     this.assertManager(principal);
-    return this.options.store.listClients(principal.companyId).map(copyClient);
+    return (await this.options.store.listClients(principal.companyId)).map(
+      copyClient,
+    );
   }
 
-  getClient(principal: AuthPrincipal, clientId: string): ClientRecord {
+  async getClient(
+    principal: AuthPrincipal,
+    clientId: string,
+  ): Promise<ClientRecord> {
     this.assertManager(principal);
-    const client = this.options.store.getClient(
+    const client = await this.options.store.getClient(
       principal.companyId,
       requiredId(clientId, 'clientId'),
     );
@@ -270,15 +282,15 @@ export class SiteRegisterService {
     return copyClient(client);
   }
 
-  updateClient(
+  async updateClient(
     principal: AuthPrincipal,
     clientId: string,
     input: UpdateClientInput,
-  ): ClientRecord {
+  ): Promise<ClientRecord> {
     this.assertManager(principal);
     assertObjectInput(input, 'client');
     const normalizedClientId = requiredId(clientId, 'clientId');
-    const existing = this.options.store.getClient(
+    const existing = await this.options.store.getClient(
       principal.companyId,
       normalizedClientId,
     );
@@ -311,22 +323,31 @@ export class SiteRegisterService {
       updatedAt: this.now(),
     };
 
-    this.options.store.updateClient(client);
-    this.recordAudit(principal, 'client.updated', 'client', client.clientId, {
-      changedFields: changedFields(existing, client, [
-        'name',
-        'contactDetails',
-        'externalReference',
-      ]),
-    });
+    await this.options.store.updateClient(client);
+    await this.recordAudit(
+      principal,
+      'client.updated',
+      'client',
+      client.clientId,
+      {
+        changedFields: changedFields(existing, client, [
+          'name',
+          'contactDetails',
+          'externalReference',
+        ]),
+      },
+    );
     return copyClient(client);
   }
 
-  createSite(principal: AuthPrincipal, input: CreateSiteInput): SiteRecord {
+  async createSite(
+    principal: AuthPrincipal,
+    input: CreateSiteInput,
+  ): Promise<SiteRecord> {
     this.assertManager(principal);
     assertObjectInput(input, 'site');
     const clientId = requiredId(input.clientId, 'clientId');
-    this.requireClient(principal.companyId, clientId);
+    await this.requireClient(principal.companyId, clientId);
     const now = this.now();
     const site: SiteRecord = {
       companyId: principal.companyId,
@@ -349,21 +370,23 @@ export class SiteRegisterService {
       updatedAt: copyDate(now),
     };
 
-    this.options.store.createSite(site);
-    this.recordAudit(principal, 'site.created', 'site', site.siteId, {
+    await this.options.store.createSite(site);
+    await this.recordAudit(principal, 'site.created', 'site', site.siteId, {
       jurisdiction: site.jurisdiction,
     });
     return copySite(site);
   }
 
-  listSites(principal: AuthPrincipal): readonly SiteRecord[] {
+  async listSites(principal: AuthPrincipal): Promise<readonly SiteRecord[]> {
     this.assertManager(principal);
-    return this.options.store.listSites(principal.companyId).map(copySite);
+    return (await this.options.store.listSites(principal.companyId)).map(
+      copySite,
+    );
   }
 
-  getSite(principal: AuthPrincipal, siteId: string): SiteRecord {
+  async getSite(principal: AuthPrincipal, siteId: string): Promise<SiteRecord> {
     this.assertManager(principal);
-    const site = this.options.store.getSite(
+    const site = await this.options.store.getSite(
       principal.companyId,
       requiredId(siteId, 'siteId'),
     );
@@ -373,15 +396,15 @@ export class SiteRegisterService {
     return copySite(site);
   }
 
-  updateSite(
+  async updateSite(
     principal: AuthPrincipal,
     siteId: string,
     input: UpdateSiteInput,
-  ): SiteRecord {
+  ): Promise<SiteRecord> {
     this.assertManager(principal);
     assertObjectInput(input, 'site');
     const normalizedSiteId = requiredId(siteId, 'siteId');
-    const existing = this.options.store.getSite(
+    const existing = await this.options.store.getSite(
       principal.companyId,
       normalizedSiteId,
     );
@@ -393,7 +416,7 @@ export class SiteRegisterService {
       input.clientId === undefined
         ? existing.clientId
         : requiredId(input.clientId, 'clientId');
-    this.requireClient(principal.companyId, clientId);
+    await this.requireClient(principal.companyId, clientId);
     const site: SiteRecord = {
       ...existing,
       clientId,
@@ -424,8 +447,8 @@ export class SiteRegisterService {
       updatedAt: this.now(),
     };
 
-    this.options.store.updateSite(site);
-    this.recordAudit(principal, 'site.updated', 'site', site.siteId, {
+    await this.options.store.updateSite(site);
+    await this.recordAudit(principal, 'site.updated', 'site', site.siteId, {
       jurisdiction: site.jurisdiction,
       changedFields: changedFields(existing, site, [
         'clientId',
@@ -439,15 +462,15 @@ export class SiteRegisterService {
     return copySite(site);
   }
 
-  createAnchor(
+  async createAnchor(
     principal: AuthPrincipal,
     siteId: string,
     input: CreateAnchorInput,
-  ): AnchorRecord {
+  ): Promise<AnchorRecord> {
     this.assertManager(principal);
     assertObjectInput(input, 'anchor');
     const normalizedSiteId = requiredId(siteId, 'siteId');
-    this.requireSite(principal.companyId, normalizedSiteId);
+    await this.requireSite(principal.companyId, normalizedSiteId);
     const now = this.now();
     const anchor: AnchorRecord = {
       companyId: principal.companyId,
@@ -478,29 +501,41 @@ export class SiteRegisterService {
       updatedAt: copyDate(now),
     };
 
-    this.options.store.createAnchor(anchor);
-    this.recordAudit(principal, 'anchor.created', 'anchor', anchor.anchorId, {
-      registerStatus: anchor.registerStatus,
-    });
+    await this.options.store.createAnchor(anchor);
+    await this.recordAudit(
+      principal,
+      'anchor.created',
+      'anchor',
+      anchor.anchorId,
+      {
+        registerStatus: anchor.registerStatus,
+      },
+    );
     return copyAnchor(anchor);
   }
 
-  listAnchors(
+  async listAnchors(
     principal: AuthPrincipal,
     siteId: string,
-  ): readonly AnchorRecord[] {
+  ): Promise<readonly AnchorRecord[]> {
     this.assertManager(principal);
     const normalizedSiteId = requiredId(siteId, 'siteId');
-    this.requireSite(principal.companyId, normalizedSiteId);
-    return this.options.store
-      .listAnchors(principal.companyId, normalizedSiteId)
-      .map(copyAnchor);
+    await this.requireSite(principal.companyId, normalizedSiteId);
+    return (
+      await this.options.store.listAnchors(
+        principal.companyId,
+        normalizedSiteId,
+      )
+    ).map(copyAnchor);
   }
 
-  getFieldSite(principal: AuthPrincipal, siteId: string): SiteRecord {
+  async getFieldSite(
+    principal: AuthPrincipal,
+    siteId: string,
+  ): Promise<SiteRecord> {
     this.assertFieldReader(principal);
     const normalizedSiteId = requiredId(siteId, 'siteId');
-    const site = this.options.store.getSite(
+    const site = await this.options.store.getSite(
       principal.companyId,
       normalizedSiteId,
     );
@@ -510,30 +545,35 @@ export class SiteRegisterService {
     return copySite(site);
   }
 
-  listFieldAnchors(
+  async listFieldAnchors(
     principal: AuthPrincipal,
     siteId: string,
-  ): readonly AnchorRecord[] {
+  ): Promise<readonly AnchorRecord[]> {
     this.assertFieldReader(principal);
     const normalizedSiteId = requiredId(siteId, 'siteId');
-    if (!this.options.store.getSite(principal.companyId, normalizedSiteId)) {
+    if (
+      !(await this.options.store.getSite(principal.companyId, normalizedSiteId))
+    ) {
       throw new SiteRegisterFailure('NOT_FOUND', 'site was not found');
     }
-    return this.options.store
-      .listAnchors(principal.companyId, normalizedSiteId)
-      .map(copyAnchor);
+    return (
+      await this.options.store.listAnchors(
+        principal.companyId,
+        normalizedSiteId,
+      )
+    ).map(copyAnchor);
   }
 
-  getAnchor(
+  async getAnchor(
     principal: AuthPrincipal,
     siteId: string,
     anchorId: string,
-  ): AnchorRecord {
+  ): Promise<AnchorRecord> {
     this.assertManager(principal);
     const normalizedSiteId = requiredId(siteId, 'siteId');
     const normalizedAnchorId = requiredId(anchorId, 'anchorId');
-    this.requireSite(principal.companyId, normalizedSiteId);
-    const anchor = this.options.store.getAnchor(
+    await this.requireSite(principal.companyId, normalizedSiteId);
+    const anchor = await this.options.store.getAnchor(
       principal.companyId,
       normalizedSiteId,
       normalizedAnchorId,
@@ -544,18 +584,18 @@ export class SiteRegisterService {
     return copyAnchor(anchor);
   }
 
-  updateAnchor(
+  async updateAnchor(
     principal: AuthPrincipal,
     siteId: string,
     anchorId: string,
     input: UpdateAnchorInput,
-  ): AnchorRecord {
+  ): Promise<AnchorRecord> {
     this.assertManager(principal);
     assertObjectInput(input, 'anchor');
     const normalizedSiteId = requiredId(siteId, 'siteId');
     const normalizedAnchorId = requiredId(anchorId, 'anchorId');
-    this.requireSite(principal.companyId, normalizedSiteId);
-    const existing = this.options.store.getAnchor(
+    await this.requireSite(principal.companyId, normalizedSiteId);
+    const existing = await this.options.store.getAnchor(
       principal.companyId,
       normalizedSiteId,
       normalizedAnchorId,
@@ -619,21 +659,27 @@ export class SiteRegisterService {
       updatedAt: this.now(),
     };
 
-    this.options.store.updateAnchor(anchor);
-    this.recordAudit(principal, 'anchor.updated', 'anchor', anchor.anchorId, {
-      registerStatus: anchor.registerStatus,
-      changedFields: changedFields(existing, anchor, [
-        'label',
-        'registerId',
-        'location',
-        'anchorType',
-        'manufacturer',
-        'model',
-        'installContext',
-        'registerStatus',
-        'notes',
-      ]),
-    });
+    await this.options.store.updateAnchor(anchor);
+    await this.recordAudit(
+      principal,
+      'anchor.updated',
+      'anchor',
+      anchor.anchorId,
+      {
+        registerStatus: anchor.registerStatus,
+        changedFields: changedFields(existing, anchor, [
+          'label',
+          'registerId',
+          'location',
+          'anchorType',
+          'manufacturer',
+          'model',
+          'installContext',
+          'registerStatus',
+          'notes',
+        ]),
+      },
+    );
     return copyAnchor(anchor);
   }
 
@@ -650,16 +696,22 @@ export class SiteRegisterService {
     }
   }
 
-  private requireClient(companyId: string, clientId: string): ClientRecord {
-    const client = this.options.store.getClient(companyId, clientId);
+  private async requireClient(
+    companyId: string,
+    clientId: string,
+  ): Promise<ClientRecord> {
+    const client = await this.options.store.getClient(companyId, clientId);
     if (!client) {
       throw new SiteRegisterFailure('NOT_FOUND', 'client was not found');
     }
     return client;
   }
 
-  private requireSite(companyId: string, siteId: string): SiteRecord {
-    const site = this.options.store.getSite(companyId, siteId);
+  private async requireSite(
+    companyId: string,
+    siteId: string,
+  ): Promise<SiteRecord> {
+    const site = await this.options.store.getSite(companyId, siteId);
     if (!site) {
       throw new SiteRegisterFailure('NOT_FOUND', 'site was not found');
     }
@@ -674,14 +726,14 @@ export class SiteRegisterService {
     return copyDate(now);
   }
 
-  private recordAudit(
+  private async recordAudit(
     principal: AuthPrincipal,
     action: string,
     targetType: string,
     targetId: string,
     metadata?: Readonly<Record<string, string | number | boolean>>,
-  ): void {
-    this.options.auditSink.record({
+  ): Promise<void> {
+    await this.options.auditSink.record({
       companyId: principal.companyId,
       actorUserId: principal.userId,
       action,

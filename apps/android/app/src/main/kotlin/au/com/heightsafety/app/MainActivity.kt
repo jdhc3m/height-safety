@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,7 +49,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableSignalFieldEdgeToEdge()
         setContent {
             val viewModel = remember {
                 val apiClient = ApiClient(
@@ -92,7 +91,13 @@ class MainActivity : ComponentActivity() {
                     scheduleAuthenticatedMutationSync = { session ->
                         MutationOutboxWork.enqueue(applicationContext, session)
                     },
-                    clearAuthenticatedMutationSync = MutationOutboxWork::clearSession,
+                    clearAuthenticatedMutationSync = {
+                        MutationOutboxWork.clearSession()
+                        PhotoUploadWork.clearSession()
+                    },
+                    scheduleAuthenticatedPhotoUpload = { session ->
+                        PhotoUploadWork.enqueue(applicationContext, session)
+                    },
                     schedulePhotoUpload = {
                         PhotoUploadWork.enqueue(applicationContext)
                     },

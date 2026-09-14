@@ -6,9 +6,11 @@ import { ApprovedSnapshotModule } from './approved-snapshot/approved-snapshot.mo
 import { JobWorkflowModule } from './job-workflow/job-workflow.module';
 import { SiteRegisterModule } from './site-register/site-register.module';
 import { SyncModule } from './sync/sync.module';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
+    DatabaseModule,
     AuthModule,
     ApprovedSnapshotModule,
     SiteRegisterModule,

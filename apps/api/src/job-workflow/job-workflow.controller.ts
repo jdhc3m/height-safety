@@ -158,12 +158,12 @@ export class JobWorkflowController {
     @Body() input: CreateJobDto,
   ): Promise<JobResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
-      const job = this.jobWorkflowService.createJob(principal, input);
+      const job = await this.jobWorkflowService.createJob(principal, input);
       return toJobResponse({ job, assignment: null });
     } catch (error) {
       return toJobWorkflowHttpException(error);
@@ -178,12 +178,14 @@ export class JobWorkflowController {
     @Headers('x-company-id') companyId: string | undefined,
   ): Promise<readonly JobResponseDto[]> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
-      return this.jobWorkflowService.listJobs(principal).map(toJobResponse);
+      return (await this.jobWorkflowService.listJobs(principal)).map(
+        toJobResponse,
+      );
     } catch (error) {
       return toJobWorkflowHttpException(error);
     }
@@ -198,12 +200,14 @@ export class JobWorkflowController {
     @Param('jobId') jobId: string,
   ): Promise<JobResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
-      return toJobResponse(this.jobWorkflowService.getJob(principal, jobId));
+      return toJobResponse(
+        await this.jobWorkflowService.getJob(principal, jobId),
+      );
     } catch (error) {
       return toJobWorkflowHttpException(error);
     }
@@ -221,13 +225,13 @@ export class JobWorkflowController {
     @Param('jobId') jobId: string,
   ): Promise<JobPackResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
       return toJobPackResponse(
-        this.jobWorkflowService.getJobPack(principal, jobId),
+        await this.jobWorkflowService.getJobPack(principal, jobId),
       );
     } catch (error) {
       return toJobWorkflowHttpException(error);
@@ -243,13 +247,13 @@ export class JobWorkflowController {
     @Param('jobId') jobId: string,
   ): Promise<JobResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
       return toJobResponse(
-        this.jobWorkflowService.releaseJob(principal, jobId),
+        await this.jobWorkflowService.releaseJob(principal, jobId),
       );
     } catch (error) {
       return toJobWorkflowHttpException(error);
@@ -265,12 +269,14 @@ export class JobWorkflowController {
     @Param('jobId') jobId: string,
   ): Promise<JobResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
-      return toJobResponse(this.jobWorkflowService.claimJob(principal, jobId));
+      return toJobResponse(
+        await this.jobWorkflowService.claimJob(principal, jobId),
+      );
     } catch (error) {
       return toJobWorkflowHttpException(error);
     }
@@ -289,13 +295,13 @@ export class JobWorkflowController {
     @Body() input: AssignJobDto,
   ): Promise<JobResponseDto> {
     try {
-      const principal = authenticateSession(
+      const principal = await authenticateSession(
         this.authService,
         authorization,
         companyId,
       );
       return toJobResponse(
-        this.jobWorkflowService.assignJob(principal, jobId, input),
+        await this.jobWorkflowService.assignJob(principal, jobId, input),
       );
     } catch (error) {
       return toJobWorkflowHttpException(error);

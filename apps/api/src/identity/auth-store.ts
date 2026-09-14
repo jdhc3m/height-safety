@@ -229,6 +229,41 @@ export class InMemoryAuthStore implements AuthStore {
       copySession({ ...session, revokedAt: copyDate(revokedAt) }),
     );
   }
+
+  renewSession(
+    companyId: string,
+    tokenHash: string,
+    renewedAt: Date,
+    expiresAt: Date,
+  ): SessionRecord | undefined {
+    for (const [sessionKey, session] of this.sessions.entries()) {
+      if (
+        session.companyId !== companyId ||
+        session.tokenHash !== tokenHash ||
+        session.revokedAt ||
+        session.expiresAt.getTime() <= renewedAt.getTime()
+      ) {
+        continue;
+      }
+      const renewed = copySession({
+        ...session,
+        expiresAt: copyDate(expiresAt),
+        lastSeenAt: copyDate(renewedAt),
+      });
+      this.sessions.set(sessionKey, renewed);
+      return copySession(renewed);
+    }
+    return undefined;
+  }
+
+  touchSession(companyId: string, sessionId: string, seenAt: Date): void {
+    const session = this.sessions.get(key(companyId, sessionId));
+    if (!session || session.revokedAt) return;
+    this.sessions.set(
+      key(companyId, sessionId),
+      copySession({ ...session, lastSeenAt: copyDate(seenAt) }),
+    );
+  }
 }
 
 export class UnconfiguredAuthStore implements AuthStore {
@@ -314,5 +349,14 @@ export class UnconfiguredAuthStore implements AuthStore {
     _revokedAt: Date,
   ): void {
     this.unavailable();
+  }
+
+  renewSession(
+    _companyId: string,
+    _tokenHash: string,
+    _renewedAt: Date,
+    _expiresAt: Date,
+  ): SessionRecord | undefined {
+    return this.unavailable();
   }
 }

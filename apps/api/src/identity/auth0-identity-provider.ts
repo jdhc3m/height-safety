@@ -8,6 +8,10 @@ import {
   normalizeEmail,
   normalizeIdentitySubject,
 } from './auth.types';
+import {
+  type InvitationDeliveryTransport,
+  UnconfiguredInvitationDelivery,
+} from './invitation-delivery';
 
 const DEFAULT_EMAIL_CLAIM = 'email';
 const DEFAULT_EMAIL_VERIFIED_CLAIM = 'email_verified';
@@ -144,6 +148,7 @@ export class Auth0IdentityProvider implements IdentityProvider {
   constructor(
     private readonly config: Auth0IdentityProviderConfig,
     fetcher: Auth0Fetcher = (input, init) => fetch(input, init),
+    private readonly invitationDelivery: InvitationDeliveryTransport = new UnconfiguredInvitationDelivery(),
   ) {
     const domain = normalizeDomain(config.domain);
     this.issuer = normalizeIssuer(config.issuer ?? `https://${domain}/`);
@@ -236,14 +241,8 @@ export class Auth0IdentityProvider implements IdentityProvider {
     }
   }
 
-  async sendInvitation(_invitation: InvitationDelivery): Promise<void> {
-    // Auth0 organization invitations do not replace the application-owned,
-    // one-time invitation digest. A mail/management adapter must carry that
-    // application token before this method can be enabled safely.
-    throw new AuthFailure(
-      'INVITATION_DELIVERY_UNAVAILABLE',
-      'Auth0 identity verification is configured; invitation delivery is not configured',
-    );
+  async sendInvitation(invitation: InvitationDelivery): Promise<void> {
+    await this.invitationDelivery.deliver(invitation);
   }
 
   private async getUserInfo(

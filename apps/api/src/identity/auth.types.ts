@@ -99,40 +99,68 @@ export interface AuthPrincipal {
   readonly sessionExpiresAt: Date;
 }
 
+export type AuthStoreResult<Value> = Value | Promise<Value>;
+
 export interface AuthStore {
-  createUser(user: UserRecord): void;
-  getUser(companyId: string, userId: string): UserRecord | undefined;
+  createUser(user: UserRecord): AuthStoreResult<void>;
+  getUser(
+    companyId: string,
+    userId: string,
+  ): AuthStoreResult<UserRecord | undefined>;
   getUserByIdentity(
     companyId: string,
     identitySubject: string,
-  ): UserRecord | undefined;
-  getUserByEmail(companyId: string, email: string): UserRecord | undefined;
-  updateUser(user: UserRecord): void;
+  ): AuthStoreResult<UserRecord | undefined>;
+  getUserByEmail(
+    companyId: string,
+    email: string,
+  ): AuthStoreResult<UserRecord | undefined>;
+  updateUser(user: UserRecord): AuthStoreResult<void>;
 
-  createInvitation(invitation: InvitationRecord): void;
+  createInvitation(invitation: InvitationRecord): AuthStoreResult<void>;
   getInvitationByTokenHash(
     companyId: string,
     tokenHash: string,
-  ): InvitationRecord | undefined;
+  ): AuthStoreResult<InvitationRecord | undefined>;
   completeInvitation(
     companyId: string,
     tokenHash: string,
     user: UserRecord,
     acceptedAt: Date,
-  ): void;
+  ): AuthStoreResult<void>;
   revokeInvitation(
     companyId: string,
     invitationId: string,
     revokedAt: Date,
-  ): void;
+  ): AuthStoreResult<void>;
 
-  createSession(session: SessionRecord): void;
+  createSession(session: SessionRecord): AuthStoreResult<void>;
   getSessionByTokenHash(
     companyId: string,
     tokenHash: string,
-  ): SessionRecord | undefined;
-  getSession(companyId: string, sessionId: string): SessionRecord | undefined;
-  revokeSession(companyId: string, sessionId: string, revokedAt: Date): void;
+  ): AuthStoreResult<SessionRecord | undefined>;
+  getSession(
+    companyId: string,
+    sessionId: string,
+  ): AuthStoreResult<SessionRecord | undefined>;
+  revokeSession(
+    companyId: string,
+    sessionId: string,
+    revokedAt: Date,
+  ): AuthStoreResult<void>;
+  /** Rotates the expiry window only while the current opaque session is live. */
+  renewSession(
+    companyId: string,
+    tokenHash: string,
+    renewedAt: Date,
+    expiresAt: Date,
+  ): AuthStoreResult<SessionRecord | undefined>;
+  /** Records server-side activity used by /auth/me revalidation. */
+  touchSession?(
+    companyId: string,
+    sessionId: string,
+    seenAt: Date,
+  ): AuthStoreResult<void>;
 }
 
 export interface InvitationDelivery {
@@ -160,7 +188,7 @@ export interface AuthAuditEvent {
 }
 
 export interface AuthAuditSink {
-  record(event: AuthAuditEvent): void;
+  record(event: AuthAuditEvent): void | Promise<void>;
 }
 
 export interface AuthClock {

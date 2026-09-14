@@ -130,6 +130,26 @@ class FieldMediaTest {
         assertEquals(0L, transport.chunks.single().offset)
     }
 
+    @Test
+    fun authenticatedTenantDoesNotDrainAnotherCompanyPhoto() = runTest {
+        val foreignUpload = upload().copy(companyId = "company-b")
+        val store = InMemoryPhotoUploadStore(foreignUpload)
+        val transport = ScriptedPhotoTransport(PhotoUploadDelivery.Uploaded)
+        val tenantDrainer = PhotoUploadQueueDrainer(
+            store = store,
+            contentSource = InMemoryPhotoContentSource(byteArrayOf(1, 2, 3, 4, 5)),
+            transport = transport,
+            nowEpochMillis = { 2_000L },
+            companyId = "company-a",
+        )
+
+        val result = tenantDrainer.drain()
+
+        assertEquals(0, result.attempted)
+        assertTrue(transport.chunks.isEmpty())
+        assertEquals(PhotoUploadQueueState.PENDING, store.upload.state)
+    }
+
     private fun drainer(
         store: InMemoryPhotoUploadStore,
         transport: ScriptedPhotoTransport,

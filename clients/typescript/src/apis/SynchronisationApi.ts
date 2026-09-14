@@ -14,6 +14,16 @@
 
 import * as runtime from '../runtime';
 import {
+    type PhotoUploadChunkDto,
+    PhotoUploadChunkDtoFromJSON,
+    PhotoUploadChunkDtoToJSON,
+} from '../models/PhotoUploadChunkDto';
+import {
+    type PhotoUploadChunkResponseDto,
+    PhotoUploadChunkResponseDtoFromJSON,
+    PhotoUploadChunkResponseDtoToJSON,
+} from '../models/PhotoUploadChunkResponseDto';
+import {
     type SyncMutationRequestDto,
     SyncMutationRequestDtoFromJSON,
     SyncMutationRequestDtoToJSON,
@@ -27,6 +37,18 @@ import {
 export interface SubmitSyncMutationRequest {
     xCompanyId: string;
     syncMutationRequestDto: SyncMutationRequestDto;
+}
+
+export interface UploadPhotoChunkRequest {
+    xCompanyId: string;
+    mediaId: string;
+    photoUploadChunkDto: PhotoUploadChunkDto;
+}
+
+export interface UploadRecoveryPhotoChunkRequest {
+    xCompanyId: string;
+    mediaId: string;
+    photoUploadChunkDto: PhotoUploadChunkDto;
 }
 
 /**
@@ -97,6 +119,154 @@ export class SynchronisationApi extends runtime.BaseAPI {
      */
     async submitSyncMutation(requestParameters: SubmitSyncMutationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SyncMutationResponseDto> {
         const response = await this.submitSyncMutationRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for uploadPhotoChunk without sending the request
+     */
+    async uploadPhotoChunkRequestOpts(requestParameters: UploadPhotoChunkRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['xCompanyId'] == null) {
+            throw new runtime.RequiredError(
+                'xCompanyId',
+                'Required parameter "xCompanyId" was null or undefined when calling uploadPhotoChunk().'
+            );
+        }
+
+        if (requestParameters['mediaId'] == null) {
+            throw new runtime.RequiredError(
+                'mediaId',
+                'Required parameter "mediaId" was null or undefined when calling uploadPhotoChunk().'
+            );
+        }
+
+        if (requestParameters['photoUploadChunkDto'] == null) {
+            throw new runtime.RequiredError(
+                'photoUploadChunkDto',
+                'Required parameter "photoUploadChunkDto" was null or undefined when calling uploadPhotoChunk().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (requestParameters['xCompanyId'] != null) {
+            headerParameters['x-company-id'] = String(requestParameters['xCompanyId']);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("access-token", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/sync/photos/{mediaId}/chunks`;
+        urlPath = urlPath.replace('{mediaId}', encodeURIComponent(String(requestParameters['mediaId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: PhotoUploadChunkDtoToJSON(requestParameters['photoUploadChunkDto']),
+        };
+    }
+
+    /**
+     * Upload one resumable evidence-photo chunk
+     */
+    async uploadPhotoChunkRaw(requestParameters: UploadPhotoChunkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PhotoUploadChunkResponseDto>> {
+        const requestOptions = await this.uploadPhotoChunkRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PhotoUploadChunkResponseDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Upload one resumable evidence-photo chunk
+     */
+    async uploadPhotoChunk(requestParameters: UploadPhotoChunkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PhotoUploadChunkResponseDto> {
+        const response = await this.uploadPhotoChunkRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for uploadRecoveryPhotoChunk without sending the request
+     */
+    async uploadRecoveryPhotoChunkRequestOpts(requestParameters: UploadRecoveryPhotoChunkRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['xCompanyId'] == null) {
+            throw new runtime.RequiredError(
+                'xCompanyId',
+                'Required parameter "xCompanyId" was null or undefined when calling uploadRecoveryPhotoChunk().'
+            );
+        }
+
+        if (requestParameters['mediaId'] == null) {
+            throw new runtime.RequiredError(
+                'mediaId',
+                'Required parameter "mediaId" was null or undefined when calling uploadRecoveryPhotoChunk().'
+            );
+        }
+
+        if (requestParameters['photoUploadChunkDto'] == null) {
+            throw new runtime.RequiredError(
+                'photoUploadChunkDto',
+                'Required parameter "photoUploadChunkDto" was null or undefined when calling uploadRecoveryPhotoChunk().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (requestParameters['xCompanyId'] != null) {
+            headerParameters['x-company-id'] = String(requestParameters['xCompanyId']);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("access-token", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/sync/recovery/photos/{mediaId}/chunks`;
+        urlPath = urlPath.replace('{mediaId}', encodeURIComponent(String(requestParameters['mediaId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: PhotoUploadChunkDtoToJSON(requestParameters['photoUploadChunkDto']),
+        };
+    }
+
+    /**
+     * Upload one evidence-photo chunk during Administrator recovery
+     */
+    async uploadRecoveryPhotoChunkRaw(requestParameters: UploadRecoveryPhotoChunkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PhotoUploadChunkResponseDto>> {
+        const requestOptions = await this.uploadRecoveryPhotoChunkRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PhotoUploadChunkResponseDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Upload one evidence-photo chunk during Administrator recovery
+     */
+    async uploadRecoveryPhotoChunk(requestParameters: UploadRecoveryPhotoChunkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PhotoUploadChunkResponseDto> {
+        const response = await this.uploadRecoveryPhotoChunkRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

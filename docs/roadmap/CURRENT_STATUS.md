@@ -1,26 +1,46 @@
 # Current Status
 
-Last update: 2026-09-07
+Last update: 2026-09-15
 
 ## Active stage
 
 Stage 3C — offline and synchronisation; `3A-01` through `3A-05` are Done.
 `3B-01`, `3B-02`, the bounded local-capture acceptance for `3B-03` and
 `3B-04` bounded local review/queue slice are Done. `3C-01` durable mutation
-outbox implementation is started in this workspace; review and server
-transport remain open. `3C-02` durable photo upload queue is implemented for
-its bounded local/provider-neutral slice; server transport remains open.
-`3C-03` bounded acknowledgement/conflict protocol continuation is implemented
-for payload-aware service tests, encrypted-local payload reconstruction and a
-company-scoped process-memory authenticated worker seam; runtime persistence
-and media transport remain open.
+outbox implementation is in review and now has a tenant-bound PostgreSQL
+mutation store with atomic payload persistence and replay. `3C-02` durable
+photo upload queue is implemented for its bounded local/provider-neutral slice
+and now has an authenticated resumable API transport backed by private local
+objects for the development runtime. `3C-03` bounded
+acknowledgement/conflict protocol continuation is implemented for payload-aware
+service tests, encrypted-local payload reconstruction and a company-scoped
+authenticated worker seam; the local runtime now persists inspection evidence,
+mutation identity and photo metadata in one transaction.
 `3C-04` initial Kotlin/JVM offline-authorisation state-machine slice and its
 bounded encrypted Android state adapter are implemented. The continuation adds
 encrypted opaque-session persistence, server revalidation on process recovery,
 foreground lifecycle locking, explicit server-revocation UI and bounded
-Administrator recovery UI; provider selection, authenticated recovery/upload
-transport and atomic evidence/state writes remain open.
+Administrator recovery UI. Auth0 AU is now the selected provider and its
+bounded API, Android and office-web boundaries are wired. The API's local
+Auth0 membership and opaque-session store now use PostgreSQL with the forced
+tenant boundary. Session renewal and `/auth/me` revalidation, application
+invitation delivery and authenticated inspector photo upload are wired behind
+explicit runtime configuration. The local PostgreSQL runtime smoke passes;
+production database, provider endpoint, recovery upload and cloud deployment
+configuration remain open.
+The physical verification record uses the existing owner-configured US
+development tenant; that does not satisfy the selected AU production-tenant
+configuration step.
 G-03 is Done as D-027.
+
+`3D-02` is now in progress with a bounded provider-neutral approved-snapshot
+freeze boundary. The slice preserves the exact inspection/evidence revision,
+checks review gates, records the supported jurisdiction as context, emits an
+approval audit event and now has a PostgreSQL adapter port/proof with
+company-scoped approval uniqueness, tenant-context setup and checksum-checked
+round trips. The adapter is not wired into runtime persistence yet. The
+`3D-01` review/change-request producer and durable audit transaction remain
+open.
 
 ## Completed
 
@@ -55,7 +75,8 @@ G-03 is Done as D-027.
 - Hybrid release/claim/assignment workflow approved (D-012); independent
   review remains required.
 - Relational/private-object/encrypted-local storage direction approved (D-013);
-  provider and exact Android encryption library remain open.
+  GCP is the bounded-pilot target in D-041, while native Cloud SQL/Cloud
+  Storage configuration and the exact Android encryption library remain open.
 - Managed invitation-only authentication approved (D-014): Administrator MFA,
   optional Inspector/Office reviewer MFA, non-destructive logout and bounded
   offline authorisation. Lease duration and revoked-account evidence recovery
@@ -91,12 +112,14 @@ G-03 is Done as D-027.
 - `2D-03` passed independent technical re-review after lease fencing, bounded
   launch/shutdown and deadline-under-contention regressions were added.
 - The owner approved the `2D-03` separate asynchronous renderer worker at
-  initial concurrency one (D-022); provider and production sizing remain open.
+  initial concurrency one (D-022); production sizing and native target-service
+  configuration remain open.
 - `2D-03` then passed three corrected 2-vCPU/2-GiB Linux runs and four corrected
   4-vCPU/4-GiB Linux runs, plus repeatable whole-container termination and
   fresh-worker recovery. Every engineering acceptance check passed.
 - The Linux evidence supports the approved separate worker at initial
-  concurrency one; it does not select a managed provider or production size.
+  concurrency one; it does not by itself select a managed provider or
+  production size. D-041 later records GCP Sydney as the bounded-pilot target.
 - A root-gate revalidation exposed and corrected an existing synchronous SQLite
   busy-wait overshoot in the `2D-03` harness without relaxing its absolute
   deadline. Three focused PDF checks and the complete root gate then passed;
@@ -123,9 +146,11 @@ G-03 is Done as D-027.
   G-05 remains open for design-partner review before a controlled pilot.
 - `2D-04` is Done. The authorised Sydney Cloud Run candidate was exercised
   and destroyed, independently reviewed, and owner-approved as the first
-  managed renderer candidate (D-024). G-02 is closed. Authentication vendor
-  selection remains deferred. The spike evidence JSON still records
-  `managedProviderApproved: false`.
+  managed renderer candidate (D-024). G-02 is closed. D-041 now points the
+  bounded pilot at GCP Sydney for Cloud Run, Cloud SQL, Cloud Storage and Cloud
+  Tasks; authentication vendor selection remains deferred. The spike evidence
+  JSON still records `managedProviderApproved: false` because it is a historical
+  renderer-candidate artifact.
 - `2D-06` is Done. The offline-authorisation lease and revoked-account
   evidence-recovery specification and transition tests are owner-approved as
   D-025. Independent review passed. G-05 remains open for design-partner
@@ -145,9 +170,18 @@ G-03 is Done as D-027.
   provider research, a disposable PostgreSQL 17 schema execution, a tested
   application-owned private object-storage boundary, and deterministic
   fictional backup/export restore checks. The owner approved the gate as D-027;
-  production provider, native backup configuration, retention/RPO/RTO and
-  strict backup/log/subprocessor residency remain open. See
+  D-041 selects GCP Sydney as the bounded-pilot target, while native Cloud
+  SQL/Cloud Storage backup configuration, retention/RPO/RTO and strict
+  backup/log/subprocessor residency remain open. See
   `docs/roadmap/G-03_PROVIDER_PORTABILITY.md`.
+- D-042 records the owner-selected Auth0 AU identity provider. The API verifies
+  Auth0 access tokens before the existing company membership and opaque-session
+  checks; Android uses Universal Login with encrypted provider-credential
+  storage; and the office web exposes a protected `/office` boundary. Tenant
+  creation, secret configuration, production database deployment and invitation
+  provider endpoint provisioning remain open. A local PostgreSQL
+  membership/session adapter is implemented for this runtime slice. See
+  `docs/research/AUTH0_SETUP.md`.
 - `3A-02` adds the company-scoped PostgreSQL migration set, composite tenant
   keys, private object-reference/report/photo metadata, idempotency constraints,
   transaction-local tenant context binding and forced row-level policies. The
@@ -162,13 +196,15 @@ G-03 is Done as D-027.
   audit-event emission hooks. Invitation/session tables use the existing
   company-scoped RLS boundary; focused policy tests, generated API clients and
   the live PostgreSQL cross-company checks pass. The identity-provider and
-  durable application persistence adapters remain deliberately unconfigured
-  while vendor selection is deferred.
+  durable application persistence adapters were deliberately unconfigured at
+  this milestone; the local Auth0/PostgreSQL runtime continuation is recorded
+  above.
 - `3A-04` adds the company-scoped site, supported-jurisdiction and
   single-point anchor-register API boundary. It preserves explicit `NSW` or
   `QLD` context, manager-only writes, audit metadata, fail-closed HTTP errors,
   versioned runtime mounting and generated Kotlin/TypeScript clients. Durable
-  store and audit adapters remain deliberately unconfigured.
+  store and audit adapters were deliberately unconfigured at this milestone;
+  the local PostgreSQL continuation is recorded above.
 - `3A-04` passed independent review after malformed-body handling, unknown
   failure fallbacks, update DTO optionality and changed-field audit metadata
   were corrected. Runtime smoke coverage confirms `/api/v1` matches the
@@ -177,8 +213,9 @@ G-03 is Done as D-027.
   company-scoped site, release, active same-company inspector assignment or
   claim, explicit job-pack version and jurisdiction retention, role checks,
   current-assignment conflict visibility and one-primary assignment semantics.
-  The store and audit ports remain deliberately unconfigured for runtime use;
-  the in-memory proof exercises the atomic operation and race behavior.
+  The store and audit ports were deliberately unconfigured for runtime use at
+  this milestone; the in-memory proof exercises the atomic operation and race
+  behavior, and the local PostgreSQL continuation is recorded above.
 - `3A-05` passed fresh independent review. Service and controller tests cover
   tenant isolation, role boundaries, valid dates, malformed input, claim
   replay, competing claims, assignment eligibility and HTTP error mapping.
@@ -248,25 +285,28 @@ G-03 is Done as D-027.
   The continuation adds encrypted Room session persistence, server-authoritative
   `/auth/me` revalidation, lifecycle lock/unlock handling, evidence-preserving
   server-revocation visibility and a provider-neutral Administrator recovery UI.
-  It does not select an identity provider or claim recovery upload transport.
+  Auth0 AU provider adapters now cover API JWT verification, Android Universal
+  Login/secure credentials and the protected office-web boundary. Invitation
+  delivery and recovery upload transport remain separate work.
 
 ## In progress
 
 - `3C-01` is in review: durable idempotent mutation outbox and background
-  drain seam are implemented, while runtime server persistence, media
-  transport, logout/lease expiry/revocation safety and bounded offline recovery
-  remain separate work.
+  drain seam are implemented, and the local API now commits mutation envelopes,
+  inspection evidence and replayable acknowledgements atomically. Production
+  deployment and fault-injection review remain open.
 - `3C-02` bounded implementation is complete for the local/provider-neutral
-  queue slice; its transport is deliberately unconfigured, so no server upload
-  or acknowledgement is claimed.
+  queue slice. The API has a tenant-bound resumable photo endpoint and private
+  development object store; provider-backed production storage and recovery
+  operations remain open.
 - `3C-03` bounded protocol work is implemented: the API and generated clients
   define stable mutation/idempotency identity, expected-version acknowledgement,
   visible conflict responses with replay behavior and optional inspection
   payload application reporting. The Android adapter maps responses into the
   durable outbox, reconstructs frozen evidence, and uses a process-memory
   authenticated, company-scoped worker seam. The local review gate still
-  requires server acknowledgement plus every recorded photo upload. Runtime
-  server persistence/applier and media transport remain open.
+  requires server acknowledgement plus every recorded photo upload. Local
+  runtime mutation and photo persistence now pass replay/checksum smoke checks.
 - `3C-04` initial domain implementation and the bounded Android adapter are
   implemented. Product transitions are tested for lease expiry, elapsed-runtime
   expiry, clock rollback, revocation notification, unnotified revocation,
@@ -274,33 +314,48 @@ G-03 is Done as D-027.
   logout/cleanup gates and Keystore-loss evidence preservation. Encrypted Room
   state and the opaque application session survive restart; `/auth/me`
   revalidation, lifecycle lock/unlock, explicit server revocation visibility and
-  recovery UI are wired. Provider selection, session renewal, authenticated
-  recovery/upload transport and an atomic evidence/state transaction remain
-  open.
+  recovery UI are wired. Auth0 provider adapters cover API JWT verification,
+  Android Universal Login/secure credentials and the protected office-web
+  boundary. Session renewal and `/auth/me` revalidation are wired, and
+  invitation delivery is an application-owned fail-closed HTTP adapter; the
+  owner must still configure its provider endpoint and Administrator recovery
+  upload remains a production gate.
+- `3D-02` approved-snapshot work is in progress: the API service and in-memory
+  proof freeze a tenant-scoped inspection submission with source inspection
+  and evidence versions, canonical JSON and SHA-256 provenance, and no update
+  or delete operation. A provider-neutral PostgreSQL adapter port/proof now
+  applies transaction-local tenant context, persists the approval identity,
+  maps uniqueness conflicts for replay and rejects checksum/document mismatch.
+  Runtime wiring, the durable audit transaction and the `3D-01` review source
+  remain open.
 - Scoped `3B-04` JVM, lint, Compose and encrypted-storage checks pass; an API 30
   emulator passes 15 app and 11 data instrumented tests. Runtime persistence,
   durable audit, identity membership, pack-update/sync/recovery workflows and
   production deployment adapters remain deliberately unconfigured and are
   separate work.
-- Production provider selection, runtime deployment-role configuration and later
-  feature APIs remain separate work from the completed `3A-02` boundary.
+- GCP runtime deployment-role configuration, native Cloud SQL/Cloud Storage
+  adapters and later feature APIs remain separate work from the completed
+  `3A-02` boundary.
 - Keep design-partner outreach ready; practitioner validation still open.
 
 ## Next recommended task
 
-Complete the remaining `3C-04` integration after an identity-provider decision:
-session renewal, explicit account-status handling, authenticated
-Administrator recovery/upload transport and an atomic evidence/state write
-boundary. Then return to `3C-03` runtime persistence and media transport after
-the `3C-01` review. Do not treat bounded protocol, payload-applier,
+Continue the `3D-02` immutable approved-snapshot slice while keeping its
+`3D-01` review/change-request dependency visible. The next implementation
+boundary is `3D-01` review/change-request persistence and the durable audit
+transaction, followed by production database/object-storage deployment and
+Administrator recovery verification. The local `3C` runtime integration is
+implemented and smoke-tested, but remains a development adapter until those
+operational gates close. Do not treat bounded protocol, payload-applier,
 process-memory worker or domain state-machine slices as production
 synchronisation.
 Do not add Kotlin
-Multiplatform, an iOS target or deferred standards candidates. Authentication
-vendor selection and the durable identity/runtime adapters remain deferred.
-Production provider/native backup configuration, retention/RPO/RTO and strict
-backup/log/subprocessor residency remain open. G-05 still needs design-partner
-review before a controlled pilot.
+Multiplatform, an iOS target or deferred standards candidates. Auth0 tenant
+setup and production identity/runtime deployment remain open.
+GCP runtime deployment configuration, native Cloud SQL/Cloud Storage backup and
+export configuration, retention/RPO/RTO and strict backup/log/subprocessor
+residency remain open. G-05 still needs design-partner review before a
+controlled pilot.
 
 ## Blockers and decisions awaiting confirmation
 
@@ -319,12 +374,13 @@ review before a controlled pilot.
 - NSW and Queensland workflow, terminology, licensing, interval, proof-test and
   report-authority differences require practitioner validation in each state;
   the product must not auto-calculate or claim statutory compliance.
-- Production provider/native backup configuration, retention/RPO/RTO and
-  strict backup/log/subprocessor residency remain open after G-03. The
+- GCP runtime/native backup configuration, retention/RPO/RTO and strict
+  backup/log/subprocessor residency remain open after G-03 and D-041. The
   tenant-isolation API integration, object-storage integration, backup
   scheduling and export workflow remain implementation work in later tickets.
-  Authentication vendor selection remains deferred. Authorised Android
-  key-loss/revocation recovery is owner-approved as D-025; G-05 remains open
+  Auth0 tenant setup and native runtime configuration remain open. Authorised
+  Android key-loss/revocation recovery is owner-approved as D-025; G-05 remains
+  open
   for design-partner review. Production autoscaling and queue/storage
   integration remain implementation work after 3A. The Playwright/Chromium
   worker (D-022) and Cloud Run first managed renderer candidate (D-024) are
@@ -446,9 +502,28 @@ On 2026-09-06, the Kotlin/JVM domain suite passed 60 tests with the initial
 encrypted Room state adapter, Android capture/logout/worker gates and restart
 coverage were added. The session continuation then passed the Kotlin/JVM and
 Android app unit suites, encrypted data/app restart coverage and 18 data plus
-16 app instrumented tests on `Pixel_5_API_31` (API 31). Provider selection,
-authenticated recovery/upload transport and production runtime persistence
-remain unconfigured.
+16 app instrumented tests on `Pixel_5_API_31` (API 31). Authentication-provider
+selection, authenticated recovery/upload transport and production runtime
+persistence remain unconfigured.
+
+On 2026-09-09, the API build and 44-test API suite passed with the approved
+snapshot service and PostgreSQL adapter proof included. The PostgreSQL
+integration test remained skipped because this scoped run had no disposable
+`TEST_POSTGRES_URL`; runtime snapshot persistence is not claimed.
+
+On 2026-09-15, the API build and 48-test suite passed (47 tests plus one
+environment-gated PostgreSQL integration skip). A local PostgreSQL 17 runtime
+smoke passed `/auth/me`, session renewal, authorised job listing, a versioned
+QLD job-pack read, one atomic inspection mutation, identical replay and a
+resumable photo upload whose database state and private-object SHA-256 matched.
+The complete `tools/verify.sh` gate then passed against the local PostgreSQL 17
+instance, including the live tenant-isolation migration check and Android
+storage/job-pack checks.
+The Android JVM/app/data suites passed after tenant-scoping the authenticated
+photo queue. A rebuilt debug APK installed and launched on the physical Pixel
+10 Pro; the sign-in screen rendered. The prior Auth0 provider login remains
+recorded in `LOCAL_AUTH0_TEST_LOG.md`; a fresh provider login was not repeated
+because the native client ID is intentionally redacted from the workspace.
 
 ## Relevant files
 
@@ -459,6 +534,7 @@ Stage 2A.5: `docs/discovery/STAGE_2A5_FOCUSED_ANCHOR_EVIDENCE.md`.
 NSW/Queensland extension: `docs/discovery/NSW_QLD_SCOPE_EXTENSION.md`.
 Stage 2B: `docs/requirements/STAGE_2B_WORKFLOW_SPEC.md`.
 Stage 2C: `docs/blueprint/STAGE_2C_TECHNICAL_BLUEPRINT.md`.
+GCP target platform: `docs/architecture/GCP_TARGET_PLATFORM.md`.
 Stage 2D: `docs/roadmap/STAGE_2D_IMPLEMENTATION_TICKETS.md`.
 Stage 2D-01: `docs/roadmap/STAGE_2D_01_WORKSPACE_CONTRACT.md`.
 Stage 2D-02: `docs/roadmap/STAGE_2D_02_OPENAPI_PIPELINE.md`.
@@ -473,6 +549,9 @@ Stage 3A-02 migrations: `apps/api/migrations/` and
 Stage 3A-03 identity boundary: `apps/api/src/identity/`,
 `apps/api/migrations/002_identity_auth_schema.sql` and
 `apps/api/test/auth.test.mjs`.
+Stage 3D-02 approved snapshots: `apps/api/src/approved-snapshot/`,
+`apps/api/migrations/001_initial_tenant_schema.sql` and
+`apps/api/test/approved-snapshot.test.mjs`.
 Android field domain boundary (D-026): `docs/architecture/ANDROID_DOMAIN_BOUNDARY.md`.
 ADR: `docs/adr/0001-kmp-ready-android-domain.md`.
 AS 5532 review: `docs/standards/AS-5532-2025-INTEGRATION.md`.

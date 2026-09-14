@@ -59,29 +59,29 @@ function makeHarness() {
   return { service, audit };
 }
 
-function expectFailure(action, code) {
-  assert.throws(action, (error) => {
+async function expectFailure(action, code) {
+  await assert.rejects(action, (error) => {
     assert.ok(error instanceof SiteRegisterFailure);
     assert.equal(error.code, code);
     return true;
   });
 }
 
-test('creates tenant-scoped client, site and single-point anchor register', () => {
+test('creates tenant-scoped client, site and single-point anchor register', async () => {
   const { service, audit } = makeHarness();
   const office = principal('company-a');
 
-  const client = service.createClient(office, {
+  const client = await service.createClient(office, {
     name: ' Client A ',
     externalReference: ' client-ref ',
   });
-  const site = service.createSite(office, {
+  const site = await service.createSite(office, {
     clientId: client.clientId,
     name: ' Site A ',
     jurisdiction: 'NSW',
     siteReference: 'site-ref',
   });
-  const anchor = service.createAnchor(office, site.siteId, {
+  const anchor = await service.createAnchor(office, site.siteId, {
     registerId: 'A-001',
     location: 'North roof',
     notes: 'Recorded register note',
@@ -92,11 +92,13 @@ test('creates tenant-scoped client, site and single-point anchor register', () =
   assert.equal(anchor.anchorType, 'single_point');
   assert.equal(anchor.registerStatus, 'active');
   assert.deepEqual(
-    service.listSites(office).map((item) => item.siteId),
+    (await service.listSites(office)).map((item) => item.siteId),
     [site.siteId],
   );
   assert.deepEqual(
-    service.listAnchors(office, site.siteId).map((item) => item.registerId),
+    (await service.listAnchors(office, site.siteId)).map(
+      (item) => item.registerId,
+    ),
     ['A-001'],
   );
   assert.deepEqual(
@@ -105,27 +107,30 @@ test('creates tenant-scoped client, site and single-point anchor register', () =
   );
 });
 
-test('preserves tenant isolation and rejects inspector register writes', () => {
+test('preserves tenant isolation and rejects inspector register writes', async () => {
   const { service } = makeHarness();
   const officeA = principal('company-a');
   const officeB = principal('company-b');
-  const clientA = service.createClient(officeA, { name: 'Client A' });
-  const siteA = service.createSite(officeA, {
+  const clientA = await service.createClient(officeA, { name: 'Client A' });
+  const siteA = await service.createSite(officeA, {
     clientId: clientA.clientId,
     name: 'Site A',
     jurisdiction: 'QLD',
   });
 
-  assert.deepEqual(service.listClients(officeB), []);
-  expectFailure(() => service.getSite(officeB, siteA.siteId), 'NOT_FOUND');
-  expectFailure(
+  assert.deepEqual(await service.listClients(officeB), []);
+  await expectFailure(
+    () => service.getSite(officeB, siteA.siteId),
+    'NOT_FOUND',
+  );
+  await expectFailure(
     () =>
       service.createAnchor(principal('company-b'), siteA.siteId, {
         registerId: 'wrong-tenant',
       }),
     'NOT_FOUND',
   );
-  expectFailure(
+  await expectFailure(
     () =>
       service.createClient(principal('company-a', 'inspector'), {
         name: 'Nope',
@@ -134,17 +139,17 @@ test('preserves tenant isolation and rejects inspector register writes', () => {
   );
 });
 
-test('validates jurisdiction, anchor type, status and duplicate register IDs', () => {
+test('validates jurisdiction, anchor type, status and duplicate register IDs', async () => {
   const { service } = makeHarness();
   const office = principal('company-a');
-  const client = service.createClient(office, { name: 'Client A' });
-  const site = service.createSite(office, {
+  const client = await service.createClient(office, { name: 'Client A' });
+  const site = await service.createSite(office, {
     clientId: client.clientId,
     name: 'Site A',
     jurisdiction: 'NSW',
   });
 
-  expectFailure(
+  await expectFailure(
     () =>
       service.createSite(office, {
         clientId: client.clientId,
@@ -153,19 +158,19 @@ test('validates jurisdiction, anchor type, status and duplicate register IDs', (
       }),
     'INVALID_INPUT',
   );
-  service.createAnchor(office, site.siteId, { registerId: 'A-001' });
-  expectFailure(
+  await service.createAnchor(office, site.siteId, { registerId: 'A-001' });
+  await expectFailure(
     () => service.createAnchor(office, site.siteId, { registerId: 'A-001' }),
     'CONFLICT',
   );
-  expectFailure(
+  await expectFailure(
     () =>
       service.createAnchor(office, site.siteId, {
         anchorType: 'horizontal_line',
       }),
     'INVALID_INPUT',
   );
-  expectFailure(
+  await expectFailure(
     () =>
       service.createAnchor(office, site.siteId, {
         registerStatus: 'removed',
@@ -174,24 +179,24 @@ test('validates jurisdiction, anchor type, status and duplicate register IDs', (
   );
 });
 
-test('updates site context and anchor register status without changing IDs', () => {
+test('updates site context and anchor register status without changing IDs', async () => {
   const { service } = makeHarness();
   const office = principal('company-a', 'administrator', 'admin-a');
-  const client = service.createClient(office, { name: 'Client A' });
-  const site = service.createSite(office, {
+  const client = await service.createClient(office, { name: 'Client A' });
+  const site = await service.createSite(office, {
     clientId: client.clientId,
     name: 'Site A',
     jurisdiction: 'NSW',
   });
-  const anchor = service.createAnchor(office, site.siteId, {
+  const anchor = await service.createAnchor(office, site.siteId, {
     registerId: 'A-001',
   });
 
-  const updatedSite = service.updateSite(office, site.siteId, {
+  const updatedSite = await service.updateSite(office, site.siteId, {
     jurisdiction: 'QLD',
     accessNotes: 'Use east access',
   });
-  const updatedAnchor = service.updateAnchor(
+  const updatedAnchor = await service.updateAnchor(
     office,
     site.siteId,
     anchor.anchorId,
@@ -208,29 +213,32 @@ test('updates site context and anchor register status without changing IDs', () 
   assert.equal(updatedAnchor.notes, 'Further assessment required');
 });
 
-test('rejects malformed mutation bodies and records changed fields in audit metadata', () => {
+test('rejects malformed mutation bodies and records changed fields in audit metadata', async () => {
   const { service, audit } = makeHarness();
   const office = principal('company-a');
 
-  expectFailure(() => service.createClient(office, null), 'INVALID_INPUT');
+  await expectFailure(
+    () => service.createClient(office, null),
+    'INVALID_INPUT',
+  );
 
-  const client = service.createClient(office, { name: 'Client A' });
-  const site = service.createSite(office, {
+  const client = await service.createClient(office, { name: 'Client A' });
+  const site = await service.createSite(office, {
     clientId: client.clientId,
     name: 'Site A',
     jurisdiction: 'NSW',
   });
-  const anchor = service.createAnchor(office, site.siteId, {});
-  expectFailure(
+  const anchor = await service.createAnchor(office, site.siteId, {});
+  await expectFailure(
     () => service.updateSite(office, site.siteId, null),
     'INVALID_INPUT',
   );
-  expectFailure(
+  await expectFailure(
     () => service.updateAnchor(office, site.siteId, anchor.anchorId, null),
     'INVALID_INPUT',
   );
 
-  service.updateClient(office, client.clientId, {
+  await service.updateClient(office, client.clientId, {
     name: 'Updated Client A',
     contactDetails: 'office@example.test',
   });

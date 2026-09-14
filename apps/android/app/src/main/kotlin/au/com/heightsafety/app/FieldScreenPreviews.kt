@@ -2,6 +2,7 @@ package au.com.heightsafety.app
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import au.com.heightsafety.domain.AnchorInspectionDraft
 import au.com.heightsafety.domain.InspectorAssignment
 import au.com.heightsafety.domain.InspectorJob
 import au.com.heightsafety.domain.JobPackAnchor
@@ -12,6 +13,7 @@ import au.com.heightsafety.domain.OpenedJobPack
 import au.com.heightsafety.domain.StoredJobPack
 import au.com.heightsafety.domain.SupportedJurisdiction
 import au.com.heightsafety.domain.FieldJobPack
+import au.com.heightsafety.domain.RecordedOutcome
 
 @Preview(name = "Signed out", showBackground = true)
 @Composable
@@ -78,6 +80,12 @@ private fun JobPackTabletPreview() {
     ReferencePreview(referenceJobPackState())
 }
 
+@Preview(name = "Defective anchor capture", widthDp = 360, heightDp = 800, showBackground = true)
+@Composable
+private fun DefectiveAnchorCapturePreview() {
+    ReferencePreview(referenceDefectiveAnchorState())
+}
+
 @Composable
 private fun ReferencePreview(state: FieldUiState) {
     FieldScreen(
@@ -120,7 +128,7 @@ private fun referenceJob() = InspectorJob(
     ),
 )
 
-private fun referenceJobPackState() = FieldUiState.JobPackOpened(
+internal fun referenceJobPackState() = FieldUiState.JobPackOpened(
     account = referenceAccount(),
     jobs = listOf(referenceJob()),
     job = referenceJob(),
@@ -170,3 +178,30 @@ private fun referenceJobPackState() = FieldUiState.JobPackOpened(
         source = JobPackOpenSource.CACHED,
     ),
 )
+
+internal fun referenceDefectiveAnchorState(): FieldUiState.AnchorCapture {
+    val jobPack = referenceJobPackState()
+    val anchor = jobPack.opened.stored.pack.anchors.first()
+    val draft = AnchorInspectionDraft(
+        companyId = jobPack.account.companyId,
+        jobId = jobPack.job.jobId,
+        jobPackVersion = jobPack.opened.stored.pack.jobPackVersion,
+        inspectionId = "inspection-001",
+        expectedAnchorId = anchor.anchorId,
+        identityConfirmed = true,
+        locationConfirmed = true,
+        location = anchor.location,
+        observations = "Surface corrosion recorded around the anchor fitting.",
+        recordedOutcome = RecordedOutcome.DEFECTIVE,
+        createdAtEpochMillis = 1_000L,
+    )
+    return FieldUiState.AnchorCapture(
+        account = jobPack.account,
+        jobs = jobPack.jobs,
+        job = jobPack.job,
+        opened = jobPack.opened,
+        anchor = anchor,
+        draft = draft,
+        evidence = emptyList(),
+    )
+}

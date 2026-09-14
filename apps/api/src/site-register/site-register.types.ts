@@ -69,33 +69,49 @@ export interface AnchorRecord {
 }
 
 export interface SiteRegisterStore {
-  createClient(client: ClientRecord): void;
-  getClient(companyId: string, clientId: string): ClientRecord | undefined;
-  listClients(companyId: string): readonly ClientRecord[];
-  updateClient(client: ClientRecord): void;
+  createClient(client: ClientRecord): void | Promise<void>;
+  getClient(
+    companyId: string,
+    clientId: string,
+  ): ClientRecord | undefined | Promise<ClientRecord | undefined>;
+  listClients(
+    companyId: string,
+  ): readonly ClientRecord[] | Promise<readonly ClientRecord[]>;
+  updateClient(client: ClientRecord): void | Promise<void>;
 
-  createSite(site: SiteRecord): void;
-  getSite(companyId: string, siteId: string): SiteRecord | undefined;
-  listSites(companyId: string): readonly SiteRecord[];
-  updateSite(site: SiteRecord): void;
+  createSite(site: SiteRecord): void | Promise<void>;
+  getSite(
+    companyId: string,
+    siteId: string,
+  ): SiteRecord | undefined | Promise<SiteRecord | undefined>;
+  listSites(
+    companyId: string,
+  ): readonly SiteRecord[] | Promise<readonly SiteRecord[]>;
+  updateSite(site: SiteRecord): void | Promise<void>;
 
-  createAnchor(anchor: AnchorRecord): void;
+  createAnchor(anchor: AnchorRecord): void | Promise<void>;
   getAnchor(
     companyId: string,
     siteId: string,
     anchorId: string,
-  ): AnchorRecord | undefined;
-  listAnchors(companyId: string, siteId: string): readonly AnchorRecord[];
-  updateAnchor(anchor: AnchorRecord): void;
+  ): AnchorRecord | undefined | Promise<AnchorRecord | undefined>;
+  listAnchors(
+    companyId: string,
+    siteId: string,
+  ): readonly AnchorRecord[] | Promise<readonly AnchorRecord[]>;
+  updateAnchor(anchor: AnchorRecord): void | Promise<void>;
 }
 
 /** Read-only register access used when an authorised inspector receives a job pack. */
 export interface FieldRegisterReader {
-  getFieldSite(principal: AuthPrincipal, siteId: string): SiteRecord;
+  getFieldSite(
+    principal: AuthPrincipal,
+    siteId: string,
+  ): SiteRecord | Promise<SiteRecord>;
   listFieldAnchors(
     principal: AuthPrincipal,
     siteId: string,
-  ): readonly AnchorRecord[];
+  ): readonly AnchorRecord[] | Promise<readonly AnchorRecord[]>;
 }
 
 export interface SiteRegisterIdGenerator {
@@ -117,7 +133,7 @@ export interface SiteRegisterAuditEvent {
 }
 
 export interface SiteRegisterAuditSink {
-  record(event: SiteRegisterAuditEvent): void;
+  record(event: SiteRegisterAuditEvent): void | Promise<void>;
 }
 
 export class NoopSiteRegisterAuditSink implements SiteRegisterAuditSink {
