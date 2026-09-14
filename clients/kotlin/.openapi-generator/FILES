@@ -10,6 +10,7 @@ docs/CreateAnchorDto.md
 docs/CreateClientDto.md
 docs/CreateInvitationDto.md
 docs/CreateJobDto.md
+docs/CreateReviewIssueDto.md
 docs/CreateSiteDto.md
 docs/HealthResponseDto.md
 docs/IdentityApi.md
@@ -21,6 +22,11 @@ docs/JobWorkflowApi.md
 docs/PhotoUploadChunkDto.md
 docs/PhotoUploadChunkResponseDto.md
 docs/ProviderAccessTokenDto.md
+docs/ResolveReviewIssueDto.md
+docs/ReviewActionResponseDto.md
+docs/ReviewApi.md
+docs/ReviewIssueResolutionResponseDto.md
+docs/ReviewIssueResponseDto.md
 docs/SessionResponseDto.md
 docs/SessionRevokedResponseDto.md
 docs/SiteRegisterApi.md
@@ -40,6 +46,7 @@ proguard-rules.pro
 settings.gradle
 src/main/kotlin/au/com/heightsafety/api/apis/IdentityApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/JobWorkflowApi.kt
+src/main/kotlin/au/com/heightsafety/api/apis/ReviewApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/SiteRegisterApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/SynchronisationApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/SystemApi.kt
@@ -70,6 +77,7 @@ src/main/kotlin/au/com/heightsafety/api/models/CreateAnchorDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/CreateClientDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/CreateInvitationDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/CreateJobDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/CreateReviewIssueDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/CreateSiteDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/HealthResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/InvitationResponseDto.kt
@@ -79,6 +87,10 @@ src/main/kotlin/au/com/heightsafety/api/models/JobResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/PhotoUploadChunkDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/PhotoUploadChunkResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/ProviderAccessTokenDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/ResolveReviewIssueDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/ReviewActionResponseDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/ReviewIssueResolutionResponseDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/ReviewIssueResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/SessionResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/SessionRevokedResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/SiteResponseDto.kt
@@ -93,6 +105,7 @@ src/main/kotlin/au/com/heightsafety/api/models/UpdateClientDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/UpdateSiteDto.kt
 src/test/kotlin/au/com/heightsafety/api/apis/IdentityApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/JobWorkflowApiTest.kt
+src/test/kotlin/au/com/heightsafety/api/apis/ReviewApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/SiteRegisterApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/SynchronisationApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/SystemApiTest.kt
@@ -106,6 +119,7 @@ src/test/kotlin/au/com/heightsafety/api/models/CreateAnchorDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/CreateClientDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/CreateInvitationDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/CreateJobDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/CreateReviewIssueDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/CreateSiteDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/HealthResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/InvitationResponseDtoTest.kt
@@ -115,6 +129,10 @@ src/test/kotlin/au/com/heightsafety/api/models/JobResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/PhotoUploadChunkDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/PhotoUploadChunkResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/ProviderAccessTokenDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/ResolveReviewIssueDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/ReviewActionResponseDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/ReviewIssueResolutionResponseDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/ReviewIssueResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/SessionResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/SessionRevokedResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/SiteResponseDtoTest.kt

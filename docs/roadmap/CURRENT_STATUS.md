@@ -4,7 +4,8 @@ Last update: 2026-09-15
 
 ## Active stage
 
-Stage 3C — offline and synchronisation; `3A-01` through `3A-05` are Done.
+Stage 3D — office review and reporting continuation; `3A-01` through `3A-05`
+are Done.
 `3B-01`, `3B-02`, the bounded local-capture acceptance for `3B-03` and
 `3B-04` bounded local review/queue slice are Done. `3C-01` durable mutation
 outbox implementation is in review and now has a tenant-bound PostgreSQL
@@ -33,14 +34,22 @@ development tenant; that does not satisfy the selected AU production-tenant
 configuration step.
 G-03 is Done as D-027.
 
+`3D-01` now has a bounded provider-neutral review producer in review. Office
+reviewers and Administrators can create blocker, warning, conflict or change
+issues against a submitted inspection/anchor context, resolve them with a
+reason, and read append-only actions. The PostgreSQL adapter writes the issue,
+review action and generic audit event in one tenant-bound transaction. This
+does not yet create a new working inspection revision, resubmit evidence,
+update the authoritative review queue or expose a connected office UI.
+
 `3D-02` is now in progress with a bounded provider-neutral approved-snapshot
 freeze boundary. The slice preserves the exact inspection/evidence revision,
 checks review gates, records the supported jurisdiction as context, emits an
 approval audit event and now has a PostgreSQL adapter port/proof with
 company-scoped approval uniqueness, tenant-context setup and checksum-checked
-round trips. The adapter is not wired into runtime persistence yet. The
-`3D-01` review/change-request producer and durable audit transaction remain
-open.
+round trips. The adapter is not wired into runtime persistence yet; its
+authoritative source and approval transaction depend on completing the review
+and revision loop.
 
 ## Completed
 
@@ -326,8 +335,8 @@ open.
   or delete operation. A provider-neutral PostgreSQL adapter port/proof now
   applies transaction-local tenant context, persists the approval identity,
   maps uniqueness conflicts for replay and rejects checksum/document mismatch.
-  Runtime wiring, the durable audit transaction and the `3D-01` review source
-  remain open.
+  Runtime wiring, approval against authoritative durable review state and the
+  exact revision loop remain open.
 - Scoped `3B-04` JVM, lint, Compose and encrypted-storage checks pass; an API 30
   emulator passes 15 app and 11 data instrumented tests. Runtime persistence,
   durable audit, identity membership, pack-update/sync/recovery workflows and
@@ -340,10 +349,10 @@ open.
 
 ## Next recommended task
 
-Continue the `3D-02` immutable approved-snapshot slice while keeping its
-`3D-01` review/change-request dependency visible. The next implementation
-boundary is `3D-01` review/change-request persistence and the durable audit
-transaction, followed by production database/object-storage deployment and
+Review and finish this bounded `3D-01` producer, then add the working-revision
+and re-submission loop that makes it the authoritative source for `3D-02`.
+Next, implement the approval transaction against durable review/submission
+state, followed by production database/object-storage deployment and
 Administrator recovery verification. The local `3C` runtime integration is
 implemented and smoke-tested, but remains a development adapter until those
 operational gates close. Do not treat bounded protocol, payload-applier,
@@ -511,14 +520,18 @@ snapshot service and PostgreSQL adapter proof included. The PostgreSQL
 integration test remained skipped because this scoped run had no disposable
 `TEST_POSTGRES_URL`; runtime snapshot persistence is not claimed.
 
-On 2026-09-15, the API build and 48-test suite passed (47 tests plus one
-environment-gated PostgreSQL integration skip). A local PostgreSQL 17 runtime
+On 2026-09-15, the API build and 55-test suite passed (including the review
+producer/adapter tests and the live PostgreSQL tenant-isolation migration
+check). A local PostgreSQL 17 runtime
 smoke passed `/auth/me`, session renewal, authorised job listing, a versioned
 QLD job-pack read, one atomic inspection mutation, identical replay and a
 resumable photo upload whose database state and private-object SHA-256 matched.
 The complete `tools/verify.sh` gate then passed against the local PostgreSQL 17
 instance, including the live tenant-isolation migration check and Android
 storage/job-pack checks.
+The new `005_review_history_runtime.sql` migration was applied to the local
+runtime and confirms that the application role can only change review issue
+status/resolution time; review action rows and issue content remain protected.
 The Android JVM/app/data suites passed after tenant-scoping the authenticated
 photo queue. A rebuilt debug APK installed and launched on the physical Pixel
 10 Pro; the sign-in screen rendered. The prior Auth0 provider login remains

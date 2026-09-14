@@ -65,6 +65,10 @@ All URIs are relative to */api/v1*
 *JobWorkflowApi* | [**getJob**](docs/JobWorkflowApi.md#getjob) | **GET** /jobs/{jobId} | Read an authorised job
 *JobWorkflowApi* | [**listJobs**](docs/JobWorkflowApi.md#listjobs) | **GET** /jobs | List authorised jobs
 *JobWorkflowApi* | [**releaseJob**](docs/JobWorkflowApi.md#releasejob) | **POST** /jobs/{jobId}/release | Release a draft job
+*ReviewApi* | [**createReviewIssue**](docs/ReviewApi.md#createreviewissue) | **POST** /reviews/issues | Record an append-only office review issue or change request
+*ReviewApi* | [**listReviewActions**](docs/ReviewApi.md#listreviewactions) | **GET** /reviews/issues/{reviewIssueId}/actions | List append-only actions for one review issue
+*ReviewApi* | [**listReviewIssues**](docs/ReviewApi.md#listreviewissues) | **GET** /reviews/inspections/{inspectionId}/issues | List review issues for one submitted inspection revision
+*ReviewApi* | [**resolveReviewIssue**](docs/ReviewApi.md#resolvereviewissue) | **POST** /reviews/issues/{reviewIssueId}/resolve | Record a reasoned resolution without changing inspector evidence
 *SiteRegisterApi* | [**createAnchor**](docs/SiteRegisterApi.md#createanchor) | **POST** /sites/{siteId}/anchors | Add a single-point anchor to a site register
 *SiteRegisterApi* | [**createClient**](docs/SiteRegisterApi.md#createclient) | **POST** /clients | Create a company client
 *SiteRegisterApi* | [**createSite**](docs/SiteRegisterApi.md#createsite) | **POST** /sites | Create a site with supported jurisdiction context
@@ -95,6 +99,7 @@ All URIs are relative to */api/v1*
 - [CreateClientDto](docs/CreateClientDto.md)
 - [CreateInvitationDto](docs/CreateInvitationDto.md)
 - [CreateJobDto](docs/CreateJobDto.md)
+- [CreateReviewIssueDto](docs/CreateReviewIssueDto.md)
 - [CreateSiteDto](docs/CreateSiteDto.md)
 - [HealthResponseDto](docs/HealthResponseDto.md)
 - [InvitationResponseDto](docs/InvitationResponseDto.md)
@@ -104,6 +109,10 @@ All URIs are relative to */api/v1*
 - [PhotoUploadChunkDto](docs/PhotoUploadChunkDto.md)
 - [PhotoUploadChunkResponseDto](docs/PhotoUploadChunkResponseDto.md)
 - [ProviderAccessTokenDto](docs/ProviderAccessTokenDto.md)
+- [ResolveReviewIssueDto](docs/ResolveReviewIssueDto.md)
+- [ReviewActionResponseDto](docs/ReviewActionResponseDto.md)
+- [ReviewIssueResolutionResponseDto](docs/ReviewIssueResolutionResponseDto.md)
+- [ReviewIssueResponseDto](docs/ReviewIssueResponseDto.md)
 - [SessionResponseDto](docs/SessionResponseDto.md)
 - [SessionRevokedResponseDto](docs/SessionRevokedResponseDto.md)
 - [SiteResponseDto](docs/SiteResponseDto.md)

@@ -12,6 +12,7 @@ docs/CreateAnchorDto.md
 docs/CreateClientDto.md
 docs/CreateInvitationDto.md
 docs/CreateJobDto.md
+docs/CreateReviewIssueDto.md
 docs/CreateSiteDto.md
 docs/HealthResponseDto.md
 docs/IdentityApi.md
@@ -23,6 +24,11 @@ docs/JobWorkflowApi.md
 docs/PhotoUploadChunkDto.md
 docs/PhotoUploadChunkResponseDto.md
 docs/ProviderAccessTokenDto.md
+docs/ResolveReviewIssueDto.md
+docs/ReviewActionResponseDto.md
+docs/ReviewApi.md
+docs/ReviewIssueResolutionResponseDto.md
+docs/ReviewIssueResponseDto.md
 docs/SessionResponseDto.md
 docs/SessionRevokedResponseDto.md
 docs/SiteRegisterApi.md
@@ -41,6 +47,7 @@ docs/UpdateSiteDto.md
 package.json
 src/apis/IdentityApi.ts
 src/apis/JobWorkflowApi.ts
+src/apis/ReviewApi.ts
 src/apis/SiteRegisterApi.ts
 src/apis/SynchronisationApi.ts
 src/apis/SystemApi.ts
@@ -56,6 +63,7 @@ src/models/CreateAnchorDto.ts
 src/models/CreateClientDto.ts
 src/models/CreateInvitationDto.ts
 src/models/CreateJobDto.ts
+src/models/CreateReviewIssueDto.ts
 src/models/CreateSiteDto.ts
 src/models/HealthResponseDto.ts
 src/models/InvitationResponseDto.ts
@@ -65,6 +73,10 @@ src/models/JobResponseDto.ts
 src/models/PhotoUploadChunkDto.ts
 src/models/PhotoUploadChunkResponseDto.ts
 src/models/ProviderAccessTokenDto.ts
+src/models/ResolveReviewIssueDto.ts
+src/models/ReviewActionResponseDto.ts
+src/models/ReviewIssueResolutionResponseDto.ts
+src/models/ReviewIssueResponseDto.ts
 src/models/SessionResponseDto.ts
 src/models/SessionRevokedResponseDto.ts
 src/models/SiteResponseDto.ts

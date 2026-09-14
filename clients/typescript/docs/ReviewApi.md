@@ -1,0 +1,303 @@
+# ReviewApi
+
+All URIs are relative to */api/v1*
+
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**createReviewIssue**](ReviewApi.md#createreviewissue) | **POST** /reviews/issues | Record an append-only office review issue or change request |
+| [**listReviewActions**](ReviewApi.md#listreviewactions) | **GET** /reviews/issues/{reviewIssueId}/actions | List append-only actions for one review issue |
+| [**listReviewIssues**](ReviewApi.md#listreviewissues) | **GET** /reviews/inspections/{inspectionId}/issues | List review issues for one submitted inspection revision |
+| [**resolveReviewIssue**](ReviewApi.md#resolvereviewissue) | **POST** /reviews/issues/{reviewIssueId}/resolve | Record a reasoned resolution without changing inspector evidence |
+
+
+
+## createReviewIssue
+
+> ReviewIssueResponseDto createReviewIssue(xCompanyId, createReviewIssueDto)
+
+Record an append-only office review issue or change request
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ReviewApi,
+} from '@height-safety/api-client';
+import type { CreateReviewIssueRequest } from '@height-safety/api-client';
+
+async function example() {
+  console.log("🚀 Testing @height-safety/api-client SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: access-token
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new ReviewApi(config);
+
+  const body = {
+    // string
+    xCompanyId: xCompanyId_example,
+    // CreateReviewIssueDto
+    createReviewIssueDto: ...,
+  } satisfies CreateReviewIssueRequest;
+
+  try {
+    const data = await api.createReviewIssue(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **xCompanyId** | `string` |  | [Defaults to `undefined`] |
+| **createReviewIssueDto** | [CreateReviewIssueDto](CreateReviewIssueDto.md) |  | |
+
+### Return type
+
+[**ReviewIssueResponseDto**](ReviewIssueResponseDto.md)
+
+### Authorization
+
+[access-token](../README.md#access-token)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listReviewActions
+
+> Array&lt;ReviewActionResponseDto&gt; listReviewActions(xCompanyId, reviewIssueId)
+
+List append-only actions for one review issue
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ReviewApi,
+} from '@height-safety/api-client';
+import type { ListReviewActionsRequest } from '@height-safety/api-client';
+
+async function example() {
+  console.log("🚀 Testing @height-safety/api-client SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: access-token
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new ReviewApi(config);
+
+  const body = {
+    // string
+    xCompanyId: xCompanyId_example,
+    // string
+    reviewIssueId: reviewIssueId_example,
+  } satisfies ListReviewActionsRequest;
+
+  try {
+    const data = await api.listReviewActions(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **xCompanyId** | `string` |  | [Defaults to `undefined`] |
+| **reviewIssueId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**Array&lt;ReviewActionResponseDto&gt;**](ReviewActionResponseDto.md)
+
+### Authorization
+
+[access-token](../README.md#access-token)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listReviewIssues
+
+> Array&lt;ReviewIssueResponseDto&gt; listReviewIssues(xCompanyId, inspectionId)
+
+List review issues for one submitted inspection revision
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ReviewApi,
+} from '@height-safety/api-client';
+import type { ListReviewIssuesRequest } from '@height-safety/api-client';
+
+async function example() {
+  console.log("🚀 Testing @height-safety/api-client SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: access-token
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new ReviewApi(config);
+
+  const body = {
+    // string
+    xCompanyId: xCompanyId_example,
+    // string
+    inspectionId: inspectionId_example,
+  } satisfies ListReviewIssuesRequest;
+
+  try {
+    const data = await api.listReviewIssues(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **xCompanyId** | `string` |  | [Defaults to `undefined`] |
+| **inspectionId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**Array&lt;ReviewIssueResponseDto&gt;**](ReviewIssueResponseDto.md)
+
+### Authorization
+
+[access-token](../README.md#access-token)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## resolveReviewIssue
+
+> ReviewIssueResolutionResponseDto resolveReviewIssue(xCompanyId, reviewIssueId, resolveReviewIssueDto)
+
+Record a reasoned resolution without changing inspector evidence
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ReviewApi,
+} from '@height-safety/api-client';
+import type { ResolveReviewIssueRequest } from '@height-safety/api-client';
+
+async function example() {
+  console.log("🚀 Testing @height-safety/api-client SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: access-token
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new ReviewApi(config);
+
+  const body = {
+    // string
+    xCompanyId: xCompanyId_example,
+    // string
+    reviewIssueId: reviewIssueId_example,
+    // ResolveReviewIssueDto
+    resolveReviewIssueDto: ...,
+  } satisfies ResolveReviewIssueRequest;
+
+  try {
+    const data = await api.resolveReviewIssue(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **xCompanyId** | `string` |  | [Defaults to `undefined`] |
+| **reviewIssueId** | `string` |  | [Defaults to `undefined`] |
+| **resolveReviewIssueDto** | [ResolveReviewIssueDto](ResolveReviewIssueDto.md) |  | |
+
+### Return type
+
+[**ReviewIssueResolutionResponseDto**](ReviewIssueResolutionResponseDto.md)
+
+### Authorization
+
+[access-token](../README.md#access-token)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+

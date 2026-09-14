@@ -342,6 +342,42 @@
         ],
         "type": "object"
       },
+      "CreateReviewIssueDto": {
+        "properties": {
+          "anchorInspectionId": {
+            "example": "anchor-inspection-001",
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "inspectionId": {
+            "example": "inspection-001",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "issueType": {
+            "enum": [
+              "blocker",
+              "warning",
+              "conflict",
+              "change"
+            ],
+            "example": "change",
+            "type": "string"
+          },
+          "reason": {
+            "example": "Please add the missing location evidence before approval.",
+            "maxLength": 10000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "inspectionId",
+          "issueType",
+          "reason"
+        ],
+        "type": "object"
+      },
       "CreateSiteDto": {
         "properties": {
           "accessNotes": {
@@ -679,6 +715,135 @@
         },
         "required": [
           "providerAccessToken"
+        ],
+        "type": "object"
+      },
+      "ResolveReviewIssueDto": {
+        "properties": {
+          "reason": {
+            "example": "Location evidence was added in the next revision.",
+            "maxLength": 10000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "ReviewActionResponseDto": {
+        "properties": {
+          "action": {
+            "enum": [
+              "issue_created",
+              "changes_requested",
+              "resolved"
+            ],
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "reviewActionId": {
+            "type": "string"
+          },
+          "reviewerUserId": {
+            "type": "string"
+          },
+          "reviewIssueId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "reviewActionId",
+          "reviewIssueId",
+          "reviewerUserId",
+          "action",
+          "reason",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "ReviewIssueResolutionResponseDto": {
+        "properties": {
+          "issue": {
+            "$ref": "#/components/schemas/ReviewIssueResponseDto"
+          },
+          "replayed": {
+            "example": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "issue",
+          "replayed"
+        ],
+        "type": "object"
+      },
+      "ReviewIssueResponseDto": {
+        "properties": {
+          "anchorInspectionId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "inspectionId": {
+            "type": "string"
+          },
+          "issueType": {
+            "enum": [
+              "blocker",
+              "warning",
+              "conflict",
+              "change"
+            ],
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "resolvedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "reviewerUserId": {
+            "type": "string"
+          },
+          "reviewIssueId": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "resolved"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "reviewIssueId",
+          "inspectionId",
+          "issueType",
+          "status",
+          "reviewerUserId",
+          "reason",
+          "createdAt"
         ],
         "type": "object"
       },
@@ -2036,6 +2201,200 @@
         "summary": "Release a draft job",
         "tags": [
           "job-workflow"
+        ]
+      }
+    },
+    "/reviews/inspections/{inspectionId}/issues": {
+      "get": {
+        "operationId": "listReviewIssues",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "inspectionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReviewIssueResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List review issues for one submitted inspection revision",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/reviews/issues": {
+      "post": {
+        "operationId": "createReviewIssue",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReviewIssueDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewIssueResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Record an append-only office review issue or change request",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/reviews/issues/{reviewIssueId}/actions": {
+      "get": {
+        "operationId": "listReviewActions",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "reviewIssueId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReviewActionResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List append-only actions for one review issue",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/reviews/issues/{reviewIssueId}/resolve": {
+      "post": {
+        "operationId": "resolveReviewIssue",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "reviewIssueId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveReviewIssueDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewIssueResolutionResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Record a reasoned resolution without changing inspector evidence",
+        "tags": [
+          "review"
         ]
       }
     },

@@ -25,6 +25,10 @@ const SYNC_RUNTIME_MIGRATION = new URL(
   '../migrations/004_sync_payload_runtime.sql',
   import.meta.url,
 );
+const REVIEW_HISTORY_MIGRATION = new URL(
+  '../migrations/005_review_history_runtime.sql',
+  import.meta.url,
+);
 const TENANT_TABLES = [
   'companies',
   'users',
@@ -98,12 +102,14 @@ test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async
     authSchemaMigration,
     jobPackSchemaMigration,
     syncRuntimeMigration,
+    reviewHistoryMigration,
   ] = await Promise.all([
     readMigration(RUNTIME_ROLE_MIGRATION),
     readMigration(TENANT_SCHEMA_MIGRATION),
     readMigration(AUTH_SCHEMA_MIGRATION),
     readMigration(JOB_PACK_SCHEMA_MIGRATION),
     readMigration(SYNC_RUNTIME_MIGRATION),
+    readMigration(REVIEW_HISTORY_MIGRATION),
   ]);
   const productSchema = `${tenantSchemaMigration}\n${authSchemaMigration}\n${jobPackSchemaMigration}`;
 
@@ -142,6 +148,18 @@ test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async
   assert.match(jobPackSchemaMigration, /job_pack_snapshots_tenant_policy/);
   assert.match(syncRuntimeMigration, /location_confirmed/);
   assert.match(syncRuntimeMigration, /request_body/);
+  assert.match(
+    reviewHistoryMigration,
+    /REVOKE UPDATE, DELETE ON review_issues/,
+  );
+  assert.match(
+    reviewHistoryMigration,
+    /GRANT UPDATE \(status, resolved_at\) ON review_issues/,
+  );
+  assert.match(
+    reviewHistoryMigration,
+    /REVOKE UPDATE, DELETE ON review_actions/,
+  );
 
   for (const table of TENANT_TABLES) {
     assert.match(
@@ -162,6 +180,7 @@ test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async
     new URL('002_identity_auth_schema.sql', MIGRATION_DIRECTORY),
     new URL('003_job_pack_snapshots.sql', MIGRATION_DIRECTORY),
     new URL('004_sync_payload_runtime.sql', MIGRATION_DIRECTORY),
+    new URL('005_review_history_runtime.sql', MIGRATION_DIRECTORY),
   ];
   assert.deepEqual(
     migrationFiles.map((url) => url.pathname.split('/').at(-1)),
@@ -171,6 +190,7 @@ test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async
       '002_identity_auth_schema.sql',
       '003_job_pack_snapshots.sql',
       '004_sync_payload_runtime.sql',
+      '005_review_history_runtime.sql',
     ],
   );
 });
@@ -199,6 +219,7 @@ test(
         new URL('../migrations/002_identity_auth_schema.sql', import.meta.url),
         JOB_PACK_SCHEMA_MIGRATION,
         SYNC_RUNTIME_MIGRATION,
+        REVIEW_HISTORY_MIGRATION,
       ]) {
         const migration = await readMigration(migrationUrl);
         runPsql(migration, { schema });
@@ -330,6 +351,12 @@ test(
               AND has_column_privilege('height_safety_runtime', current_schema() || '.report_revisions', 'superseded_at', 'UPDATE') = TRUE
               AND has_table_privilege('height_safety_runtime', current_schema() || '.inspection_snapshots', 'UPDATE') = FALSE
               AND has_table_privilege('height_safety_runtime', current_schema() || '.inspection_snapshots', 'DELETE') = FALSE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.review_issues', 'UPDATE') = FALSE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.review_issues', 'DELETE') = FALSE
+              AND has_column_privilege('height_safety_runtime', current_schema() || '.review_issues', 'status', 'UPDATE') = TRUE
+              AND has_column_privilege('height_safety_runtime', current_schema() || '.review_issues', 'reason', 'UPDATE') = FALSE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.review_actions', 'UPDATE') = FALSE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.review_actions', 'DELETE') = FALSE
             THEN 'runtime-role-attributes-passed'
             ELSE 'runtime-role-attributes-failed'
           END

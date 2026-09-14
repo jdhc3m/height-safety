@@ -7,6 +7,7 @@ import { JobWorkflowModule } from './job-workflow/job-workflow.module';
 import { SiteRegisterModule } from './site-register/site-register.module';
 import { SyncModule } from './sync/sync.module';
 import { DatabaseModule } from './database/database.module';
+import { ReviewModule } from './review/review.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { DatabaseModule } from './database/database.module';
     SiteRegisterModule,
     JobWorkflowModule,
     SyncModule,
+    ReviewModule,
   ],
   controllers: [HealthController],
 })

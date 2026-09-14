@@ -58,6 +58,10 @@ All URIs are relative to */api/v1*
 | *JobWorkflowApi* | [**getJob**](docs/JobWorkflowApi.md#getjob) | **GET** jobs/{jobId} | Read an authorised job |
 | *JobWorkflowApi* | [**listJobs**](docs/JobWorkflowApi.md#listjobs) | **GET** jobs | List authorised jobs |
 | *JobWorkflowApi* | [**releaseJob**](docs/JobWorkflowApi.md#releasejob) | **POST** jobs/{jobId}/release | Release a draft job |
+| *ReviewApi* | [**createReviewIssue**](docs/ReviewApi.md#createreviewissue) | **POST** reviews/issues | Record an append-only office review issue or change request |
+| *ReviewApi* | [**listReviewActions**](docs/ReviewApi.md#listreviewactions) | **GET** reviews/issues/{reviewIssueId}/actions | List append-only actions for one review issue |
+| *ReviewApi* | [**listReviewIssues**](docs/ReviewApi.md#listreviewissues) | **GET** reviews/inspections/{inspectionId}/issues | List review issues for one submitted inspection revision |
+| *ReviewApi* | [**resolveReviewIssue**](docs/ReviewApi.md#resolvereviewissue) | **POST** reviews/issues/{reviewIssueId}/resolve | Record a reasoned resolution without changing inspector evidence |
 | *SiteRegisterApi* | [**createAnchor**](docs/SiteRegisterApi.md#createanchor) | **POST** sites/{siteId}/anchors | Add a single-point anchor to a site register |
 | *SiteRegisterApi* | [**createClient**](docs/SiteRegisterApi.md#createclient) | **POST** clients | Create a company client |
 | *SiteRegisterApi* | [**createSite**](docs/SiteRegisterApi.md#createsite) | **POST** sites | Create a site with supported jurisdiction context |
@@ -89,6 +93,7 @@ All URIs are relative to */api/v1*
  - [au.com.heightsafety.api.models.CreateClientDto](docs/CreateClientDto.md)
  - [au.com.heightsafety.api.models.CreateInvitationDto](docs/CreateInvitationDto.md)
  - [au.com.heightsafety.api.models.CreateJobDto](docs/CreateJobDto.md)
+ - [au.com.heightsafety.api.models.CreateReviewIssueDto](docs/CreateReviewIssueDto.md)
  - [au.com.heightsafety.api.models.CreateSiteDto](docs/CreateSiteDto.md)
  - [au.com.heightsafety.api.models.HealthResponseDto](docs/HealthResponseDto.md)
  - [au.com.heightsafety.api.models.InvitationResponseDto](docs/InvitationResponseDto.md)
@@ -98,6 +103,10 @@ All URIs are relative to */api/v1*
  - [au.com.heightsafety.api.models.PhotoUploadChunkDto](docs/PhotoUploadChunkDto.md)
  - [au.com.heightsafety.api.models.PhotoUploadChunkResponseDto](docs/PhotoUploadChunkResponseDto.md)
  - [au.com.heightsafety.api.models.ProviderAccessTokenDto](docs/ProviderAccessTokenDto.md)
+ - [au.com.heightsafety.api.models.ResolveReviewIssueDto](docs/ResolveReviewIssueDto.md)
+ - [au.com.heightsafety.api.models.ReviewActionResponseDto](docs/ReviewActionResponseDto.md)
+ - [au.com.heightsafety.api.models.ReviewIssueResolutionResponseDto](docs/ReviewIssueResolutionResponseDto.md)
+ - [au.com.heightsafety.api.models.ReviewIssueResponseDto](docs/ReviewIssueResponseDto.md)
  - [au.com.heightsafety.api.models.SessionResponseDto](docs/SessionResponseDto.md)
  - [au.com.heightsafety.api.models.SessionRevokedResponseDto](docs/SessionRevokedResponseDto.md)
  - [au.com.heightsafety.api.models.SiteResponseDto](docs/SiteResponseDto.md)
