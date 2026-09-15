@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 import {
   createTenantContext,
@@ -9,8 +9,9 @@ import {
   APPROVED_REVIEW_STATUSES,
   ApprovedSnapshotFailure,
   type ApprovedSnapshot,
+  type ApprovedSnapshotAuditEvent,
   type ApprovedSnapshotDocument,
-  type ApprovedSnapshotStore,
+  type AtomicApprovedSnapshotStore,
 } from './approved-snapshot.types';
 import { copyApprovedSnapshot } from './approved-snapshot-store';
 
@@ -256,7 +257,9 @@ function parseStoredDocument(
   });
 }
 
-export class PostgresApprovedSnapshotStore implements ApprovedSnapshotStore {
+export class PostgresApprovedSnapshotStore
+  implements AtomicApprovedSnapshotStore
+{
   constructor(private readonly database: ApprovedSnapshotSqlDatabase) {}
 
   async findById(
@@ -297,16 +300,7 @@ export class PostgresApprovedSnapshotStore implements ApprovedSnapshotStore {
 
     try {
       await this.withTenant(snapshot.companyId, async (transaction) => {
-        await transaction.query(INSERT_SQL, [
-          snapshot.companyId,
-          snapshot.snapshotId,
-          snapshot.approvalId,
-          snapshot.sourceInspectionId,
-          snapshot.jurisdiction,
-          snapshot.documentJson,
-          snapshot.sha256,
-          snapshot.approvedAt,
-        ]);
+        await this.insertSnapshot(transaction, snapshot);
       });
     } catch (error) {
       if (error instanceof ApprovedSnapshotFailure) {
@@ -320,6 +314,75 @@ export class PostgresApprovedSnapshotStore implements ApprovedSnapshotStore {
       }
       throw storedFailure('approved snapshot persistence is unavailable');
     }
+  }
+
+  async createWithAudit(
+    snapshot: ApprovedSnapshot,
+    event: ApprovedSnapshotAuditEvent,
+  ): Promise<void> {
+    if (sha256(snapshot.documentJson) !== snapshot.sha256) {
+      throw new ApprovedSnapshotFailure(
+        'CONFLICT',
+        'approved snapshot document checksum does not match its content',
+      );
+    }
+    if (event.companyId !== snapshot.companyId) {
+      throw new ApprovedSnapshotFailure(
+        'CONFLICT',
+        'approved snapshot audit event crosses company scope',
+      );
+    }
+
+    try {
+      await this.withTenant(snapshot.companyId, async (transaction) => {
+        await this.insertSnapshot(transaction, snapshot);
+        await transaction.query(
+          `
+            INSERT INTO audit_events (
+              company_id, audit_event_id, actor_user_id, action, target_type,
+              target_id, transition_metadata, occurred_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `,
+          [
+            event.companyId,
+            randomBytes(16).toString('hex'),
+            event.actorUserId,
+            event.action,
+            event.targetType,
+            event.targetId,
+            event.metadata ? JSON.stringify(event.metadata) : null,
+            event.occurredAt,
+          ],
+        );
+      });
+    } catch (error) {
+      if (error instanceof ApprovedSnapshotFailure) {
+        throw error;
+      }
+      if (isUniqueViolation(error)) {
+        throw new ApprovedSnapshotFailure(
+          'CONFLICT',
+          'approved snapshot or review approval already exists',
+        );
+      }
+      throw storedFailure('approved snapshot persistence is unavailable');
+    }
+  }
+
+  private async insertSnapshot(
+    transaction: ApprovedSnapshotSqlTransaction,
+    snapshot: ApprovedSnapshot,
+  ): Promise<void> {
+    await transaction.query(INSERT_SQL, [
+      snapshot.companyId,
+      snapshot.snapshotId,
+      snapshot.approvalId,
+      snapshot.sourceInspectionId,
+      snapshot.jurisdiction,
+      snapshot.documentJson,
+      snapshot.sha256,
+      snapshot.approvedAt,
+    ]);
   }
 
   private async withTenant<T>(

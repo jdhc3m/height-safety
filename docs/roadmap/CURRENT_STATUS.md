@@ -51,9 +51,11 @@ freeze boundary. The slice preserves the exact inspection/evidence revision,
 checks review gates, records the supported jurisdiction as context, emits an
 approval audit event and now has a PostgreSQL adapter port/proof with
 company-scoped approval uniqueness, tenant-context setup and checksum-checked
-round trips. The adapter is not wired into runtime persistence yet; its
-authoritative source and approval transaction depend on completing the review
-and revision loop.
+round trips. Configured PostgreSQL approval now writes the snapshot and
+`inspection.snapshot_approved` audit event in one tenant-bound transaction;
+retries still return the original snapshot. The authoritative source still
+needs to read durable review/submission state rather than caller-supplied gate
+counts, and the working-revision/re-submission loop remains open.
 
 ## Completed
 
@@ -355,13 +357,13 @@ and revision loop.
 
 Review and finish this bounded `3D-01` producer, then add the working-revision
 and re-submission loop that makes it the authoritative source for `3D-02`.
-Next, implement the approval transaction against durable review/submission
-state, followed by production database/object-storage deployment and
-Administrator recovery verification. The local `3C` runtime integration is
-implemented and smoke-tested, but remains a development adapter until those
-operational gates close. Do not treat bounded protocol, payload-applier,
-process-memory worker or domain state-machine slices as production
-synchronisation.
+The configured snapshot/audit write is now atomic (D-047); next, implement the
+approval transaction against durable review/submission state, followed by
+production database/object-storage deployment and Administrator recovery
+verification. The local `3C` runtime integration is implemented and
+smoke-tested, but remains a development adapter until those operational gates
+close. Do not treat bounded protocol, payload-applier, process-memory worker
+or domain state-machine slices as production synchronisation.
 Do not add Kotlin
 Multiplatform, an iOS target or deferred standards candidates. Auth0 tenant
 setup and production identity/runtime deployment remain open. The US-5 tenant

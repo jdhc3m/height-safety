@@ -124,6 +124,19 @@ export interface ApprovedSnapshotAuditSink {
   record(event: ApprovedSnapshotAuditEvent): void | Promise<void>;
 }
 
+/**
+ * Durable stores may implement this stronger boundary so a newly approved
+ * snapshot and its audit event commit or roll back together. The separate
+ * audit sink remains available for provider-neutral service tests and stores
+ * that do not yet expose a transaction-aware adapter.
+ */
+export interface AtomicApprovedSnapshotStore extends ApprovedSnapshotStore {
+  createWithAudit(
+    snapshot: ApprovedSnapshot,
+    event: ApprovedSnapshotAuditEvent,
+  ): Promise<void>;
+}
+
 export class NoopApprovedSnapshotAuditSink
   implements ApprovedSnapshotAuditSink
 {

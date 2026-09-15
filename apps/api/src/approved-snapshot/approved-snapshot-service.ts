@@ -19,6 +19,7 @@ import {
   type ApprovedSnapshotClock,
   type ApprovedSnapshotDocument,
   type ApprovedSnapshotIdGenerator,
+  type AtomicApprovedSnapshotStore,
   type ApprovedSnapshotResult,
   type ApprovedSnapshotSource,
   type ApprovedSnapshotStore,
@@ -500,8 +501,29 @@ export class ApprovedSnapshotService {
       sha256: sha256(documentJson),
     };
 
+    const auditEvent = {
+      companyId: principal.companyId,
+      actorUserId: principal.userId,
+      action: 'inspection.snapshot_approved',
+      targetType: 'inspection_snapshot',
+      targetId: snapshotId,
+      occurredAt: copyDate(approvedAt),
+      metadata: {
+        jurisdiction: snapshot.jurisdiction,
+        sourceInspectionRevision: snapshot.sourceInspectionRevision,
+        sourceEvidenceVersion: snapshot.sourceEvidenceVersion,
+      },
+    } satisfies Parameters<ApprovedSnapshotAuditSink['record']>[0];
+
     try {
-      await this.options.store.create(snapshot);
+      const atomicStore = this.options
+        .store as Partial<AtomicApprovedSnapshotStore>;
+      if (typeof atomicStore.createWithAudit === 'function') {
+        await atomicStore.createWithAudit(snapshot, auditEvent);
+      } else {
+        await this.options.store.create(snapshot);
+        await this.options.auditSink.record(auditEvent);
+      }
     } catch (error) {
       // A durable store may reject a concurrent insert after both callers
       // observed no existing approval. Re-read the approval so a retry still
@@ -523,19 +545,6 @@ export class ApprovedSnapshotService {
       }
       throw error;
     }
-    await this.options.auditSink.record({
-      companyId: principal.companyId,
-      actorUserId: principal.userId,
-      action: 'inspection.snapshot_approved',
-      targetType: 'inspection_snapshot',
-      targetId: snapshotId,
-      occurredAt: copyDate(approvedAt),
-      metadata: {
-        jurisdiction: snapshot.jurisdiction,
-        sourceInspectionRevision: snapshot.sourceInspectionRevision,
-        sourceEvidenceVersion: snapshot.sourceEvidenceVersion,
-      },
-    });
     return { snapshot: copyApprovedSnapshot(snapshot), replayed: false };
   }
 

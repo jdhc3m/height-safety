@@ -123,18 +123,29 @@ class FakeSqlDatabase {
     this.rows = rows;
     this.queryError = queryError;
     this.queries = [];
+    this.transactionCount = 0;
+    this.committedTransactions = 0;
+    this.rolledBackTransactions = 0;
   }
 
   async transaction(work) {
-    return work({
-      query: async (text, values) => {
-        this.queries.push({ text, values });
-        if (this.queryError && text.includes('INSERT INTO')) {
-          throw this.queryError;
-        }
-        return { rows: this.rows };
-      },
-    });
+    const transactionId = ++this.transactionCount;
+    try {
+      const result = await work({
+        query: async (text, values) => {
+          this.queries.push({ text, values, transactionId });
+          if (this.queryError && text.includes('INSERT INTO')) {
+            throw this.queryError;
+          }
+          return { rows: this.rows };
+        },
+      });
+      this.committedTransactions += 1;
+      return result;
+    } catch (error) {
+      this.rolledBackTransactions += 1;
+      throw error;
+    }
   }
 }
 
@@ -402,6 +413,51 @@ test('PostgreSQL adapter applies tenant context and round-trips immutable snapsh
   ]);
 });
 
+test('PostgreSQL approval writes the snapshot and audit event in one transaction', async () => {
+  const { service: sourceService } = makeHarness();
+  const sourceSnapshot = await sourceService.create(
+    principal('company-a'),
+    source(),
+  );
+  const database = new FakeSqlDatabase();
+  const store = new PostgresApprovedSnapshotStore(database);
+  const service = new ApprovedSnapshotService({
+    store,
+    auditSink: {
+      record() {
+        throw new Error('separate audit sink must not be used');
+      },
+    },
+    clock: new FixedClock(),
+    idGenerator: new FixedIdGenerator(),
+  });
+
+  await service.create(principal('company-a'), source());
+
+  assert.equal(database.queries.length, 5);
+  assert.equal(
+    database.queries[0].text,
+    "SELECT set_config('app.company_id', $1, true)",
+  );
+  assert.match(database.queries[1].text, /approval_id/);
+  assert.equal(
+    database.queries[2].text,
+    "SELECT set_config('app.company_id', $1, true)",
+  );
+  assert.match(database.queries[3].text, /INSERT INTO inspection_snapshots/);
+  assert.match(database.queries[4].text, /INSERT INTO audit_events/);
+  assert.equal(database.queries[4].values[0], 'company-a');
+  assert.equal(database.queries[4].values[2], 'reviewer-a');
+  assert.equal(
+    database.queries[4].values[5],
+    sourceSnapshot.snapshot.snapshotId,
+  );
+  assert.equal(
+    database.queries[2].transactionId,
+    database.queries[4].transactionId,
+  );
+});
+
 test('PostgreSQL adapter maps approval uniqueness and corrupt content to typed failures', async () => {
   const { service } = makeHarness();
   const created = await service.create(principal('company-a'), source());
@@ -427,4 +483,28 @@ test('PostgreSQL adapter maps approval uniqueness and corrupt content to typed f
     () => corruptStore.findById('company-a', 'snapshot-1'),
     'PERSISTENCE_UNAVAILABLE',
   );
+});
+
+test('atomic PostgreSQL approval rolls back the snapshot when audit persistence fails', async () => {
+  const { service } = makeHarness();
+  const created = await service.create(principal('company-a'), source());
+  const database = new FakeSqlDatabase([], new Error('audit unavailable'));
+  const store = new PostgresApprovedSnapshotStore(database);
+
+  await assert.rejects(
+    () =>
+      store.createWithAudit(created.snapshot, {
+        companyId: 'company-a',
+        actorUserId: 'reviewer-a',
+        action: 'inspection.snapshot_approved',
+        targetType: 'inspection_snapshot',
+        targetId: created.snapshot.snapshotId,
+        occurredAt: created.snapshot.approvedAt,
+      }),
+    (error) =>
+      error instanceof ApprovedSnapshotFailure &&
+      error.code === 'PERSISTENCE_UNAVAILABLE',
+  );
+  assert.equal(database.committedTransactions, 0);
+  assert.equal(database.rolledBackTransactions, 1);
 });
