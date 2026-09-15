@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 
 import { SyncController } from '../dist/sync/sync.controller.js';
+import { PostgresSyncMutationStore } from '../dist/sync/postgres-sync-store.js';
 import { SyncService } from '../dist/sync/sync-service.js';
 import {
   InMemorySyncMutationStore,
@@ -337,5 +338,89 @@ test('invalid requests and unconfigured persistence remain explicit', async () =
       ),
     (error) =>
       error instanceof ServiceUnavailableException && error.getStatus() === 503,
+  );
+});
+
+class RevisionSqlDatabase {
+  constructor(revisions) {
+    this.revisions = [...revisions];
+    this.queries = [];
+  }
+
+  async transaction(work) {
+    return work({
+      query: async (text, values) => {
+        this.queries.push({ text, values });
+        if (text.includes('FROM jobs j')) {
+          return {
+            rows: [
+              {
+                job_id: 'job-001',
+                site_id: 'site-001',
+                jurisdiction: 'NSW',
+                job_pack_version: 1,
+                inspector_user_id: 'inspector-a',
+              },
+            ],
+          };
+        }
+        if (text.includes('COALESCE(MAX(revision_number)')) {
+          return { rows: [{ revision_number: this.revisions.shift() }] };
+        }
+        return { rows: [], rowCount: 1 };
+      },
+    });
+  }
+}
+
+test('PostgreSQL sync assigns a new inspection revision for a resubmission of the same pack', async () => {
+  const database = new RevisionSqlDatabase([1, 2]);
+  const store = new PostgresSyncMutationStore(database);
+  const firstRequest = {
+    mutationId: 'mutation-001',
+    idempotencyKey: 'mutation-001',
+    operation: 'submit_inspection',
+    entityType: 'inspection_submission',
+    entityId: 'submission-001',
+    expectedEntityVersion: 0,
+    entityVersion: 1,
+    payload: payload(),
+  };
+  const secondRequest = {
+    ...firstRequest,
+    mutationId: 'mutation-002',
+    idempotencyKey: 'mutation-002',
+    entityId: 'submission-002',
+    payload: payload({ submissionId: 'submission-002' }),
+  };
+  const actor = principal('company-a');
+
+  await store.submitAtomically(
+    actor,
+    firstRequest,
+    'sha-1',
+    new Date('2026-09-15T00:00:00.000Z'),
+    () => 'conflict-1',
+  );
+  await store.submitAtomically(
+    actor,
+    secondRequest,
+    'sha-2',
+    new Date('2026-09-15T00:01:00.000Z'),
+    () => 'conflict-2',
+  );
+
+  const inspectionInserts = database.queries.filter((query) =>
+    query.text.includes('INSERT INTO inspections'),
+  );
+  assert.equal(inspectionInserts.length, 2);
+  assert.equal(inspectionInserts[0].values[5], 1);
+  assert.equal(inspectionInserts[1].values[5], 2);
+  const locks = database.queries.filter((query) =>
+    query.text.includes('pg_advisory_xact_lock'),
+  );
+  assert.deepEqual(
+    locks.map((query) => query.values[2]),
+    ['job-001', 'job-001'],
   );
 });

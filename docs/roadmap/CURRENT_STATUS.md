@@ -43,8 +43,10 @@ reviewers and Administrators can create blocker, warning, conflict or change
 issues against a submitted inspection/anchor context, resolve them with a
 reason, and read append-only actions. The PostgreSQL adapter writes the issue,
 review action and generic audit event in one tenant-bound transaction. This
-does not yet create a new working inspection revision, resubmit evidence,
-update the authoritative review queue or expose a connected office UI.
+does not yet expose a connected office UI. Change requests now move the mutable
+job workflow pointer to `changes_requested` without mutating the submitted
+inspection; the next sync submission against the same pack receives a new
+server-assigned inspection revision, serialized per company/job (D-048).
 
 `3D-02` is now in progress with a bounded provider-neutral approved-snapshot
 freeze boundary. The slice preserves the exact inspection/evidence revision,
@@ -357,13 +359,15 @@ counts, and the working-revision/re-submission loop remains open.
 
 Review and finish this bounded `3D-01` producer, then add the working-revision
 and re-submission loop that makes it the authoritative source for `3D-02`.
-The configured snapshot/audit write is now atomic (D-047); next, implement the
-approval transaction against durable review/submission state, followed by
-production database/object-storage deployment and Administrator recovery
-verification. The local `3C` runtime integration is implemented and
-smoke-tested, but remains a development adapter until those operational gates
-close. Do not treat bounded protocol, payload-applier, process-memory worker
-or domain state-machine slices as production synchronisation.
+The bounded server revision allocation and change-request transition are now
+implemented (D-048), and the configured snapshot/audit write is atomic (D-047).
+Next, implement the approval transaction against durable review/submission
+state, followed by production database/object-storage deployment and
+Administrator recovery verification. The local `3C` runtime integration is
+implemented and smoke-tested, but remains a development adapter until those
+operational gates close. Do not treat bounded protocol, payload-applier,
+process-memory worker or domain state-machine slices as production
+synchronisation.
 Do not add Kotlin
 Multiplatform, an iOS target or deferred standards candidates. Auth0 tenant
 setup and production identity/runtime deployment remain open. The US-5 tenant
@@ -528,9 +532,10 @@ snapshot service and PostgreSQL adapter proof included. The PostgreSQL
 integration test remained skipped because this scoped run had no disposable
 `TEST_POSTGRES_URL`; runtime snapshot persistence is not claimed.
 
-On 2026-09-15, the API build and 55-test suite passed (including the review
-producer/adapter tests and the live PostgreSQL tenant-isolation migration
-check). A local PostgreSQL 17 runtime
+On 2026-09-15, the API build and 59-test suite passed (including the review
+producer/adapter, atomic approved-snapshot, server-assigned resubmission
+revision tests and the live PostgreSQL tenant-isolation migration check). A
+local PostgreSQL 17 runtime
 smoke passed `/auth/me`, session renewal, authorised job listing, a versioned
 QLD job-pack read, one atomic inspection mutation, identical replay and a
 resumable photo upload whose database state and private-object SHA-256 matched.

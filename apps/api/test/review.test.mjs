@@ -335,6 +335,29 @@ test('PostgreSQL review adapter binds tenant context and writes issue/action/aud
   assert.match(database.queries[7].text, /INSERT INTO audit_events/);
 });
 
+test('PostgreSQL change requests move the job workflow pointer without mutating the submitted inspection', async () => {
+  const database = new FakeSqlDatabase();
+  const store = new PostgresReviewStore(database);
+  await store.createIssue(
+    reviewIssueForSql({ issueType: 'change' }),
+    reviewActionForSql({ action: 'changes_requested' }),
+    auditForSql({ action: 'review.changes_requested' }),
+  );
+
+  assert.match(database.queries[4].text, /UPDATE jobs/);
+  assert.match(
+    database.queries[4].text,
+    /workflow_status = 'changes_requested'/,
+  );
+  assert.deepEqual(database.queries[4].values, [
+    'company-a',
+    'inspection-a',
+    new Date('2026-09-15T00:00:00.000Z'),
+  ]);
+  assert.match(database.queries[4].text, /FROM inspections/);
+  assert.doesNotMatch(database.queries[4].text, /UPDATE inspections/);
+});
+
 test('PostgreSQL review adapter exposes replay and persistence failure states', async () => {
   const replayDatabase = new FakeSqlDatabase({ updateRowCount: 0 });
   const replayStore = new PostgresReviewStore(replayDatabase);

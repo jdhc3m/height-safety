@@ -235,6 +235,25 @@ export class PostgresReviewStore implements ReviewStore {
       );
       await this.insertAction(transaction, action);
       await this.insertAuditEvent(transaction, auditEvent);
+      if (issue.issueType === 'change') {
+        // Keep the submitted inspection immutable. The job is the mutable
+        // workflow pointer; the next inspector submission becomes a new
+        // server-assigned inspection revision for the same released pack.
+        await transaction.query(
+          `
+            UPDATE jobs
+            SET workflow_status = 'changes_requested', updated_at = $3
+            WHERE company_id = $1
+              AND job_id = (
+                SELECT job_id
+                FROM inspections
+                WHERE company_id = $1 AND inspection_id = $2
+              )
+              AND workflow_status IN ('submitted', 'under_review')
+          `,
+          [issue.companyId, issue.inspectionId, issue.createdAt],
+        );
+      }
     });
   }
 

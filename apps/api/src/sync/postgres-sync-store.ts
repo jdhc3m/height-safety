@@ -307,15 +307,17 @@ export class PostgresSyncMutationStore
     createConflictId: () => string,
   ): Promise<SyncMutationResponse> {
     return this.withTenant(principal.companyId, async (transaction) => {
-      // Serialise revisions for one company/entity while leaving unrelated
-      // inspections concurrent.
+      // Serialise revisions for one company/job while leaving unrelated jobs
+      // concurrent. A resubmission has a new inspection identity, so locking
+      // only the mutation entity would allow two revisions of one job to race.
+      const revisionLockId = request.payload?.jobId ?? request.entityId;
       await transaction.query(
         `
           SELECT pg_advisory_xact_lock(
             hashtextextended(concat_ws(':', $1::text, $2::text, $3::text), 0)
           )
         `,
-        [principal.companyId, request.entityType, request.entityId],
+        [principal.companyId, request.entityType, revisionLockId],
       );
 
       const existingMutation = await this.selectMutation(
@@ -527,6 +529,7 @@ export class PostgresSyncMutationStore
         WHERE j.company_id = $1
           AND j.job_id = $2
           AND a.inspector_user_id = $3
+        FOR UPDATE
       `,
       [principal.companyId, payload.jobId, principal.userId],
     );
@@ -545,6 +548,36 @@ export class PostgresSyncMutationStore
       throw new SyncFailure(
         'INVALID_INPUT',
         'inspection submission does not match the released job pack',
+      );
+    }
+
+    // The job-pack version identifies the released source pack; it is not the
+    // inspection revision. Revisions are server-assigned so a requested
+    // change can be resubmitted with the same pack while preserving the prior
+    // submitted inspection row.
+    const revisionResult = await transaction.query<Record<string, unknown>>(
+      `
+        SELECT COALESCE(MAX(revision_number), 0) + 1 AS revision_number
+        FROM inspections
+        WHERE company_id = $1 AND job_id = $2
+      `,
+      [principal.companyId, payload.jobId],
+    );
+    const revisionRow = firstRow(revisionResult);
+    if (!revisionRow) {
+      throw new SyncFailure(
+        'PERSISTENCE_UNAVAILABLE',
+        'inspection revision could not be allocated',
+      );
+    }
+    const revisionNumber = storedNumber(
+      revisionRow.revision_number,
+      'revision_number',
+    );
+    if (revisionNumber < 1) {
+      throw new SyncFailure(
+        'PERSISTENCE_UNAVAILABLE',
+        'inspection revision is invalid',
       );
     }
 
@@ -573,7 +606,7 @@ export class PostgresSyncMutationStore
         payload.jobId,
         payload.siteId,
         payload.jurisdiction,
-        request.entityVersion,
+        revisionNumber,
         principal.userId,
         acknowledgedAt,
       ],
