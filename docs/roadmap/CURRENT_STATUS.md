@@ -29,9 +29,13 @@ invitation delivery and authenticated inspector photo upload are wired behind
 explicit runtime configuration. The local PostgreSQL runtime smoke passes;
 production database, provider endpoint, recovery upload and cloud deployment
 configuration remain open.
-The physical verification record uses the existing owner-configured US
-development tenant; that does not satisfy the selected AU production-tenant
-configuration step.
+Under D-046, the existing owner-configured US-5 tenant is accepted for
+synthetic/local development and physical verification only. The physical
+verification record therefore does not satisfy AU production locality. When a
+real client or controlled pilot is proposed, the owner must revisit Auth0 plan,
+contract, subprocessors, export/recovery and locality terms and, if AU remains
+required, consider the needed plan capacity plus an owner-approved new-AU-
+tenant migration/reconfiguration before real client data is accepted.
 G-03 is Done as D-027.
 
 `3D-01` now has a bounded provider-neutral review producer in review. Office
@@ -360,7 +364,9 @@ process-memory worker or domain state-machine slices as production
 synchronisation.
 Do not add Kotlin
 Multiplatform, an iOS target or deferred standards candidates. Auth0 tenant
-setup and production identity/runtime deployment remain open.
+setup and production identity/runtime deployment remain open. The US-5 tenant
+is development-only; the client/pilot trigger for an Auth0 plan review and,
+if still required, AU-tenant migration/reconfiguration is recorded in D-046.
 GCP runtime deployment configuration, native Cloud SQL/Cloud Storage backup and
 export configuration, retention/RPO/RTO and strict backup/log/subprocessor
 residency remain open. G-05 still needs design-partner review before a

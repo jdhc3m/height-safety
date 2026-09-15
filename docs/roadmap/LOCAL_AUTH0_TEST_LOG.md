@@ -6,6 +6,17 @@ This is a local development record for the owner-configured Auth0 tenant. It
 does not demonstrate production readiness, tenant deployment, certification,
 compliance or a completed field workflow.
 
+## Decision boundary (D-046)
+
+The owner accepts this US-5 tenant for synthetic/local development and
+physical verification only. It must not receive real client data or be treated
+as a production pilot. When a real client or controlled pilot is proposed,
+review the Auth0 plan, contract, subprocessors, export/recovery and locality
+terms. If AU locality remains required, consider the needed plan
+upgrade/capacity, create/configure an AU tenant and complete an owner-approved
+migration or reconfiguration before the pilot. This record does not close the
+AU production-locality decision.
+
 ## Configuration exercised
 
 - Auth0 domain: `dev-0s1f38muajhhcoiq.us.auth0.com`

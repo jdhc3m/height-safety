@@ -1,7 +1,9 @@
-# Auth0 AU bounded setup
+# Auth0 bounded setup
 
-Status: implementation guide for D-042. The owner-configured local tenant and
-applications were exercised on 2026-09-14; see
+Status: Auth0 remains the selected provider. The existing owner-configured
+US-5 tenant is accepted for synthetic/local development under D-046; AU
+production locality is deferred until a real-client or controlled-pilot
+trigger. The tenant and applications were exercised on 2026-09-14; see
 `docs/roadmap/LOCAL_AUTH0_TEST_LOG.md`. No Auth0 tenant mutation was performed
 by the agent.
 
@@ -10,11 +12,29 @@ company membership, product roles, opaque application sessions, offline
 authorisation leases, evidence recovery and audit records. Auth0 login does
 not by itself grant access to a company.
 
+## Current development decision (D-046)
+
+Use the existing US-5 tenant (`dev-0s1f38muajhhcoiq.us.auth0.com`) for
+synthetic/local development and physical verification only. It is not an AU
+tenant and must not receive real client data or be treated as a production
+pilot.
+
+When a real client or controlled pilot is proposed, the owner should review
+the Auth0 plan, contract, subprocessors, export/recovery and locality terms.
+If AU locality remains required, consider the required plan upgrade/capacity,
+create/configure an AU tenant and complete an owner-approved migration or
+reconfiguration before accepting real client data. Do not assume that changing
+an environment label moves an existing tenant between regions. This is a
+project decision, not a legal conclusion; legal, privacy and contract review
+remain required before a pilot.
+
 ## Create the tenant and applications
 
-An owner must create an Auth0 tenant with the Australian (`AU`) locality and
-confirm the applicable plan, contract, subprocessors, export and recovery
-terms before a controlled pilot.
+For the current local prototype, use the existing owner-configured US-5
+tenant. Before a controlled pilot, create/configure an Auth0 tenant with the
+Australian (`AU`) locality if the D-046 plan and locality review confirms that
+AU remains required, and confirm the applicable plan, contract, subprocessors,
+export and recovery terms.
 
 Create these applications and one API:
 
@@ -139,7 +159,9 @@ server-side and must never be placed in the browser or Android app.
 
 ## Values that remain open
 
-- Auth0 tenant/application creation and secret storage are manual owner steps.
+- The US-5 development tenant is configured for local verification. AU
+  production tenant/application capacity, any plan change, migration or
+  reconfiguration, and secret storage remain manual owner steps under D-046.
 - Durable API `AuthStore`, site/register, job/assignment, sync and append-only
   audit adapters are wired for the local PostgreSQL runtime; Cloud SQL
   deployment, backup and operational configuration remain open.

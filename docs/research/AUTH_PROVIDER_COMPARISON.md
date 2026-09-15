@@ -1,7 +1,7 @@
 # Authentication Provider Comparison
 
-Status: **Owner confirmed Auth0 AU; bounded integration in progress**
-Checked: 2026-09-07
+Status: **Auth0 selected; US-5 development tenant active; AU production locality deferred**
+Checked: 2026-09-15
 
 ## Question
 
@@ -15,10 +15,16 @@ is disconnected.
 
 ## Recommendation
 
-Use **Auth0 with an Australian (`AU`) tenant** for the bounded authentication
-slice. The owner confirmed this selection. Plan limits, recurring cost,
-contract, subprocessors and export/recovery behaviour still need confirmation
-before a controlled pilot.
+Use **Auth0** for the bounded authentication slice. The existing owner-
+configured US-5 tenant is accepted for synthetic/local development and
+physical verification only. Before a real client or controlled pilot, review
+plan limits, recurring cost, contract, subprocessors, export/recovery and
+locality terms. If AU locality remains required, consider the needed plan
+upgrade/capacity and create/configure an AU tenant, then perform an
+owner-approved migration or reconfiguration before real client data is used.
+The original AU selection remains the production-locality option recorded in
+D-042; D-046 documents the current development exception. This is a project
+decision, not a legal conclusion.
 
 Auth0 is the shortest path for this product because its Organizations feature
 supports email invitations into a company with predefined organization roles,
@@ -58,6 +64,13 @@ The owner selected:
 
 1. **Auth0 AU** — proceed with the bounded provider adapter and manual tenant
    setup.
+
+For the current bounded prototype, the owner directs development and physical
+verification to the existing US-5 tenant. This does not replace the AU
+production-locality option; it defers the plan and AU-tenant review until a
+real client or controlled pilot is proposed. Treat any AU move as a new-tenant
+migration/reconfiguration rather than assuming an existing tenant can be
+region-transferred.
 
 Cognito Sydney remains the portability fallback if the owner later rejects
 Auth0's plan, contract or data-processing terms. The repository does not
