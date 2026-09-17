@@ -1,6 +1,52 @@
 import { redirect } from 'next/navigation';
 
 import { auth0, isAuth0Configured } from '../../lib/auth0';
+import {
+  OfficeApiFailure,
+  isOfficeApiConfigured,
+  listJobs,
+  openOfficeSession,
+  type OfficeJob,
+} from '../../lib/office-api';
+
+export const dynamic = 'force-dynamic';
+
+function JurisdictionChip({ jurisdiction }: { jurisdiction: 'NSW' | 'QLD' }) {
+  return (
+    <span
+      className={`chip ${jurisdiction === 'NSW' ? 'chip--nsw' : 'chip--qld'}`}
+    >
+      {jurisdiction}
+    </span>
+  );
+}
+
+function WorkflowChip({ status }: { status: string }) {
+  const tone =
+    status === 'changes_requested'
+      ? 'chip--warn'
+      : status === 'approved_for_report_generation' ||
+          status === 'report_generated'
+        ? 'chip--ok'
+        : status === 'submitted' || status === 'under_review'
+          ? 'chip--info'
+          : 'chip--neutral';
+
+  return <span className={`chip ${tone}`}>{status.replaceAll('_', ' ')}</span>;
+}
+
+async function loadJobs(): Promise<
+  { jobs: readonly OfficeJob[] } | { failure: OfficeApiFailure }
+> {
+  try {
+    return { jobs: await listJobs(await openOfficeSession()) };
+  } catch (error) {
+    if (error instanceof OfficeApiFailure) {
+      return { failure: error };
+    }
+    throw error;
+  }
+}
 
 export default async function OfficePage() {
   if (!isAuth0Configured || !auth0) {
@@ -29,12 +75,14 @@ export default async function OfficePage() {
     redirect('/auth/login?returnTo=/office');
   }
 
+  const result = isOfficeApiConfigured() ? await loadJobs() : undefined;
+
   return (
     <main className="shell">
       <section className="hero" aria-labelledby="office-title">
         <div>
           <p className="eyebrow">Height Safety / Office workspace</p>
-          <h1 id="office-title">Authenticated office boundary.</h1>
+          <h1 id="office-title">Authorised jobs.</h1>
           <p className="hero-copy">
             Signed in as {session.user.email ?? 'the current Auth0 user'}.
             Company membership, product role and API session exchange remain
@@ -42,26 +90,88 @@ export default async function OfficePage() {
           </p>
         </div>
         <p className="notice" role="note">
-          Job review data is not connected in this slice. No customer record or
-          compliance conclusion is displayed here.
+          This view is read-only. It records no outcome, approves nothing and
+          makes no compliance decision.
         </p>
       </section>
 
-      <section className="preview" aria-labelledby="office-next-title">
+      <section className="preview" aria-labelledby="office-jobs-title">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Next office slice</p>
-            <h2 id="office-next-title">Review workspace boundary</h2>
+            <p className="eyebrow">Jobs</p>
+            <h2 id="office-jobs-title">Authorised job queue</h2>
           </div>
           <p className="section-copy">
-            The next implementation connects this protected boundary to
-            company-scoped jobs and review states through the application
-            session exchange.
+            Recorded jurisdiction is shown as context only. It does not select
+            required fields, intervals, authority or a compliance result.
+          </p>
+        </div>
+
+        {!isOfficeApiConfigured() ? (
+          <p className="disclaimer" role="note">
+            The office API is not configured, so no job is shown. Configure the
+            API base URL and the identity company claim to connect this view.
+          </p>
+        ) : !result || 'failure' in result ? (
+          <p className="disclaimer" role="alert">
+            Jobs could not be read from the office API
+            {result && 'failure' in result ? ` (${result.failure.code})` : ''}.
+            Nothing is displayed rather than showing unverified state.
+          </p>
+        ) : result.jobs.length === 0 ? (
+          <p className="disclaimer" role="note">
+            No authorised job is available in this company yet.
+          </p>
+        ) : (
+          <div
+            className="office-table"
+            role="table"
+            aria-label="Authorised jobs"
+          >
+            <div className="office-table__head" role="row">
+              <span role="columnheader">Job</span>
+              <span role="columnheader">Jurisdiction</span>
+              <span role="columnheader">Workflow state</span>
+              <span role="columnheader">Job pack</span>
+              <span role="columnheader">Updated</span>
+            </div>
+            {result.jobs.map((job) => (
+              <div className="office-table__row" role="row" key={job.jobId}>
+                <span className="mono" role="cell">
+                  {job.reference}
+                </span>
+                <span role="cell">
+                  <JurisdictionChip jurisdiction={job.jurisdiction} />
+                </span>
+                <span role="cell">
+                  <WorkflowChip status={job.workflowStatus} />
+                </span>
+                <span role="cell">v{job.jobPackVersion}</span>
+                <span role="cell">
+                  {new Date(job.updatedAt).toISOString().slice(0, 10)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="preview" aria-labelledby="office-review-title">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Review</p>
+            <h2 id="office-review-title">Submitted review issues</h2>
+          </div>
+          <p className="section-copy">
+            Open one submitted inspection revision at
+            <span className="mono"> /office/reviews/&lt;inspectionId&gt; </span>
+            to read its blockers, warnings, conflicts and requested changes.
           </p>
         </div>
         <p className="disclaimer">
-          This page proves the browser authentication boundary only; it does not
-          imply that office review or reporting is complete.
+          Review issues are append-only. Reading them changes nothing, and this
+          prototype does not imply that office review or reporting is complete.
+          Approval, change requests and report generation are not wired here.
         </p>
       </section>
     </main>

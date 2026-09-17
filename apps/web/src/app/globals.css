@@ -206,6 +206,139 @@ h3 {
   line-height: 1.5;
 }
 
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.86em;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.chip--nsw,
+.chip--info {
+  background: #e2eafe;
+  border-color: #b9cdf6;
+  color: #102235;
+}
+
+.chip--qld,
+.chip--warn {
+  background: #fff0d6;
+  border-color: #e8c88a;
+  color: #815800;
+}
+
+.chip--ok {
+  background: #e2f3ea;
+  border-color: #a9d8be;
+  color: #17633a;
+}
+
+.chip--blocker {
+  background: #fde7e5;
+  border-color: #e7b4b0;
+  color: #a33b3b;
+}
+
+.chip--neutral {
+  background: #eef3f8;
+  border-color: #d7dee8;
+  color: #4a5b70;
+}
+
+.office-table {
+  margin-top: 2rem;
+  overflow-x: auto;
+  border: 1px solid #d7dee8;
+  border-radius: 1rem;
+  background: #fff;
+}
+
+.office-table__head,
+.office-table__row {
+  display: grid;
+  grid-template-columns:
+    minmax(9rem, 1.2fr) minmax(6rem, 0.6fr) minmax(9rem, 1fr)
+    minmax(4rem, 0.4fr) minmax(6rem, 0.6fr);
+  gap: 1rem;
+  align-items: center;
+  padding: 0.9rem 1.1rem;
+}
+
+.office-table__head {
+  background: #f5f7fa;
+  border-bottom: 1px solid #d7dee8;
+  color: #74859b;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.office-table__row {
+  border-bottom: 1px solid #eef3f8;
+  color: #102235;
+  font-size: 0.95rem;
+}
+
+.office-table__row:last-child {
+  border-bottom: 0;
+}
+
+.issue-list {
+  display: grid;
+  gap: 1rem;
+  margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.issue-card {
+  border: 1px solid #d7dee8;
+  border-radius: 1rem;
+  background: #fff;
+  padding: 1.1rem 1.2rem;
+  box-shadow: 0 0.5rem 1.5rem rgba(16, 34, 53, 0.05);
+}
+
+.issue-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.issue-card__ref {
+  color: #74859b;
+}
+
+.issue-card__reason {
+  margin-top: 0.7rem;
+  color: #102235;
+  line-height: 1.5;
+}
+
+.issue-card__meta {
+  margin-top: 0.5rem;
+  color: #74859b;
+  font-size: 0.85rem;
+}
+
 @media (max-width: 720px) {
   .hero,
   .auth-panel,

@@ -64,6 +64,15 @@ commit `.env.local` or a client secret.
 | `AUTH0_SECRET` | 32-byte hex secret used for encrypted session/transaction cookies |
 | `APP_BASE_URL` | Office URL, for example `http://localhost:3000` during local work |
 | `AUTH0_API_AUDIENCE` | The API identifier, if the office session will request an API token |
+| `API_BASE_URL` | Office API origin, for example `http://localhost:3001/api/v1` during local work |
+| `AUTH0_COMPANY_ID_CLAIM` | Optional custom claim carrying the company scope; defaults to `https://height-safety.example/claims/company_id` (D-049) |
+
+The office web reads the company scope from `AUTH0_COMPANY_ID_CLAIM` on the
+access token (falling back to the ID token) and presents it as `x-company-id`
+during the application session exchange. The claim only selects the tenant
+scope; the API still verifies the provider token and company membership, so a
+claim alone never grants access. If the claim is missing, the office web fails
+closed and shows nothing.
 
 Register the following URLs in the Regular Web Application, replacing the
 host with the deployed office URL:
