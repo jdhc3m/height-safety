@@ -3,10 +3,12 @@ import { Module } from '@nestjs/common';
 import {
   NoopApprovedSnapshotAuditSink,
   systemApprovedSnapshotClock,
+  UnconfiguredApprovedSnapshotStateReader,
   UnconfiguredApprovedSnapshotStore,
   type ApprovedSnapshotAuditSink,
   type ApprovedSnapshotClock,
   type ApprovedSnapshotIdGenerator,
+  type ApprovedSnapshotStateReader,
   type ApprovedSnapshotStore,
 } from './approved-snapshot.types';
 import {
@@ -16,9 +18,13 @@ import {
 import { DatabaseModule, POSTGRES_DATABASE } from '../database/database.module';
 import { PostgresAuditSink } from '../database/postgres-audit-sink';
 import { PostgresApprovedSnapshotStore } from './approved-snapshot-postgres-store';
+import { PostgresApprovedSnapshotStateReader } from './approved-snapshot-postgres-state-reader';
 import type { SqlDatabase } from '../database/postgres-database';
 
 export const APPROVED_SNAPSHOT_STORE = Symbol('APPROVED_SNAPSHOT_STORE');
+export const APPROVED_SNAPSHOT_STATE_READER = Symbol(
+  'APPROVED_SNAPSHOT_STATE_READER',
+);
 export const APPROVED_SNAPSHOT_AUDIT_SINK = Symbol(
   'APPROVED_SNAPSHOT_AUDIT_SINK',
 );
@@ -49,6 +55,16 @@ export const APPROVED_SNAPSHOT_ID_GENERATOR = Symbol(
       inject: [POSTGRES_DATABASE],
     },
     {
+      provide: APPROVED_SNAPSHOT_STATE_READER,
+      useFactory: (
+        database: SqlDatabase | undefined,
+      ): ApprovedSnapshotStateReader =>
+        database
+          ? new PostgresApprovedSnapshotStateReader(database)
+          : new UnconfiguredApprovedSnapshotStateReader(),
+      inject: [POSTGRES_DATABASE],
+    },
+    {
       provide: APPROVED_SNAPSHOT_CLOCK,
       useValue: systemApprovedSnapshotClock,
     },
@@ -63,13 +79,21 @@ export const APPROVED_SNAPSHOT_ID_GENERATOR = Symbol(
         auditSink: ApprovedSnapshotAuditSink,
         clock: ApprovedSnapshotClock,
         idGenerator: ApprovedSnapshotIdGenerator,
+        stateReader: ApprovedSnapshotStateReader,
       ) =>
-        new ApprovedSnapshotService({ store, auditSink, clock, idGenerator }),
+        new ApprovedSnapshotService({
+          store,
+          auditSink,
+          clock,
+          idGenerator,
+          stateReader,
+        }),
       inject: [
         APPROVED_SNAPSHOT_STORE,
         APPROVED_SNAPSHOT_AUDIT_SINK,
         APPROVED_SNAPSHOT_CLOCK,
         APPROVED_SNAPSHOT_ID_GENERATOR,
+        APPROVED_SNAPSHOT_STATE_READER,
       ],
     },
   ],

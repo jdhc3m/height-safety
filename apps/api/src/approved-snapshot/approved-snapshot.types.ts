@@ -94,6 +94,67 @@ export interface ApprovedSnapshotResult {
 }
 
 /**
+ * The authoritative 3D-01/3C durable view of one submitted inspection
+ * revision. The approval boundary reads this from persistence instead of
+ * trusting caller-supplied gate counts. Counts and synchronisation flags are
+ * recorded outcomes of stored review issues, mutations and photo uploads;
+ * they never assert compliance or a technical judgement.
+ */
+export interface ApprovedSnapshotSubmissionState {
+  readonly inspectionId: string;
+  /** Server-assigned inspection revision (D-048). */
+  readonly revisionNumber: number;
+  /** Highest server-assigned revision recorded for the same job. */
+  readonly latestRevisionNumber: number;
+  readonly workflowStatus: string;
+  readonly jobPackVersion: number;
+  readonly inspectorUserId: string;
+  readonly requiredEvidenceSynchronised: boolean;
+  readonly openHardBlockerCount: number;
+  readonly openChangeRequestCount: number;
+  /**
+   * The entity version of the synchronised submission mutation that carried
+   * the frozen payload; it is the durable server-side identity of the
+   * acknowledged evidence revision.
+   */
+  readonly evidenceVersion: number;
+  readonly submission: SyncInspectionSubmissionPayload;
+}
+
+export interface ApprovedSnapshotStateReader {
+  findSubmissionState(
+    companyId: string,
+    inspectionId: string,
+  ): Promise<ApprovedSnapshotSubmissionState | undefined>;
+}
+
+/**
+ * Durable stores must implement this so the snapshot, its audit event and the
+ * mutable job workflow pointer commit or roll back together. The submitted
+ * inspection row itself is never mutated.
+ */
+export interface JobTransitionApprovalStore extends ApprovedSnapshotStore {
+  createApprovalWithJobTransition(
+    snapshot: ApprovedSnapshot,
+    event: ApprovedSnapshotAuditEvent,
+  ): Promise<void>;
+}
+
+export class UnconfiguredApprovedSnapshotStateReader
+  implements ApprovedSnapshotStateReader
+{
+  async findSubmissionState(
+    _companyId: string,
+    _inspectionId: string,
+  ): Promise<ApprovedSnapshotSubmissionState | undefined> {
+    throw new ApprovedSnapshotFailure(
+      'PERSISTENCE_UNAVAILABLE',
+      'approved snapshot state reader is not configured',
+    );
+  }
+}
+
+/**
  * There is intentionally no update or delete method. A durable adapter must
  * implement this interface with the same application and database-level
  * immutability guarantees.

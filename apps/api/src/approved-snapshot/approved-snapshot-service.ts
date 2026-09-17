@@ -19,10 +19,12 @@ import {
   type ApprovedSnapshotClock,
   type ApprovedSnapshotDocument,
   type ApprovedSnapshotIdGenerator,
-  type AtomicApprovedSnapshotStore,
-  type ApprovedSnapshotResult,
   type ApprovedSnapshotSource,
+  type ApprovedSnapshotStateReader,
   type ApprovedSnapshotStore,
+  type ApprovedSnapshotResult,
+  type AtomicApprovedSnapshotStore,
+  type JobTransitionApprovalStore,
 } from './approved-snapshot.types';
 import {
   copyApprovedSnapshot,
@@ -37,6 +39,12 @@ export interface ApprovedSnapshotServiceOptions {
   readonly auditSink: ApprovedSnapshotAuditSink;
   readonly clock: ApprovedSnapshotClock;
   readonly idGenerator: ApprovedSnapshotIdGenerator;
+  /** Required for the authoritative durable-state approval path. */
+  readonly stateReader?: ApprovedSnapshotStateReader;
+}
+
+export interface ApproveInspectionInput {
+  readonly inspectionId: string;
 }
 
 function requiredId(value: unknown, field: string): string {
@@ -415,12 +423,88 @@ export class ApprovedSnapshotService {
   ): Promise<ApprovedSnapshotResult> {
     assertCanApproveSnapshot(principal);
     const normalized = normalizeSource(source);
+    this.assertSourceCompany(principal, normalized);
+    this.assertApprovalGates(normalized);
+    return this.freeze(principal, normalized, { moveJobPointer: false });
+  }
+
+  /**
+   * Authoritative approval path. The submitted inspection revision, its
+   * review-issue counts and evidence synchronisation state are read from
+   * durable persistence; caller-supplied gate counts are never trusted. The
+   * approval identity is derived from the server-assigned inspection revision
+   * (D-048), so each resubmission revision requires its own approval.
+   */
+  async createApproved(
+    principal: AuthPrincipal,
+    input: ApproveInspectionInput,
+  ): Promise<ApprovedSnapshotResult> {
+    assertCanApproveSnapshot(principal);
+    const reader = this.options.stateReader;
+    if (!reader) {
+      throw new ApprovedSnapshotFailure(
+        'PERSISTENCE_UNAVAILABLE',
+        'approved snapshot state reader is not configured',
+      );
+    }
+    const inspectionId = requiredId(input.inspectionId, 'inspectionId');
+    const state = await reader.findSubmissionState(
+      principal.companyId,
+      inspectionId,
+    );
+    if (!state) {
+      throw new ApprovedSnapshotFailure(
+        'NOT_FOUND',
+        'submitted inspection was not found',
+      );
+    }
+    if (state.workflowStatus !== 'submitted') {
+      throw new ApprovedSnapshotFailure(
+        'CONFLICT',
+        'inspection revision is not submitted for review',
+      );
+    }
+    if (state.latestRevisionNumber !== state.revisionNumber) {
+      throw new ApprovedSnapshotFailure(
+        'CONFLICT',
+        'a newer inspection revision exists for this job',
+      );
+    }
+
+    const normalized = normalizeSource({
+      approvalId: `inspection:${state.inspectionId}:rev:${state.revisionNumber}`,
+      reviewStatus: APPROVED_REVIEW_STATUSES[0],
+      companyId: principal.companyId,
+      jobId: state.submission.jobId,
+      siteId: state.submission.siteId,
+      jurisdiction: state.submission.jurisdiction,
+      inspectionId: state.inspectionId,
+      inspectionRevision: state.revisionNumber,
+      evidenceVersion: state.evidenceVersion,
+      jobPackVersion: state.jobPackVersion,
+      inspectorUserId: state.inspectorUserId,
+      requiredEvidenceSynchronised: state.requiredEvidenceSynchronised,
+      openHardBlockerCount: state.openHardBlockerCount,
+      openChangeRequestCount: state.openChangeRequestCount,
+      submission: state.submission,
+    });
+    this.assertApprovalGates(normalized);
+    return this.freeze(principal, normalized, { moveJobPointer: true });
+  }
+
+  private assertSourceCompany(
+    principal: AuthPrincipal,
+    normalized: ApprovedSnapshotSource,
+  ): void {
     if (normalized.companyId !== principal.companyId) {
       throw new ApprovedSnapshotFailure(
         'CONFLICT',
         'approved snapshot source belongs to another company',
       );
     }
+  }
+
+  private assertApprovalGates(normalized: ApprovedSnapshotSource): void {
     if (!normalized.requiredEvidenceSynchronised) {
       throw new ApprovedSnapshotFailure(
         'CONFLICT',
@@ -439,7 +523,13 @@ export class ApprovedSnapshotService {
         'inspection has open change requests',
       );
     }
+  }
 
+  private async freeze(
+    principal: AuthPrincipal,
+    normalized: ApprovedSnapshotSource,
+    options: { moveJobPointer: boolean },
+  ): Promise<ApprovedSnapshotResult> {
     const sourceIdentityJson = canonicalSourceIdentity(normalized);
     const sourceIdentitySha256 = sha256(sourceIdentityJson);
     const existing = await this.options.store.findByApprovalId(
@@ -516,6 +606,24 @@ export class ApprovedSnapshotService {
     } satisfies Parameters<ApprovedSnapshotAuditSink['record']>[0];
 
     try {
+      if (options.moveJobPointer) {
+        const jobTransitionStore = this.options
+          .store as Partial<JobTransitionApprovalStore>;
+        if (
+          typeof jobTransitionStore.createApprovalWithJobTransition !==
+          'function'
+        ) {
+          throw new ApprovedSnapshotFailure(
+            'PERSISTENCE_UNAVAILABLE',
+            'approved snapshot store cannot move the job workflow pointer',
+          );
+        }
+        await jobTransitionStore.createApprovalWithJobTransition(
+          snapshot,
+          auditEvent,
+        );
+        return { snapshot: copyApprovedSnapshot(snapshot), replayed: false };
+      }
       const atomicStore = this.options
         .store as Partial<AtomicApprovedSnapshotStore>;
       if (typeof atomicStore.createWithAudit === 'function') {

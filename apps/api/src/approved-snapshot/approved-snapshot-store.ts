@@ -1,8 +1,12 @@
 import {
   ApprovedSnapshotFailure,
   type ApprovedSnapshot,
+  type ApprovedSnapshotAuditEvent,
   type ApprovedSnapshotDocument,
+  type ApprovedSnapshotStateReader,
   type ApprovedSnapshotStore,
+  type ApprovedSnapshotSubmissionState,
+  type JobTransitionApprovalStore,
 } from './approved-snapshot.types';
 import type {
   SyncAnchorInspectionPayload,
@@ -57,9 +61,31 @@ export function copyApprovedSnapshot(
   };
 }
 
-export class InMemoryApprovedSnapshotStore implements ApprovedSnapshotStore {
+export interface RecordedJobTransition {
+  readonly companyId: string;
+  readonly jobId: string;
+  readonly workflowStatus: string;
+  readonly at: Date;
+}
+
+export class InMemoryApprovedSnapshotStore
+  implements ApprovedSnapshotStore, JobTransitionApprovalStore
+{
   private readonly snapshots = new Map<string, ApprovedSnapshot>();
   private readonly approvals = new Map<string, ApprovedSnapshot>();
+  private readonly events: ApprovedSnapshotAuditEvent[] = [];
+  private readonly transitions: RecordedJobTransition[] = [];
+
+  get auditEvents(): readonly ApprovedSnapshotAuditEvent[] {
+    return this.events.map((event) => ({ ...event }));
+  }
+
+  get jobTransitions(): readonly RecordedJobTransition[] {
+    return this.transitions.map((transition) => ({
+      ...transition,
+      at: new Date(transition.at.getTime()),
+    }));
+  }
 
   async findById(
     companyId: string,
@@ -97,5 +123,46 @@ export class InMemoryApprovedSnapshotStore implements ApprovedSnapshotStore {
     const stored = copyApprovedSnapshot(snapshot);
     this.snapshots.set(snapshotKey, stored);
     this.approvals.set(approvalKey, stored);
+  }
+
+  async createApprovalWithJobTransition(
+    snapshot: ApprovedSnapshot,
+    event: ApprovedSnapshotAuditEvent,
+  ): Promise<void> {
+    await this.create(snapshot);
+    this.events.push({ ...event });
+    this.transitions.push({
+      companyId: snapshot.companyId,
+      jobId: snapshot.jobId,
+      workflowStatus: 'approved_for_report_generation',
+      at: new Date(snapshot.approvedAt.getTime()),
+    });
+  }
+}
+
+/**
+ * Provider-neutral reader for service tests and proofs. It holds durable
+ * submission states as they would be read back from persistence; it performs
+ * no gate computation of its own.
+ */
+export class InMemoryApprovedSnapshotStateReader
+  implements ApprovedSnapshotStateReader
+{
+  private readonly states = new Map<string, ApprovedSnapshotSubmissionState>();
+
+  put(companyId: string, state: ApprovedSnapshotSubmissionState): void {
+    this.states.set(key(companyId, state.inspectionId), state);
+  }
+
+  async findSubmissionState(
+    companyId: string,
+    inspectionId: string,
+  ): Promise<ApprovedSnapshotSubmissionState | undefined> {
+    const found = this.states.get(key(companyId, inspectionId));
+    if (!found) return undefined;
+    return {
+      ...found,
+      submission: copySubmissionPayload(found.submission),
+    };
   }
 }

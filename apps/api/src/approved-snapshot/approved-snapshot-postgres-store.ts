@@ -4,7 +4,11 @@ import {
   createTenantContext,
   setTenantContextStatement,
 } from '../database/tenant-context';
-import { SYNC_JURISDICTIONS, type SyncJurisdiction } from '../sync/sync.types';
+import {
+  SYNC_JURISDICTIONS,
+  SYNC_MUTATION_ENTITY_TYPES,
+  type SyncJurisdiction,
+} from '../sync/sync.types';
 import {
   APPROVED_REVIEW_STATUSES,
   ApprovedSnapshotFailure,
@@ -12,6 +16,7 @@ import {
   type ApprovedSnapshotAuditEvent,
   type ApprovedSnapshotDocument,
   type AtomicApprovedSnapshotStore,
+  type JobTransitionApprovalStore,
 } from './approved-snapshot.types';
 import { copyApprovedSnapshot } from './approved-snapshot-store';
 
@@ -258,7 +263,7 @@ function parseStoredDocument(
 }
 
 export class PostgresApprovedSnapshotStore
-  implements AtomicApprovedSnapshotStore
+  implements AtomicApprovedSnapshotStore, JobTransitionApprovalStore
 {
   constructor(private readonly database: ApprovedSnapshotSqlDatabase) {}
 
@@ -320,6 +325,95 @@ export class PostgresApprovedSnapshotStore
     snapshot: ApprovedSnapshot,
     event: ApprovedSnapshotAuditEvent,
   ): Promise<void> {
+    this.assertApprovalInput(snapshot, event);
+    try {
+      await this.withTenant(snapshot.companyId, async (transaction) => {
+        await this.insertSnapshot(transaction, snapshot);
+        await this.insertAuditEvent(transaction, event);
+      });
+    } catch (error) {
+      throw this.mapApprovalWriteError(error);
+    }
+  }
+
+  async createApprovalWithJobTransition(
+    snapshot: ApprovedSnapshot,
+    event: ApprovedSnapshotAuditEvent,
+  ): Promise<void> {
+    this.assertApprovalInput(snapshot, event);
+    try {
+      await this.withTenant(snapshot.companyId, async (transaction) => {
+        // Serialise with the D-048 revision allocator for this company/job so a
+        // resubmission cannot allocate a newer revision between the approval
+        // boundary's read-time gate checks and this write.
+        await transaction.query(
+          `
+            SELECT pg_advisory_xact_lock(
+              hashtextextended(concat_ws(':', $1::text, $2::text, $3::text), 0)
+            )
+          `,
+          [snapshot.companyId, SYNC_MUTATION_ENTITY_TYPES[0], snapshot.jobId],
+        );
+        await this.insertSnapshot(transaction, snapshot);
+        await this.insertAuditEvent(transaction, event);
+        // The job row is the mutable workflow pointer. The submitted
+        // inspection and its snapshot stay immutable; a later resubmission
+        // revision requires a new approval identity. `changes_requested` is a
+        // valid starting point because a resubmission leaves the job there;
+        // the inspection-level `submitted` revision is the authoritative
+        // signal. The guard re-validates, inside this transaction, that the
+        // approved revision is still the submitted revision for the job, so a
+        // stale approval fails closed.
+        const transition = await transaction.query<Record<string, unknown>>(
+          `
+            UPDATE jobs
+            SET workflow_status = 'approved_for_report_generation',
+                updated_at = $3
+            WHERE company_id = $1
+              AND job_id = $2
+              AND workflow_status IN (
+                'submitted', 'under_review', 'changes_requested'
+              )
+              AND EXISTS (
+                SELECT 1
+                FROM inspections i
+                WHERE i.company_id = $1
+                  AND i.job_id = $2
+                  AND i.inspection_id = $4
+                  AND i.revision_number = $5
+                  AND i.workflow_status = 'submitted'
+                  AND i.revision_number = (
+                    SELECT MAX(revision_number)
+                    FROM inspections
+                    WHERE company_id = $1 AND job_id = $2
+                  )
+              )
+            RETURNING job_id
+          `,
+          [
+            snapshot.companyId,
+            snapshot.jobId,
+            snapshot.approvedAt,
+            snapshot.sourceInspectionId,
+            snapshot.sourceInspectionRevision,
+          ],
+        );
+        if (transition.rows.length !== 1) {
+          throw new ApprovedSnapshotFailure(
+            'CONFLICT',
+            'inspection revision is not the submitted revision awaiting approval',
+          );
+        }
+      });
+    } catch (error) {
+      throw this.mapApprovalWriteError(error);
+    }
+  }
+
+  private assertApprovalInput(
+    snapshot: ApprovedSnapshot,
+    event: ApprovedSnapshotAuditEvent,
+  ): void {
     if (sha256(snapshot.documentJson) !== snapshot.sha256) {
       throw new ApprovedSnapshotFailure(
         'CONFLICT',
@@ -332,41 +426,43 @@ export class PostgresApprovedSnapshotStore
         'approved snapshot audit event crosses company scope',
       );
     }
+  }
 
-    try {
-      await this.withTenant(snapshot.companyId, async (transaction) => {
-        await this.insertSnapshot(transaction, snapshot);
-        await transaction.query(
-          `
-            INSERT INTO audit_events (
-              company_id, audit_event_id, actor_user_id, action, target_type,
-              target_id, transition_metadata, occurred_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-          `,
-          [
-            event.companyId,
-            randomBytes(16).toString('hex'),
-            event.actorUserId,
-            event.action,
-            event.targetType,
-            event.targetId,
-            event.metadata ? JSON.stringify(event.metadata) : null,
-            event.occurredAt,
-          ],
-        );
-      });
-    } catch (error) {
-      if (error instanceof ApprovedSnapshotFailure) {
-        throw error;
-      }
-      if (isUniqueViolation(error)) {
-        throw new ApprovedSnapshotFailure(
-          'CONFLICT',
-          'approved snapshot or review approval already exists',
-        );
-      }
-      throw storedFailure('approved snapshot persistence is unavailable');
+  private mapApprovalWriteError(error: unknown): ApprovedSnapshotFailure {
+    if (error instanceof ApprovedSnapshotFailure) {
+      return error;
     }
+    if (isUniqueViolation(error)) {
+      return new ApprovedSnapshotFailure(
+        'CONFLICT',
+        'approved snapshot or review approval already exists',
+      );
+    }
+    return storedFailure('approved snapshot persistence is unavailable');
+  }
+
+  private async insertAuditEvent(
+    transaction: ApprovedSnapshotSqlTransaction,
+    event: ApprovedSnapshotAuditEvent,
+  ): Promise<void> {
+    await transaction.query(
+      `
+        INSERT INTO audit_events (
+          company_id, audit_event_id, actor_user_id, action, target_type,
+          target_id, transition_metadata, occurred_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `,
+      [
+        event.companyId,
+        randomBytes(16).toString('hex'),
+        event.actorUserId,
+        event.action,
+        event.targetType,
+        event.targetId,
+        event.metadata ? JSON.stringify(event.metadata) : null,
+        event.occurredAt,
+      ],
+    );
   }
 
   private async insertSnapshot(

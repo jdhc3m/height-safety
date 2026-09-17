@@ -3,8 +3,12 @@ import test from 'node:test';
 
 import { ApprovedSnapshotService } from '../dist/approved-snapshot/approved-snapshot-service.js';
 import { ApprovedSnapshotFailure } from '../dist/approved-snapshot/approved-snapshot.types.js';
-import { InMemoryApprovedSnapshotStore } from '../dist/approved-snapshot/approved-snapshot-store.js';
+import {
+  InMemoryApprovedSnapshotStore,
+  InMemoryApprovedSnapshotStateReader,
+} from '../dist/approved-snapshot/approved-snapshot-store.js';
 import { PostgresApprovedSnapshotStore } from '../dist/approved-snapshot/approved-snapshot-postgres-store.js';
+import { PostgresApprovedSnapshotStateReader } from '../dist/approved-snapshot/approved-snapshot-postgres-state-reader.js';
 
 class FixedClock {
   now() {
@@ -118,10 +122,71 @@ function makeHarness() {
   return { audit, service };
 }
 
+function durableState(overrides = {}) {
+  return {
+    inspectionId: 'inspection-a',
+    revisionNumber: 3,
+    latestRevisionNumber: 3,
+    workflowStatus: 'submitted',
+    jobPackVersion: 2,
+    inspectorUserId: 'inspector-a',
+    requiredEvidenceSynchronised: true,
+    openHardBlockerCount: 0,
+    openChangeRequestCount: 0,
+    evidenceVersion: 7,
+    submission: submission(),
+    ...overrides,
+  };
+}
+
+function makeAuthoritativeHarness(
+  state,
+  store = new InMemoryApprovedSnapshotStore(),
+  stateCompanyId = 'company-a',
+) {
+  const audit = {
+    events: [],
+    record(event) {
+      this.events.push(event);
+    },
+  };
+  const reader = new InMemoryApprovedSnapshotStateReader();
+  reader.put(stateCompanyId, state);
+  const service = new ApprovedSnapshotService({
+    store,
+    auditSink: audit,
+    clock: new FixedClock(),
+    idGenerator: new FixedIdGenerator(),
+    stateReader: reader,
+  });
+  return { audit, service, reader, store };
+}
+
+class QueuedSqlDatabase {
+  constructor(rowsPerQuery) {
+    this.rowsPerQuery = rowsPerQuery;
+    this.queries = [];
+  }
+
+  async transaction(work) {
+    return work({
+      query: async (text, values) => {
+        this.queries.push({ text, values });
+        return { rows: this.rowsPerQuery[this.queries.length - 1] ?? [] };
+      },
+    });
+  }
+}
+
 class FakeSqlDatabase {
-  constructor(rows = [], queryError = null) {
+  constructor(
+    rows = [],
+    queryError = null,
+    transitionRows = [{ job_id: 'job-a' }],
+  ) {
     this.rows = rows;
     this.queryError = queryError;
+    this.transitionRows = transitionRows;
     this.queries = [];
     this.transactionCount = 0;
     this.committedTransactions = 0;
@@ -137,7 +202,11 @@ class FakeSqlDatabase {
           if (this.queryError && text.includes('INSERT INTO')) {
             throw this.queryError;
           }
-          return { rows: this.rows };
+          return {
+            rows: /RETURNING job_id/.test(text)
+              ? this.transitionRows
+              : this.rows,
+          };
         },
       });
       this.committedTransactions += 1;
@@ -507,4 +576,319 @@ test('atomic PostgreSQL approval rolls back the snapshot when audit persistence 
   );
   assert.equal(database.committedTransactions, 0);
   assert.equal(database.rolledBackTransactions, 1);
+});
+
+test('authoritative approval freezes the durable submitted revision and replays exactly once', async () => {
+  const { service, store } = makeAuthoritativeHarness(durableState());
+  const result = await service.createApproved(principal('company-a'), {
+    inspectionId: 'inspection-a',
+  });
+
+  assert.equal(result.replayed, false);
+  assert.equal(result.snapshot.approvalId, 'inspection:inspection-a:rev:3');
+  assert.equal(result.snapshot.sourceInspectionId, 'inspection-a');
+  assert.equal(result.snapshot.sourceInspectionRevision, 3);
+  assert.equal(result.snapshot.sourceEvidenceVersion, 7);
+  assert.equal(result.snapshot.document.inspectorUserId, 'inspector-a');
+  assert.equal(result.snapshot.document.inspectionSubmission.jobId, 'job-a');
+  assert.deepEqual(
+    store.auditEvents.map((event) => event.action),
+    ['inspection.snapshot_approved'],
+  );
+  assert.deepEqual(
+    store.jobTransitions.map((transition) => [
+      transition.companyId,
+      transition.jobId,
+      transition.workflowStatus,
+    ]),
+    [['company-a', 'job-a', 'approved_for_report_generation']],
+  );
+
+  const replay = await service.createApproved(principal('company-a'), {
+    inspectionId: 'inspection-a',
+  });
+  assert.equal(replay.replayed, true);
+  assert.deepEqual(replay.snapshot, result.snapshot);
+  assert.equal(store.auditEvents.length, 1);
+  assert.equal(store.jobTransitions.length, 1);
+});
+
+test('authoritative approval gates reject durable blockers, changes, unsynchronised evidence and stale revisions', async () => {
+  const cases = [
+    {
+      overrides: { openHardBlockerCount: 1 },
+      message: 'inspection has unresolved hard blockers',
+    },
+    {
+      overrides: { openChangeRequestCount: 2 },
+      message: 'inspection has open change requests',
+    },
+    {
+      overrides: { requiredEvidenceSynchronised: false },
+      message: 'required inspection evidence is not synchronised',
+    },
+    {
+      overrides: { workflowStatus: 'working' },
+      message: 'inspection revision is not submitted for review',
+    },
+    {
+      overrides: { latestRevisionNumber: 4 },
+      message: 'a newer inspection revision exists for this job',
+    },
+  ];
+  for (const { overrides, message } of cases) {
+    const { service } = makeAuthoritativeHarness(durableState(overrides));
+    await assert.rejects(
+      () =>
+        service.createApproved(principal('company-a'), {
+          inspectionId: 'inspection-a',
+        }),
+      (error) => {
+        assert.ok(error instanceof ApprovedSnapshotFailure);
+        assert.equal(error.code, 'CONFLICT');
+        assert.equal(error.message, message);
+        return true;
+      },
+    );
+  }
+});
+
+test('authoritative approval is tenant-scoped and requires a configured reader', async () => {
+  const { service } = makeAuthoritativeHarness(
+    durableState(),
+    new InMemoryApprovedSnapshotStore(),
+    'company-b',
+  );
+  await expectFailure(
+    () =>
+      service.createApproved(principal('company-a'), {
+        inspectionId: 'inspection-a',
+      }),
+    'NOT_FOUND',
+  );
+
+  const unconfigured = new ApprovedSnapshotService({
+    store: new InMemoryApprovedSnapshotStore(),
+    auditSink: { record() {} },
+    clock: new FixedClock(),
+    idGenerator: new FixedIdGenerator(),
+  });
+  await expectFailure(
+    () =>
+      unconfigured.createApproved(principal('company-a'), {
+        inspectionId: 'inspection-a',
+      }),
+    'PERSISTENCE_UNAVAILABLE',
+  );
+});
+
+test('PostgreSQL state reader reads review counts, payload and photo state in one tenant-bound transaction', async () => {
+  const payload = submission();
+  const database = new QueuedSqlDatabase([
+    [],
+    [
+      {
+        inspection_id: 'inspection-a',
+        job_id: 'job-a',
+        site_id: 'site-a',
+        jurisdiction: 'NSW',
+        revision_number: 3,
+        inspector_user_id: 'inspector-a',
+        inspection_workflow_status: 'submitted',
+        job_pack_version: 2,
+      },
+    ],
+    [{ latest_revision: 3 }],
+    [{ open_blockers: 0, open_changes: 0 }],
+    [{ entity_version: 7, request_body: JSON.stringify({ payload }) }],
+    [{ pending_photos: 0 }],
+  ]);
+  const reader = new PostgresApprovedSnapshotStateReader(database);
+
+  const state = await reader.findSubmissionState('company-a', 'inspection-a');
+
+  assert.equal(database.queries.length, 6);
+  assert.equal(
+    database.queries[0].text,
+    "SELECT set_config('app.company_id', $1, true)",
+  );
+  assert.match(database.queries[1].text, /FROM inspections i/);
+  assert.match(database.queries[2].text, /MAX\(revision_number\)/);
+  assert.match(database.queries[3].text, /FILTER \(WHERE status = 'open'/);
+  assert.match(database.queries[4].text, /SELECT entity_version, request_body/);
+  assert.doesNotMatch(database.queries[4].text, /->/);
+  assert.match(database.queries[5].text, /upload_state <> 'uploaded'/);
+  assert.deepEqual(database.queries[5].values, ['company-a', 'inspection-a']);
+  assert.deepEqual(state, {
+    inspectionId: 'inspection-a',
+    revisionNumber: 3,
+    latestRevisionNumber: 3,
+    workflowStatus: 'submitted',
+    jobPackVersion: 2,
+    inspectorUserId: 'inspector-a',
+    requiredEvidenceSynchronised: true,
+    openHardBlockerCount: 0,
+    openChangeRequestCount: 0,
+    evidenceVersion: 7,
+    submission: payload,
+  });
+});
+
+test('PostgreSQL state reader fails closed on unknown rows and payload mismatch', async () => {
+  const emptyReader = new PostgresApprovedSnapshotStateReader(
+    new QueuedSqlDatabase([[]]),
+  );
+  const missing = await emptyReader.findSubmissionState(
+    'company-a',
+    'inspection-a',
+  );
+  assert.equal(missing, undefined);
+
+  const mismatchReader = new PostgresApprovedSnapshotStateReader(
+    new QueuedSqlDatabase([
+      [],
+      [
+        {
+          inspection_id: 'inspection-a',
+          job_id: 'job-a',
+          site_id: 'site-a',
+          jurisdiction: 'NSW',
+          revision_number: 3,
+          inspector_user_id: 'inspector-a',
+          inspection_workflow_status: 'submitted',
+          job_pack_version: 2,
+        },
+      ],
+      [{ latest_revision: 3 }],
+      [{ open_blockers: 0, open_changes: 0 }],
+      [
+        {
+          entity_version: 7,
+          request_body: JSON.stringify({
+            payload: submission({ jobId: 'other-job' }),
+          }),
+        },
+      ],
+      [{ pending_photos: 0 }],
+    ]),
+  );
+  await expectFailure(
+    () => mismatchReader.findSubmissionState('company-a', 'inspection-a'),
+    'PERSISTENCE_UNAVAILABLE',
+  );
+});
+
+test('PostgreSQL approval commits snapshot, audit event and job pointer in one transaction', async () => {
+  const database = new FakeSqlDatabase();
+  const { audit, service } = makeAuthoritativeHarness(
+    durableState(),
+    new PostgresApprovedSnapshotStore(database),
+  );
+
+  await service.createApproved(principal('company-a'), {
+    inspectionId: 'inspection-a',
+  });
+
+  assert.equal(database.queries.length, 7);
+  assert.equal(
+    database.queries[0].text,
+    "SELECT set_config('app.company_id', $1, true)",
+  );
+  assert.match(database.queries[1].text, /approval_id/);
+  assert.match(database.queries[3].text, /pg_advisory_xact_lock/);
+  assert.deepEqual(database.queries[3].values, [
+    'company-a',
+    'inspection_submission',
+    'job-a',
+  ]);
+  assert.match(database.queries[4].text, /INSERT INTO inspection_snapshots/);
+  assert.match(database.queries[5].text, /INSERT INTO audit_events/);
+  assert.match(database.queries[6].text, /UPDATE jobs/);
+  assert.match(database.queries[6].text, /'approved_for_report_generation'/);
+  assert.match(database.queries[6].text, /'changes_requested'/);
+  assert.match(database.queries[6].text, /RETURNING job_id/);
+  assert.deepEqual(database.queries[6].values.slice(0, 2), [
+    'company-a',
+    'job-a',
+  ]);
+  const approvalTransactionId = database.queries[2].transactionId;
+  assert.equal(database.queries[3].transactionId, approvalTransactionId);
+  assert.equal(database.queries[4].transactionId, approvalTransactionId);
+  assert.equal(database.queries[5].transactionId, approvalTransactionId);
+  assert.equal(database.queries[6].transactionId, approvalTransactionId);
+  assert.equal(database.committedTransactions, 2);
+  assert.deepEqual(
+    audit.events.map((event) => event.action),
+    [],
+  );
+});
+
+test('PostgreSQL approval rolls back the job pointer when snapshot persistence fails', async () => {
+  const database = new FakeSqlDatabase([], { code: '23505' });
+  const { service } = makeAuthoritativeHarness(
+    durableState(),
+    new PostgresApprovedSnapshotStore(database),
+  );
+
+  await expectFailure(
+    () =>
+      service.createApproved(principal('company-a'), {
+        inspectionId: 'inspection-a',
+      }),
+    'CONFLICT',
+  );
+  assert.ok(database.rolledBackTransactions >= 1);
+  assert.ok(
+    database.queries.every((query) => !/UPDATE jobs/.test(query.text)),
+    'job pointer must not move when snapshot persistence fails',
+  );
+});
+
+test('authoritative approval fails closed when the store cannot move the job pointer', async () => {
+  const reader = new InMemoryApprovedSnapshotStateReader();
+  reader.put('company-a', durableState());
+  const service = new ApprovedSnapshotService({
+    store: {
+      async findById() {
+        return undefined;
+      },
+      async findByApprovalId() {
+        return undefined;
+      },
+      async create() {},
+    },
+    auditSink: { record() {} },
+    clock: new FixedClock(),
+    idGenerator: new FixedIdGenerator(),
+    stateReader: reader,
+  });
+
+  await expectFailure(
+    () =>
+      service.createApproved(principal('company-a'), {
+        inspectionId: 'inspection-a',
+      }),
+    'PERSISTENCE_UNAVAILABLE',
+  );
+});
+
+test('PostgreSQL approval fails closed when the approved revision is no longer the submitted revision', async () => {
+  const database = new FakeSqlDatabase([], null, []);
+  const { service } = makeAuthoritativeHarness(
+    durableState(),
+    new PostgresApprovedSnapshotStore(database),
+  );
+
+  await expectFailure(
+    () =>
+      service.createApproved(principal('company-a'), {
+        inspectionId: 'inspection-a',
+      }),
+    'CONFLICT',
+  );
+  assert.ok(database.rolledBackTransactions >= 1);
+  assert.ok(
+    database.queries.some((query) => /RETURNING job_id/.test(query.text)),
+    'guarded job transition must be attempted before failing closed',
+  );
 });
