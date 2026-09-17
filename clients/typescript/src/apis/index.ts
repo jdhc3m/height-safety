@@ -1,5 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './ApprovalsApi';
 export * from './IdentityApi';
 export * from './JobWorkflowApi';
 export * from './ReviewApi';

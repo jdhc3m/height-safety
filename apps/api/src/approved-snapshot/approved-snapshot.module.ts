@@ -16,7 +16,9 @@ import {
   secureApprovedSnapshotIdGenerator,
 } from './approved-snapshot-service';
 import { DatabaseModule, POSTGRES_DATABASE } from '../database/database.module';
+import { AuthModule } from '../identity/auth.module';
 import { PostgresAuditSink } from '../database/postgres-audit-sink';
+import { ApprovedSnapshotController } from './approved-snapshot.controller';
 import { PostgresApprovedSnapshotStore } from './approved-snapshot-postgres-store';
 import { PostgresApprovedSnapshotStateReader } from './approved-snapshot-postgres-state-reader';
 import type { SqlDatabase } from '../database/postgres-database';
@@ -34,7 +36,8 @@ export const APPROVED_SNAPSHOT_ID_GENERATOR = Symbol(
 );
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, AuthModule],
+  controllers: [ApprovedSnapshotController],
   providers: [
     {
       provide: APPROVED_SNAPSHOT_STORE,

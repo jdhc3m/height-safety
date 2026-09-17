@@ -16,23 +16,27 @@ Next, try it out.
 ```ts
 import {
   Configuration,
-  IdentityApi,
+  ApprovalsApi,
 } from '@height-safety/api-client';
-import type { AcceptInvitationRequest } from '@height-safety/api-client';
+import type { ApproveInspectionRevisionRequest } from '@height-safety/api-client';
 
 async function example() {
   console.log("🚀 Testing @height-safety/api-client SDK...");
-  const api = new IdentityApi();
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: access-token
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new ApprovalsApi(config);
 
   const body = {
     // string
     xCompanyId: xCompanyId_example,
-    // AcceptInvitationDto
-    acceptInvitationDto: ...,
-  } satisfies AcceptInvitationRequest;
+    // ApproveInspectionDto
+    approveInspectionDto: ...,
+  } satisfies ApproveInspectionRevisionRequest;
 
   try {
-    const data = await api.acceptInvitation(body);
+    const data = await api.approveInspectionRevision(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -52,6 +56,8 @@ All URIs are relative to */api/v1*
 
 | Class | Method | HTTP request | Description
 | ----- | ------ | ------------ | -------------
+*ApprovalsApi* | [**approveInspectionRevision**](docs/ApprovalsApi.md#approveinspectionrevision) | **POST** /approvals | Freeze the exact submitted revision for draft report generation after review gates pass
+*ApprovalsApi* | [**getApprovedSnapshot**](docs/ApprovalsApi.md#getapprovedsnapshot) | **GET** /approvals/{snapshotId} | Read one frozen approved snapshot in the current company scope
 *IdentityApi* | [**acceptInvitation**](docs/IdentityApi.md#acceptinvitation) | **POST** /auth/invitations/accept | Accept an invitation using a verified provider identity
 *IdentityApi* | [**createInvitation**](docs/IdentityApi.md#createinvitation) | **POST** /auth/invitations | Create an invitation for a company user
 *IdentityApi* | [**createSession**](docs/IdentityApi.md#createsession) | **POST** /auth/sessions | Create an application session from a provider access token
@@ -91,6 +97,9 @@ All URIs are relative to */api/v1*
 
 - [AcceptInvitationDto](docs/AcceptInvitationDto.md)
 - [AnchorResponseDto](docs/AnchorResponseDto.md)
+- [ApproveInspectionDto](docs/ApproveInspectionDto.md)
+- [ApproveInspectionResponseDto](docs/ApproveInspectionResponseDto.md)
+- [ApprovedSnapshotResponseDto](docs/ApprovedSnapshotResponseDto.md)
 - [AssignJobDto](docs/AssignJobDto.md)
 - [AuthMeResponseDto](docs/AuthMeResponseDto.md)
 - [AuthUserResponseDto](docs/AuthUserResponseDto.md)

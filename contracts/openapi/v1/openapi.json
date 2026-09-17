@@ -93,6 +93,99 @@
         ],
         "type": "object"
       },
+      "ApprovedSnapshotResponseDto": {
+        "properties": {
+          "approvalId": {
+            "type": "string"
+          },
+          "approvedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "approvedByUserId": {
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "jurisdiction": {
+            "enum": [
+              "NSW",
+              "QLD"
+            ],
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "snapshotId": {
+            "type": "string"
+          },
+          "sourceEvidenceVersion": {
+            "type": "number"
+          },
+          "sourceIdentitySha256": {
+            "type": "string"
+          },
+          "sourceInspectionId": {
+            "type": "string"
+          },
+          "sourceInspectionRevision": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "companyId",
+          "snapshotId",
+          "approvalId",
+          "jobId",
+          "siteId",
+          "jurisdiction",
+          "sourceInspectionId",
+          "sourceInspectionRevision",
+          "sourceEvidenceVersion",
+          "approvedByUserId",
+          "approvedAt",
+          "sourceIdentitySha256",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "ApproveInspectionDto": {
+        "properties": {
+          "inspectionId": {
+            "example": "inspection-001",
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "inspectionId"
+        ],
+        "type": "object"
+      },
+      "ApproveInspectionResponseDto": {
+        "properties": {
+          "replayed": {
+            "example": false,
+            "type": "boolean"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/ApprovedSnapshotResponseDto"
+          }
+        },
+        "required": [
+          "snapshot",
+          "replayed"
+        ],
+        "type": "object"
+      },
       "AssignJobDto": {
         "properties": {
           "inspectorUserId": {
@@ -1454,6 +1547,96 @@
   },
   "openapi": "3.0.0",
   "paths": {
+    "/approvals": {
+      "post": {
+        "operationId": "approveInspectionRevision",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveInspectionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApproveInspectionResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Freeze the exact submitted revision for draft report generation after review gates pass",
+        "tags": [
+          "approvals"
+        ]
+      }
+    },
+    "/approvals/{snapshotId}": {
+      "get": {
+        "operationId": "getApprovedSnapshot",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshotId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovedSnapshotResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Read one frozen approved snapshot in the current company scope",
+        "tags": [
+          "approvals"
+        ]
+      }
+    },
     "/auth/invitations": {
       "post": {
         "operationId": "createInvitation",

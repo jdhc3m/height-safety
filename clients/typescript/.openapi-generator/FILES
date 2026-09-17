@@ -4,6 +4,10 @@
 README.md
 docs/AcceptInvitationDto.md
 docs/AnchorResponseDto.md
+docs/ApprovalsApi.md
+docs/ApproveInspectionDto.md
+docs/ApproveInspectionResponseDto.md
+docs/ApprovedSnapshotResponseDto.md
 docs/AssignJobDto.md
 docs/AuthMeResponseDto.md
 docs/AuthUserResponseDto.md
@@ -45,6 +49,7 @@ docs/UpdateAnchorDto.md
 docs/UpdateClientDto.md
 docs/UpdateSiteDto.md
 package.json
+src/apis/ApprovalsApi.ts
 src/apis/IdentityApi.ts
 src/apis/JobWorkflowApi.ts
 src/apis/ReviewApi.ts
@@ -55,6 +60,9 @@ src/apis/index.ts
 src/index.ts
 src/models/AcceptInvitationDto.ts
 src/models/AnchorResponseDto.ts
+src/models/ApproveInspectionDto.ts
+src/models/ApproveInspectionResponseDto.ts
+src/models/ApprovedSnapshotResponseDto.ts
 src/models/AssignJobDto.ts
 src/models/AuthMeResponseDto.ts
 src/models/AuthUserResponseDto.ts

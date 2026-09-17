@@ -45,6 +45,8 @@ All URIs are relative to */api/v1*
 
 | Class | Method | HTTP request | Description |
 | ------------ | ------------- | ------------- | ------------- |
+| *ApprovalsApi* | [**approveInspectionRevision**](docs/ApprovalsApi.md#approveinspectionrevision) | **POST** approvals | Freeze the exact submitted revision for draft report generation after review gates pass |
+| *ApprovalsApi* | [**getApprovedSnapshot**](docs/ApprovalsApi.md#getapprovedsnapshot) | **GET** approvals/{snapshotId} | Read one frozen approved snapshot in the current company scope |
 | *IdentityApi* | [**acceptInvitation**](docs/IdentityApi.md#acceptinvitation) | **POST** auth/invitations/accept | Accept an invitation using a verified provider identity |
 | *IdentityApi* | [**createInvitation**](docs/IdentityApi.md#createinvitation) | **POST** auth/invitations | Create an invitation for a company user |
 | *IdentityApi* | [**createSession**](docs/IdentityApi.md#createsession) | **POST** auth/sessions | Create an application session from a provider access token |
@@ -85,6 +87,9 @@ All URIs are relative to */api/v1*
 
  - [au.com.heightsafety.api.models.AcceptInvitationDto](docs/AcceptInvitationDto.md)
  - [au.com.heightsafety.api.models.AnchorResponseDto](docs/AnchorResponseDto.md)
+ - [au.com.heightsafety.api.models.ApproveInspectionDto](docs/ApproveInspectionDto.md)
+ - [au.com.heightsafety.api.models.ApproveInspectionResponseDto](docs/ApproveInspectionResponseDto.md)
+ - [au.com.heightsafety.api.models.ApprovedSnapshotResponseDto](docs/ApprovedSnapshotResponseDto.md)
  - [au.com.heightsafety.api.models.AssignJobDto](docs/AssignJobDto.md)
  - [au.com.heightsafety.api.models.AuthMeResponseDto](docs/AuthMeResponseDto.md)
  - [au.com.heightsafety.api.models.AuthUserResponseDto](docs/AuthUserResponseDto.md)

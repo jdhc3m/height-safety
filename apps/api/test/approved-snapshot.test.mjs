@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import {
+  ConflictException,
+  NotFoundException,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
+
+import { ApprovedSnapshotController } from '../dist/approved-snapshot/approved-snapshot.controller.js';
 import { ApprovedSnapshotService } from '../dist/approved-snapshot/approved-snapshot-service.js';
 import { ApprovedSnapshotFailure } from '../dist/approved-snapshot/approved-snapshot.types.js';
 import {
@@ -890,5 +898,98 @@ test('PostgreSQL approval fails closed when the approved revision is no longer t
   assert.ok(
     database.queries.some((query) => /RETURNING job_id/.test(query.text)),
     'guarded job transition must be attempted before failing closed',
+  );
+});
+
+function controllerFixture(state = durableState()) {
+  const { service } = makeAuthoritativeHarness(state);
+  const authService = {
+    authenticateSession(companyId, accessToken) {
+      assert.equal(accessToken, 'access-token');
+      return principal(companyId);
+    },
+  };
+  return {
+    service,
+    controller: new ApprovedSnapshotController(authService, service),
+  };
+}
+
+test('approval controller authenticates, serialises and reads back one frozen snapshot', async () => {
+  const { controller } = controllerFixture();
+
+  const approved = await controller.approveInspectionRevision(
+    'Bearer access-token',
+    'company-a',
+    { inspectionId: 'inspection-a' },
+  );
+  assert.equal(approved.replayed, false);
+  assert.equal(approved.snapshot.companyId, 'company-a');
+  assert.equal(approved.snapshot.jurisdiction, 'NSW');
+  assert.equal(approved.snapshot.sourceInspectionRevision, 3);
+  assert.equal(approved.snapshot.sourceEvidenceVersion, 7);
+  assert.equal(typeof approved.snapshot.approvedAt, 'string');
+  assert.equal(typeof approved.snapshot.sha256, 'string');
+
+  const readBack = await controller.getApprovedSnapshot(
+    'Bearer access-token',
+    'company-a',
+    approved.snapshot.snapshotId,
+  );
+  assert.equal(readBack.snapshotId, approved.snapshot.snapshotId);
+  assert.equal(readBack.sha256, approved.snapshot.sha256);
+
+  await assert.rejects(
+    () =>
+      controller.approveInspectionRevision(undefined, 'company-a', {
+        inspectionId: 'inspection-a',
+      }),
+    (error) => error instanceof UnauthorizedException,
+  );
+});
+
+test('approval controller maps not-found, conflict and unconfigured-reader failures', async () => {
+  const { controller } = controllerFixture();
+
+  await assert.rejects(
+    () =>
+      controller.approveInspectionRevision('Bearer access-token', 'company-a', {
+        inspectionId: 'inspection-missing',
+      }),
+    (error) => error instanceof NotFoundException,
+  );
+
+  const blocked = controllerFixture(
+    durableState({ openHardBlockerCount: 1 }),
+  ).controller;
+  await assert.rejects(
+    () =>
+      blocked.approveInspectionRevision('Bearer access-token', 'company-a', {
+        inspectionId: 'inspection-a',
+      }),
+    (error) => error instanceof ConflictException,
+  );
+
+  const unconfiguredController = new ApprovedSnapshotController(
+    {
+      authenticateSession(companyId) {
+        return principal(companyId);
+      },
+    },
+    new ApprovedSnapshotService({
+      store: new InMemoryApprovedSnapshotStore(),
+      auditSink: { record() {} },
+      clock: new FixedClock(),
+      idGenerator: new FixedIdGenerator(),
+    }),
+  );
+  await assert.rejects(
+    () =>
+      unconfiguredController.approveInspectionRevision(
+        'Bearer access-token',
+        'company-a',
+        { inspectionId: 'inspection-a' },
+      ),
+    (error) => error instanceof ServiceUnavailableException,
   );
 });

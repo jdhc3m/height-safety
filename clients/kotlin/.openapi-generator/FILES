@@ -2,6 +2,10 @@ README.md
 build.gradle
 docs/AcceptInvitationDto.md
 docs/AnchorResponseDto.md
+docs/ApprovalsApi.md
+docs/ApproveInspectionDto.md
+docs/ApproveInspectionResponseDto.md
+docs/ApprovedSnapshotResponseDto.md
 docs/AssignJobDto.md
 docs/AuthMeResponseDto.md
 docs/AuthUserResponseDto.md
@@ -44,6 +48,7 @@ docs/UpdateClientDto.md
 docs/UpdateSiteDto.md
 proguard-rules.pro
 settings.gradle
+src/main/kotlin/au/com/heightsafety/api/apis/ApprovalsApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/IdentityApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/JobWorkflowApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/ReviewApi.kt
@@ -69,6 +74,9 @@ src/main/kotlin/au/com/heightsafety/api/infrastructure/URLAdapter.kt
 src/main/kotlin/au/com/heightsafety/api/infrastructure/UUIDAdapter.kt
 src/main/kotlin/au/com/heightsafety/api/models/AcceptInvitationDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/AnchorResponseDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/ApproveInspectionDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/ApproveInspectionResponseDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/ApprovedSnapshotResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/AssignJobDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/AuthMeResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/AuthUserResponseDto.kt
@@ -103,6 +111,7 @@ src/main/kotlin/au/com/heightsafety/api/models/SyncMutationResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/UpdateAnchorDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/UpdateClientDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/UpdateSiteDto.kt
+src/test/kotlin/au/com/heightsafety/api/apis/ApprovalsApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/IdentityApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/JobWorkflowApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/ReviewApiTest.kt
@@ -111,6 +120,9 @@ src/test/kotlin/au/com/heightsafety/api/apis/SynchronisationApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/SystemApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/AcceptInvitationDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/AnchorResponseDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/ApproveInspectionDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/ApproveInspectionResponseDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/ApprovedSnapshotResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/AssignJobDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/AuthMeResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/AuthUserResponseDtoTest.kt

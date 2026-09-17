@@ -2,6 +2,9 @@
 /* eslint-disable */
 export * from './AcceptInvitationDto';
 export * from './AnchorResponseDto';
+export * from './ApproveInspectionDto';
+export * from './ApproveInspectionResponseDto';
+export * from './ApprovedSnapshotResponseDto';
 export * from './AssignJobDto';
 export * from './AuthMeResponseDto';
 export * from './AuthUserResponseDto';
