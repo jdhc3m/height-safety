@@ -22,16 +22,35 @@ test('office API reads the company scope from a configured identity claim', asyn
   assert.doesNotMatch(api, /console\.(log|info|debug|warn|error)/);
 });
 
-test('office reads stay read-only and never call an approval or issue write', async () => {
+test('office write actions are server actions that require a recorded reason', async () => {
   const api = await read('../src/lib/office-api.ts');
+  const actions = await read(
+    '../src/app/office/reviews/[inspectionId]/actions.ts',
+  );
   const review = await read(
     '../src/app/office/reviews/[inspectionId]/page.tsx',
   );
 
-  assert.doesNotMatch(api, /\/approvals/);
-  assert.doesNotMatch(api, /method: 'POST'[\s\S]{0,120}\/reviews/);
-  assert.doesNotMatch(review, /<form\b|onClick\b|useState\b|\/approvals/);
-  assert.match(review, /Read-only/);
+  // Writes run only through the authenticated server-side session; the opaque
+  // token never reaches the browser and nothing is logged.
+  assert.match(actions, /'use server'/);
+  assert.match(actions, /openOfficeSession\(\)/);
+  assert.doesNotMatch(actions, /accessToken|console\./);
+
+  // Every write requires a recorded reason before it is sent.
+  assert.match(actions, /REASON_REQUIRED/);
+  assert.match(actions, /issueType: 'change'/);
+
+  // The page wires review and approval through server actions.
+  assert.match(review, /<form action={resolveIssueAction}/);
+  assert.match(review, /<form action={requestChangesAction}/);
+  assert.match(review, /<form action={approveInspectionAction}/);
+
+  // Approval hardening: endpoints exist and blocking is surfaced.
+  assert.match(api, /\/approvals/);
+  assert.match(api, /\/reviews\/issues/);
+  assert.match(review, /Hard blockers cannot be waived/);
+  assert.match(review, /Approval blocked/);
 });
 
 test('office review keeps neutral language and bounded failure states', async () => {

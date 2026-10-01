@@ -339,6 +339,96 @@ h3 {
   font-size: 0.85rem;
 }
 
+.result-banner {
+  border: 1px solid transparent;
+  border-radius: 0.9rem;
+  padding: 0.9rem 1.1rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.result-banner--ok {
+  border-color: #a9d8be;
+  background: #e2f3ea;
+  color: #17633a;
+}
+
+.result-banner--warn {
+  border-color: #e8c88a;
+  background: #fff0d6;
+  color: #815800;
+}
+
+.action-row {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 2rem;
+}
+
+.action-form {
+  display: grid;
+  gap: 0.6rem;
+  align-content: start;
+  border: 1px solid #d7dee8;
+  border-radius: 1rem;
+  background: #fff;
+  padding: 1.1rem 1.2rem;
+}
+
+.action-form__label {
+  display: grid;
+  gap: 0.35rem;
+  color: #4a5b70;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.action-form__note {
+  color: #74859b;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.action-form textarea {
+  width: 100%;
+  border: 1px solid #b8c7d9;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  color: #102235;
+  font: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+}
+
+.action-form textarea:focus-visible {
+  outline: 2px solid #2e5aac;
+  outline-offset: 1px;
+}
+
+.action-button {
+  justify-self: start;
+  border: 1px solid #b8c7d9;
+  border-radius: 0.6rem;
+  background: #fff;
+  padding: 0.6rem 1rem;
+  color: #102235;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.action-button--primary {
+  border-color: #2e5aac;
+  background: #2e5aac;
+  color: #fff;
+}
+
+.action-button:focus-visible {
+  outline: 2px solid #2e5aac;
+  outline-offset: 2px;
+}
+
 @media (max-width: 720px) {
   .hero,
   .auth-panel,
@@ -352,6 +442,10 @@ h3 {
   }
 
   .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-row {
     grid-template-columns: 1fr;
   }
 

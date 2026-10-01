@@ -10,6 +10,11 @@ import {
   type ReviewIssue,
   type ReviewIssueType,
 } from '../../../../lib/office-api';
+import {
+  approveInspectionAction,
+  requestChangesAction,
+  resolveIssueAction,
+} from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +32,78 @@ const ISSUE_TONE: Record<ReviewIssueType, string> = {
   change: 'chip--warn',
 };
 
+type Banner = { readonly tone: 'ok' | 'warn'; readonly text: string };
+
+function resultBanner(
+  searchParams: Record<string, string | string[] | undefined>,
+): Banner | undefined {
+  const status =
+    typeof searchParams.status === 'string' ? searchParams.status : undefined;
+  const error =
+    typeof searchParams.error === 'string' ? searchParams.error : undefined;
+  const httpStatus =
+    typeof searchParams.status === 'string'
+      ? Number(searchParams.status)
+      : undefined;
+
+  if (status === 'resolved') {
+    return {
+      tone: 'ok',
+      text: 'Review issue resolved with a recorded reason. Inspector evidence is unchanged.',
+    };
+  }
+  if (status === 'change-requested') {
+    return {
+      tone: 'ok',
+      text: 'Change requested. The job moves to changes requested; the inspector submits a new revision for review.',
+    };
+  }
+  if (status === 'approved') {
+    return {
+      tone: 'ok',
+      text: 'Snapshot approved. The exact submitted revision is frozen for draft report generation.',
+    };
+  }
+
+  if (error === 'REASON_REQUIRED') {
+    return {
+      tone: 'warn',
+      text: 'A recorded reason is required for this action.',
+    };
+  }
+  if (error === 'INVALID_INPUT') {
+    return {
+      tone: 'warn',
+      text: 'The request was incomplete and was not sent.',
+    };
+  }
+  if (error === 'UPSTREAM' && httpStatus === 409) {
+    return {
+      tone: 'warn',
+      text: 'Approval blocked: a hard blocker, open change request, unsynchronised evidence or a stale revision remains. Hard blockers cannot be waived.',
+    };
+  }
+  if (error === 'UPSTREAM' && httpStatus === 403) {
+    return {
+      tone: 'warn',
+      text: 'Your company role cannot perform this action.',
+    };
+  }
+  if (error === 'UPSTREAM' && httpStatus === 404) {
+    return {
+      tone: 'warn',
+      text: 'The inspection or review issue was not found.',
+    };
+  }
+  if (error) {
+    return {
+      tone: 'warn',
+      text: `The action was refused (${error}${httpStatus ? ` ${httpStatus}` : ''}).`,
+    };
+  }
+  return undefined;
+}
+
 function countOpen(
   issues: readonly ReviewIssue[],
   issueType: ReviewIssueType,
@@ -38,10 +115,13 @@ function countOpen(
 
 export default async function ReviewPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ inspectionId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { inspectionId } = await params;
+  const query = await searchParams;
 
   if (!isAuth0Configured || !auth0) {
     return (
@@ -81,6 +161,8 @@ export default async function ReviewPage({
     }
   }
 
+  const banner = resultBanner(query);
+
   return (
     <main className="shell">
       <section className="hero" aria-labelledby="review-title">
@@ -94,9 +176,68 @@ export default async function ReviewPage({
           </p>
         </div>
         <p className="notice" role="note">
-          Read-only. Resolving an issue, requesting changes or approving a
-          snapshot are not available in this prototype.
+          Actions are append-only and audited. Resolving or requesting changes
+          never overwrites submitted evidence, and approval freezes the exact
+          revision.
         </p>
+      </section>
+
+      {banner ? (
+        <p
+          className={`result-banner result-banner--${banner.tone}`}
+          role={banner.tone === 'warn' ? 'alert' : 'status'}
+        >
+          {banner.text}
+        </p>
+      ) : null}
+
+      <section className="preview" aria-labelledby="review-actions-title">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Reviewer actions</p>
+            <h2 id="review-actions-title">Request changes or approve</h2>
+          </div>
+          <p className="section-copy">
+            Approval is refused while any hard blocker, open change request or
+            unsynchronised evidence remains.
+          </p>
+        </div>
+
+        {isOfficeApiConfigured() && !failure ? (
+          <div className="action-row">
+            <form action={requestChangesAction} className="action-form">
+              <input type="hidden" name="inspectionId" value={inspectionId} />
+              <label className="action-form__label">
+                Recorded reason for requesting changes
+                <textarea
+                  name="reason"
+                  rows={2}
+                  required
+                  maxLength={10_000}
+                  placeholder="Explain what the inspector must correct and where."
+                />
+              </label>
+              <button className="action-button" type="submit">
+                Request changes
+              </button>
+            </form>
+
+            <form action={approveInspectionAction} className="action-form">
+              <input type="hidden" name="inspectionId" value={inspectionId} />
+              <p className="action-form__note">
+                Approval freezes the exact submitted revision for draft report
+                generation. It cannot be undone; a correction creates a new
+                revision.
+              </p>
+              <button
+                className="action-button action-button--primary"
+                type="submit"
+              >
+                Approve snapshot
+              </button>
+            </form>
+          </div>
+        ) : null}
       </section>
 
       <section className="preview" aria-labelledby="review-issues-title">
@@ -175,6 +316,34 @@ export default async function ReviewPage({
                           .replace('T', ' ')}`
                       : ''}
                   </p>
+
+                  {issue.status === 'open' ? (
+                    <form action={resolveIssueAction} className="action-form">
+                      <input
+                        type="hidden"
+                        name="inspectionId"
+                        value={inspectionId}
+                      />
+                      <input
+                        type="hidden"
+                        name="reviewIssueId"
+                        value={issue.reviewIssueId}
+                      />
+                      <label className="action-form__label">
+                        Recorded reason for resolving this issue
+                        <textarea
+                          name="reason"
+                          rows={2}
+                          required
+                          maxLength={10_000}
+                          placeholder="State why this issue is resolved."
+                        />
+                      </label>
+                      <button className="action-button" type="submit">
+                        Resolve issue
+                      </button>
+                    </form>
+                  ) : null}
                 </li>
               ))}
             </ul>

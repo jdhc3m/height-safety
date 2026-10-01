@@ -13,6 +13,7 @@ export class OfficeApiFailure extends Error {
   constructor(
     readonly code: OfficeApiFailureCode,
     message: string,
+    readonly status?: number,
   ) {
     super(message);
     this.name = 'OfficeApiFailure';
@@ -95,6 +96,7 @@ async function requestJson<T>(
     throw new OfficeApiFailure(
       'UPSTREAM',
       `${label} was refused with status ${response.status}`,
+      response.status,
     );
   }
 
@@ -194,5 +196,90 @@ export function listReviewIssues(
     `/reviews/inspections/${encodeURIComponent(inspectionId)}/issues`,
     { headers: authorisedHeaders(session), method: 'GET' },
     'the review issue list',
+  );
+}
+
+export interface ReviewIssueResolution {
+  readonly issue: ReviewIssue;
+  readonly replayed: boolean;
+}
+
+export interface ApprovedSnapshotSummary {
+  readonly snapshot: {
+    readonly snapshotId: string;
+    readonly approvalId: string;
+    readonly jobId: string;
+    readonly jurisdiction: 'NSW' | 'QLD';
+    readonly sourceInspectionRevision: number;
+    readonly approvedByUserId: string;
+    readonly approvedAt: string;
+    readonly sha256: string;
+  };
+  readonly replayed: boolean;
+}
+
+function jsonHeaders(session: OfficeSession): Record<string, string> {
+  return {
+    ...authorisedHeaders(session),
+    'content-type': 'application/json',
+  };
+}
+
+/**
+ * Records an append-only review issue. `issueType: 'change'` is how a reviewer
+ * requests changes; it is never applied to the inspector's submitted evidence.
+ */
+export function createReviewIssue(
+  session: OfficeSession,
+  input: {
+    readonly inspectionId: string;
+    readonly issueType: ReviewIssueType;
+    readonly reason: string;
+  },
+): Promise<ReviewIssue> {
+  return requestJson<ReviewIssue>(
+    '/reviews/issues',
+    {
+      method: 'POST',
+      headers: jsonHeaders(session),
+      body: JSON.stringify(input),
+    },
+    'the review issue creation',
+  );
+}
+
+export function resolveReviewIssue(
+  session: OfficeSession,
+  reviewIssueId: string,
+  reason: string,
+): Promise<ReviewIssueResolution> {
+  return requestJson<ReviewIssueResolution>(
+    `/reviews/issues/${encodeURIComponent(reviewIssueId)}/resolve`,
+    {
+      method: 'POST',
+      headers: jsonHeaders(session),
+      body: JSON.stringify({ reason }),
+    },
+    'the review issue resolution',
+  );
+}
+
+/**
+ * Freezes the exact submitted revision for draft report generation. The API
+ * refuses with 409 when a hard blocker, open change request, unsynchronised
+ * evidence or stale revision remains.
+ */
+export function approveInspection(
+  session: OfficeSession,
+  inspectionId: string,
+): Promise<ApprovedSnapshotSummary> {
+  return requestJson<ApprovedSnapshotSummary>(
+    '/approvals',
+    {
+      method: 'POST',
+      headers: jsonHeaders(session),
+      body: JSON.stringify({ inspectionId }),
+    },
+    'the approval',
   );
 }
