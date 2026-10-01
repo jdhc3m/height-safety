@@ -88,6 +88,22 @@ jobs; that remains the review-workspace implementation.
 Generate `AUTH0_SECRET` with a local secret manager or an equivalent command,
 for example `openssl rand -hex 32`. Keep it out of source control and chat.
 
+## Local run
+
+`tools/local-dev.sh` loads the git-ignored local configuration, builds and
+starts the API and the office web, waits for both and opens `/office`. On first
+run it writes `apps/web/.env.local` from a template and exits so the values can
+be filled in. Secrets stay in that file and are never printed or committed.
+
+Add the company scope claim using
+`tools/auth0/post-login-company-claim.js` (Auth0 Dashboard -> Actions -> Flows
+-> Login), then set the user's `app_metadata.company_id`. Without that claim the
+office web fails closed and shows nothing (D-049).
+
+Seed the viewing member with `tools/seed-local-inspector.sh` using the user's
+Auth0 `user_id` and verified email, then set the row's role to
+`office_reviewer`; the review views reject an `inspector` membership.
+
 ## Android configuration
 
 The Android build uses only public native-app configuration. The Android APK
