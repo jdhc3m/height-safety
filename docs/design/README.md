@@ -47,6 +47,19 @@ The Brilliant `Canvas` also contains the editable native masters under
 `Signal Field native components`: `StatusChip`, `ActionButton`, `AnchorRow`,
 `EvidenceSection`, `BottomNavigation` and `JobCard`.
 
+## Office web design set
+
+Status: design candidate for owner and design-partner review. The office web
+surfaces are not implemented; routes and states already specified or built at
+the API are labelled accordingly inside the sample.
+
+- [Office web prototype sample](height-safety-3c-office-web.html)
+  — dependency-free click-through of product map and route tree, design system,
+  sign-in, dashboard, sites, anchor register, job detail, review workspace,
+  approval gate, draft reports, administration, flow map and handoff matrix.
+  Fixed-column tables use system UI fonts for identifiers for offline
+  legibility; semantic status roles follow `HEIGHT_SAFETY_UI_FLOW.md`.
+
 ## Supporting reference
 
 - [UI research](../discovery/STAGE_3B_UI_RESEARCH.md)
