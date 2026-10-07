@@ -149,7 +149,7 @@ export async function openOfficeSession(): Promise<OfficeSession> {
   }
 
   const session = await requestJson<OfficeSession>(
-    '/sessions',
+    '/auth/sessions',
     {
       method: 'POST',
       headers: {
