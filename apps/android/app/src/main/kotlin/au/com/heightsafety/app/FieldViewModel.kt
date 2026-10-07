@@ -21,6 +21,8 @@ import au.com.heightsafety.domain.JobPackAccessFailure
 import au.com.heightsafety.domain.JobPackService
 import au.com.heightsafety.domain.OpenedJobPack
 import au.com.heightsafety.domain.OfflineAccessDecisionReason
+import au.com.heightsafety.domain.OfflineAccessLockReason
+import au.com.heightsafety.domain.OfflineAccessMode
 import au.com.heightsafety.domain.OfflineAccessSession
 import au.com.heightsafety.domain.OfflineAccountStatus
 import au.com.heightsafety.domain.ProductRole
@@ -174,6 +176,7 @@ class FieldViewModel(
     private val submissionService: AnchorSubmissionService? = null,
     private val offlineAccessSession: OfflineAccessSession? = null,
     private val sessionStore: FieldSessionStore? = null,
+    private val jobPackStore: au.com.heightsafety.domain.FieldJobPackStore? = null,
     private val administratorRecoveryAuthenticator: AdministratorRecoveryAuthenticator =
         UnconfiguredAdministratorRecoveryAuthenticator(),
     private val scheduleMutationSync: () -> Unit = {},
@@ -314,6 +317,11 @@ class FieldViewModel(
                 when {
                     saved != null && error.isServerAuthorizationFailure() -> {
                         notifyServerRevocation(saved)
+                    }
+                    saved != null &&
+                        error.isRetryableNetworkFailure() &&
+                        offlineRestoreAllowed() -> {
+                        restoreSavedSessionOffline(saved)
                     }
                     saved != null && error.isRetryableNetworkFailure() -> {
                         session = saved
@@ -1207,6 +1215,84 @@ class FieldViewModel(
         }
     }
 
+    /**
+     * D-025 offline restore: when the network is unavailable but the bounded
+     * offline lease still covers this device and a downloaded job pack is
+     * present, the saved session restores locally instead of failing. Lease
+     * expiry, confirmed revocation, clock rollback or Keystore loss deny it.
+     */
+    private fun offlineRestoreAllowed(): Boolean {
+        val access = offlineAccessSession?.currentState ?: return false
+        if (!access.localJobPackPresent) return false
+        return access.lockReason == OfflineAccessLockReason.NONE ||
+            access.lockReason == OfflineAccessLockReason.DEVICE
+    }
+
+    private suspend fun offlineJobsFromPacks(
+        currentSession: FieldSession,
+    ): List<InspectorJob> {
+        requireInspectorSession(currentSession)
+        val store = jobPackStore ?: return emptyList()
+        return try {
+            store.loadAll(currentSession.companyId)
+                // The per-pack lease is the offline authorisation record: this
+                // inspector downloaded this pack within the lease window.
+                .filter { stored -> stored.lease.userId == currentSession.userId }
+                .map { stored ->
+                    InspectorJob(
+                        companyId = stored.pack.companyId,
+                        jobId = stored.pack.jobId,
+                        siteId = stored.pack.siteId,
+                        jurisdiction = stored.pack.jurisdiction,
+                        reference = stored.pack.reference,
+                        plannedDate = stored.pack.plannedDate,
+                        workflowStatus = stored.pack.workflowStatus,
+                        jobPackVersion = stored.pack.jobPackVersion,
+                        createdAtEpochMillis = stored.lease.issuedAtEpochMillis,
+                        updatedAtEpochMillis = stored.lease.issuedAtEpochMillis,
+                        assignment = null,
+                    )
+                }
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
+
+    private suspend fun offlineJobsState(
+        currentSession: FieldSession,
+    ): FieldUiState {
+        // offlineJobsFromPacks already requires an inspector session and keeps
+        // only packs whose lease names this user, so the server-facing
+        // assignment visibility rule does not apply to the cached-pack list.
+        val jobs = offlineJobsFromPacks(currentSession)
+        val account = currentSession.toAccountSummary()
+        return if (jobs.isEmpty()) {
+            FieldUiState.Error(
+                message = "Unable to verify saved session. Check connection and try again.",
+                canRetry = true,
+                account = account,
+            )
+        } else {
+            FieldUiState.JobsLoaded(
+                account = account,
+                jobs = jobs,
+                syncState = SyncState.FAILED,
+            )
+        }
+    }
+
+    private suspend fun restoreSavedSessionOffline(
+        saved: FieldSession,
+    ) {
+        session = saved
+        val accessState = offlineAccessSession?.currentState
+        if (accessState != null && !accessState.deviceUnlocked) {
+            _uiState.value = FieldUiState.AppLocked(saved.toAccountSummary())
+        } else {
+            _uiState.value = offlineJobsState(saved)
+        }
+    }
+
     private suspend fun loadJobs(currentSession: FieldSession) {
         if (currentSession.isExpired(nowEpochMillis())) {
             expireSession()
@@ -1242,6 +1328,21 @@ class FieldViewModel(
                 notifyServerRevocation(activeSession)
             } else if (error.isSessionExpired()) {
                 expireSession()
+            } else if (
+                error.isRetryableNetworkFailure() &&
+                offlineRestoreAllowed()
+            ) {
+                val offline = offlineJobsState(activeSession)
+                if (offline is FieldUiState.JobsLoaded) {
+                    lastJobs = offline.jobs
+                    _uiState.value = offline
+                } else {
+                    _uiState.value = FieldUiState.Error(
+                        message = jobLoadMessage(error),
+                        canRetry = true,
+                        account = account,
+                    )
+                }
             } else {
                 _uiState.value = FieldUiState.Error(
                     message = jobLoadMessage(error),

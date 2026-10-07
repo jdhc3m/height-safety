@@ -308,6 +308,88 @@ class FieldViewModelTest {
     }
 
     @Test
+    fun offlineRestoreWithValidLeaseShowsCachedPackJobs() = runTest {
+        val accessStore = FakeOfflineAccessStateStore()
+        val access = OfflineAccessSession(
+            store = accessStore,
+            nowEpochMillis = { 1_000L },
+            elapsedRealtimeMillis = { 500L },
+        )
+        val savedSession = FieldSession(
+            accessToken = "saved-token",
+            companyId = "company-a",
+            sessionId = "session-id",
+            userId = "inspector-a",
+            email = "inspector-a@example.test",
+            role = ProductRole.INSPECTOR,
+            mfaSatisfied = false,
+            expiresAtEpochMillis = 10_000L,
+        )
+        val packStore = FakeJobPackStore().apply {
+            stored = StoredJobPack(
+                pack = FieldJobPack(
+                    companyId = "company-a",
+                    jobId = "job-a",
+                    siteId = "site-job-a",
+                    jurisdiction = SupportedJurisdiction.NSW,
+                    reference = "Reference job-a",
+                    plannedDate = "2026-09-15",
+                    workflowStatus = "assigned",
+                    jobPackVersion = 3L,
+                    siteName = "Site site-job-a",
+                    siteAddress = "1 Example Street",
+                    siteReference = null,
+                    accessNotes = null,
+                    anchors = emptyList(),
+                ),
+                lease = OfflineAuthorizationLease.issue(
+                    session = savedSession,
+                    jobId = "job-a",
+                    issuedAtEpochMillis = 1_000L,
+                    issuedAtElapsedRealtimeMillis = 500L,
+                ),
+            )
+        }
+        val sessionStore = FakeFieldSessionStore().apply { session = savedSession }
+        val gateway = FakeGateway(
+            failure = FieldGatewayException(
+                GatewayFailureReason.NETWORK,
+                "device is offline",
+            ),
+            restoreFailure = FieldGatewayException(
+                GatewayFailureReason.NETWORK,
+                "device is offline",
+            ),
+        )
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            offlineAccessSession = access,
+            sessionStore = sessionStore,
+            jobPackStore = packStore,
+        )
+        access.restore("company-a", "inspector-a")
+        access.markLocalJobPackPresent("inspector-a")
+
+        viewModel.restorePersistedSession()
+        advanceUntilIdle()
+
+        // D-025: a restore with a downloaded pack locks the device until the
+        // owner authenticates, even when the network is unavailable.
+        assertTrue(viewModel.uiState.value is FieldUiState.AppLocked)
+
+        viewModel.retry()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state is FieldUiState.JobsLoaded)
+        state as FieldUiState.JobsLoaded
+        assertEquals(SyncState.FAILED, state.syncState)
+        assertEquals(listOf("job-a"), state.jobs.map { it.jobId })
+        assertEquals("company-a", sessionStore.session?.companyId)
+    }
+
+    @Test
     fun appBackgroundLocksAndForegroundRequiresDeviceAuthentication() = runTest {
         val accessStore = FakeOfflineAccessStateStore()
         val access = OfflineAccessSession(
@@ -840,6 +922,7 @@ class FieldViewModelTest {
         submissionService: AnchorSubmissionService? = null,
         offlineAccessSession: OfflineAccessSession? = null,
         sessionStore: FieldSessionStore? = null,
+        jobPackStore: FieldJobPackStore? = null,
         administratorRecoveryAuthenticator: AdministratorRecoveryAuthenticator =
             UnconfiguredAdministratorRecoveryAuthenticator(),
         scheduleMutationSync: () -> Unit = {},
@@ -859,6 +942,7 @@ class FieldViewModelTest {
         submissionService = submissionService,
         offlineAccessSession = offlineAccessSession,
         sessionStore = sessionStore,
+        jobPackStore = jobPackStore,
         administratorRecoveryAuthenticator = administratorRecoveryAuthenticator,
         scheduleMutationSync = scheduleMutationSync,
         schedulePhotoUpload = schedulePhotoUpload,
@@ -1088,6 +1172,9 @@ class FieldViewModelTest {
 
         override suspend fun load(companyId: String, jobId: String): StoredJobPack? =
             stored?.takeIf { it.pack.companyId == companyId && it.pack.jobId == jobId }
+
+        override suspend fun loadAll(companyId: String): List<StoredJobPack> =
+            listOfNotNull(stored?.takeIf { it.pack.companyId == companyId })
 
         override suspend fun updateLease(lease: OfflineAuthorizationLease) {
             stored = stored!!.copy(lease = lease)

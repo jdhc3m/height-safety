@@ -397,6 +397,15 @@ internal abstract class JobPackDao {
     @Query("SELECT * FROM job_pack WHERE companyId = :companyId AND jobId = :jobId")
     protected abstract fun findPack(companyId: String, jobId: String): JobPackEntity?
 
+    @Query("SELECT * FROM job_pack WHERE companyId = :companyId ORDER BY jobId")
+    protected abstract fun findPacks(companyId: String): List<JobPackEntity>
+
+    @Query(
+        "SELECT * FROM offline_authorization_lease " +
+            "WHERE companyId = :companyId",
+    )
+    protected abstract fun findLeases(companyId: String): List<OfflineAuthorizationLeaseEntity>
+
     @Query(
         "SELECT * FROM job_pack_anchor " +
             "WHERE companyId = :companyId AND jobPackId = :jobId ORDER BY anchorId",
@@ -879,6 +888,17 @@ internal abstract class JobPackDao {
             anchors = findAnchors(companyId, jobId),
             lease = findLease(companyId, jobId),
         )
+    }
+
+    open fun snapshots(companyId: String): List<JobPackStorageSnapshot> {
+        val leases = findLeases(companyId).associateBy { it.jobPackId }
+        return findPacks(companyId).map { pack ->
+            JobPackStorageSnapshot(
+                pack = pack,
+                anchors = findAnchors(companyId, pack.jobId),
+                lease = leases[pack.jobId],
+            )
+        }
     }
 
     @Transaction

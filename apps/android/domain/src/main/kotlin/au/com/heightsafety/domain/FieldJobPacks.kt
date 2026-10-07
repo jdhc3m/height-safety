@@ -195,6 +195,10 @@ public interface FieldJobPackStore {
 
     public suspend fun load(companyId: String, jobId: String): StoredJobPack?
 
+    /** Lists every stored pack for the company so an offline restore can
+     * surface downloaded jobs when the network is unavailable. */
+    public suspend fun loadAll(companyId: String): List<StoredJobPack>
+
     public suspend fun updateLease(lease: OfflineAuthorizationLease)
 }
 

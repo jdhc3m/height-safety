@@ -238,6 +238,16 @@ public data class FieldOfflineAccessState(
         if (elapsedDeltaMillis < 0) {
             val next = copy(
                 nowEpochMillis = nowEpochMillis,
+                // The wall-clock high-water mark still advances across a reboot:
+                // the elapsed reset raises the rollback lock below, but the
+                // monotonic-clock invariant must not be violated by the copy.
+                highestObservedEpochMillis =
+                    maxOf(highestObservedEpochMillis, nowEpochMillis),
+                // Re-base the elapsed accumulator to the current boot so the
+                // stored value converges; leaving the stale pre-reboot value
+                // would make every later tick re-detect a rollback forever.
+                elapsedRealtimeMillis =
+                    elapsedRealtimeMillis + elapsedDeltaMillis,
                 recovery = null,
             ).raiseLock(OfflineAccessLockReason.CLOCK_ROLLBACK)
                 .appendAudit(

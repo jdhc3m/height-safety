@@ -81,6 +81,21 @@ public class EncryptedJobPackStore(
         }
     }
 
+    override suspend fun loadAll(companyId: String): List<StoredJobPack> = withContext(Dispatchers.IO) {
+        require(companyId.isNotBlank()) { "companyId must not be blank" }
+        opener.open().use { handle ->
+            handle.database.jobPackDao().snapshots(companyId).mapNotNull { snapshot ->
+                // Snapshots without a stored lease cannot authorise offline
+                // access, so they are skipped rather than failing the listing.
+                try {
+                    snapshot.toDomain()
+                } catch (_: StorageUnavailableException) {
+                    null
+                }
+            }
+        }
+    }
+
     override suspend fun updateLease(lease: OfflineAuthorizationLease) =
         withContext(Dispatchers.IO) {
             opener.open().use { handle ->

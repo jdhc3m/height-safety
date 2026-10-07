@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
                     anchorEvidenceService = evidenceService,
                     offlineAccessSession = offlineAccessSession,
                     sessionStore = localStore,
+                    jobPackStore = localStore,
                     submissionService = AnchorSubmissionService(
                         evidenceService = evidenceService,
                         store = localStore,

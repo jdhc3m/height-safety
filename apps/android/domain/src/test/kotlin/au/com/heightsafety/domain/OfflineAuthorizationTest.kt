@@ -236,8 +236,7 @@ class OfflineAuthorizationTest {
     }
 
     @Test
-    fun clockRollbackLocksUntilActiveOnlineRefresh() {
-        var state = state(leaseDurationMillis = 2_000_000L)
+    fun clockRollbackLocksUntilActiveOnlineRefresh() {        var state = state(leaseDurationMillis = 2_000_000L)
         state = state.tick(nowEpochMillis = 1_000_000L, elapsedDeltaMillis = 1L).state
 
         val rollback = state.tick(nowEpochMillis = 600_000L, elapsedDeltaMillis = 1L)
@@ -257,6 +256,49 @@ class OfflineAuthorizationTest {
         assertTrue(refreshed.allowed)
         assertEquals(OfflineAccessMode.CAPTURE, refreshed.state.mode)
         assertEquals(OfflineAccessLockReason.NONE, refreshed.state.lockReason)
+    }
+
+    @Test
+    fun rebootWithWallClockAdvanceRaisesRollbackLockWithoutThrowing() {
+        // A pre-reboot accumulator (5000) exceeds the current boot's elapsed
+        // time, which is what makes the elapsed delta negative after reboot.
+        val started = FieldOfflineAccessState.start(
+            companyId = "company-a",
+            userId = "inspector-a",
+            nowEpochMillis = 1_000L,
+            elapsedRealtimeMillis = 5_000L,
+        )
+        val dayLaterMillis = started.highestObservedEpochMillis + 86_400_000L
+
+        val rebooted = started.tick(
+            nowEpochMillis = dayLaterMillis,
+            elapsedDeltaMillis = -1L,
+        )
+
+        assertFalse(rebooted.allowed)
+        assertEquals(OfflineAccessLockReason.CLOCK_ROLLBACK, rebooted.state.lockReason)
+        assertEquals(OfflineAccessMode.LOCKED, rebooted.state.mode)
+        assertEquals(
+            dayLaterMillis,
+            rebooted.state.highestObservedEpochMillis,
+        )
+        assertEquals(4_999L, rebooted.state.elapsedRealtimeMillis)
+        assertEquals(
+            OfflineAccessDecisionReason.CLOCK_ROLLBACK_DENIED,
+            rebooted.state.recordMutation("mutation-1").reason,
+        )
+
+        // A later tick after the reboot observes a positive elapsed delta, so
+        // the rollback lock must not re-raise itself.
+        val later = rebooted.state.tick(
+            nowEpochMillis = dayLaterMillis + 1_000L,
+            elapsedDeltaMillis = 100L,
+        )
+        assertEquals(
+            OfflineAccessLockReason.CLOCK_ROLLBACK,
+            later.state.lockReason,
+        )
+        assertEquals(5_099L, later.state.elapsedRealtimeMillis)
     }
 
     @Test

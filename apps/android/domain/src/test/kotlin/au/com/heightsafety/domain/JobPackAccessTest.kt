@@ -238,6 +238,9 @@ class JobPackAccessTest {
         override suspend fun load(companyId: String, jobId: String): StoredJobPack? =
             value?.takeIf { it.pack.companyId == companyId && it.pack.jobId == jobId }
 
+        override suspend fun loadAll(companyId: String): List<StoredJobPack> =
+            listOfNotNull(value?.takeIf { it.pack.companyId == companyId })
+
         override suspend fun updateLease(lease: OfflineAuthorizationLease) {
             val current = value ?: error("no current pack")
             value = current.copy(lease = lease)
