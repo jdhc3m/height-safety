@@ -1,6 +1,6 @@
 # Current Status
 
-Last update: 2026-09-15
+Last update: 2026-10-07
 
 ## Active stage
 
@@ -51,13 +51,40 @@ server-assigned inspection revision, serialized per company/job (D-048).
 `3D-02` is now in progress with a bounded provider-neutral approved-snapshot
 freeze boundary. The slice preserves the exact inspection/evidence revision,
 checks review gates, records the supported jurisdiction as context, emits an
-approval audit event and now has a PostgreSQL adapter port/proof with
+approval audit event and has a PostgreSQL adapter port/proof with
 company-scoped approval uniqueness, tenant-context setup and checksum-checked
 round trips. Configured PostgreSQL approval now writes the snapshot and
 `inspection.snapshot_approved` audit event in one tenant-bound transaction;
-retries still return the original snapshot. The authoritative source still
-needs to read durable review/submission state rather than caller-supplied gate
-counts, and the working-revision/re-submission loop remains open.
+retries still return the original snapshot. A new authoritative approval path
+reads the durable submitted inspection revision, its open
+blocker/change-request counts, the synchronised payload (JSON text, parsed by
+the adapter rather than cast in SQL) and pending photo uploads from
+persistence instead of caller-supplied gate counts, and the same transaction
+moves the mutable job workflow pointer to `approved_for_report_generation`
+without mutating the submitted inspection. The job transition is guarded on
+the approved row still being the latest submitted revision for the job and
+runs under the D-048 per-company/job revision lock. Review issue creation and
+resolution use that same lock, and approval rechecks the exact frozen review
+history and hard gates in its write transaction, so intervening review changes
+roll the approval back. A stale revision or a store that cannot move the pointer
+also rolls the approval back. Approval identity is derived from the
+server-assigned inspection revision (D-048), so each resubmission requires its
+own approval. The bounded office UI surface for approval remains open.
+
+`3D-03` has a bounded local report-generation API/worker implementation in
+review. Generation is idempotent per company, approved snapshot and template;
+enqueue and completion are recorded as append-only audit events. Retryable
+jobs retain their revision reservation, and a lower-numbered revision that
+finishes late is retained as superseded. Migration `006` adds the tenant-scoped
+queue and reservation constraint. One 60-second deadline covers snapshot/photo
+preparation and PDF rendering, with timed-out browser work closed before its
+lease can be released. The local filesystem object adapter is selected only
+for explicit development or test mode; unset/other modes use an unavailable
+adapter, and production fails closed until a durable private adapter is
+provided. Submission acknowledgement time is not recorded as inspection start
+time, so reports show the start as not recorded unless a trusted start value
+exists. Cloud Tasks, Cloud Storage and production deployment remain open
+operational work.
 
 ## Completed
 
@@ -343,8 +370,24 @@ counts, and the working-revision/re-submission loop remains open.
   or delete operation. A provider-neutral PostgreSQL adapter port/proof now
   applies transaction-local tenant context, persists the approval identity,
   maps uniqueness conflicts for replay and rejects checksum/document mismatch.
-  Runtime wiring, approval against authoritative durable review state and the
-  exact revision loop remain open.
+  The authoritative `createApproved` path now reads the submitted revision,
+  review-issue counts, synchronised payload and pending photo uploads from
+  durable state in one tenant-bound transaction, and the approval commit
+  writes the snapshot, audit event and `approved_for_report_generation` job
+  pointer atomically, guarded so a stale revision or a store without the job
+  transition capability fails closed. Review writes and approval share the
+  D-048 company/job lock; approval rechecks frozen review history and hard gates
+  before inserting the snapshot. The reader parses the `request_body` JSON text
+  in the adapter instead of using a JSON operator on the text column. The
+  bounded office UI surface for approval remains open.
+- `3D-03` report-generation API and sequential worker are in implementation
+  review. Approved snapshots and associated photos are rechecked before render;
+  request identity includes the frozen snapshot and template version. One
+  deadline spans snapshot/photo preparation and browser rendering. The PDF
+  download contract and generated Kotlin/TypeScript clients describe binary
+  bytes. Direct API tests and the live PostgreSQL migration/RLS integration
+  pass. Local file storage is
+  development/test-only, not the pilot object storage adapter.
 - Scoped `3B-04` JVM, lint, Compose and encrypted-storage checks pass; an API 30
   emulator passes 15 app and 11 data instrumented tests. Runtime persistence,
   durable audit, identity membership, pack-update/sync/recovery workflows and
@@ -357,13 +400,13 @@ counts, and the working-revision/re-submission loop remains open.
 
 ## Next recommended task
 
-Review and finish this bounded `3D-01` producer, then add the working-revision
-and re-submission loop that makes it the authoritative source for `3D-02`.
-The bounded server revision allocation and change-request transition are now
-implemented (D-048), and the configured snapshot/audit write is atomic (D-047).
-Next, implement the approval transaction against durable review/submission
-state, followed by production database/object-storage deployment and
-Administrator recovery verification. The local `3C` runtime integration is
+The bounded `3D-03` API/worker implementation and generated API contract now
+pass the root gate against disposable PostgreSQL, including migration `006`
+tenant isolation and reserved-revision constraints.
+Next, continue the bounded office approval/review UI. The local report object
+store is development/test-only. Production Cloud SQL, private Cloud Storage,
+Cloud Tasks, worker concurrency configuration and Administrator recovery
+verification remain operational gates. The local `3C` runtime integration is
 implemented and smoke-tested, but remains a development adapter until those
 operational gates close. Do not treat bounded protocol, payload-applier,
 process-memory worker or domain state-machine slices as production
@@ -551,6 +594,39 @@ photo queue. A rebuilt debug APK installed and launched on the physical Pixel
 recorded in `LOCAL_AUTH0_TEST_LOG.md`; a fresh provider login was not repeated
 because the native client ID is intentionally redacted from the workspace.
 
+On review, the authoritative `3D-02` slice was corrected so the state reader
+parses the `request_body` JSON text in the adapter (the column is `text`, so a
+`->` operator cannot run) and the job-pointer commit is guarded on the
+approved revision still being the latest submitted revision, under the D-048
+per-company/job advisory lock, with the snapshot, audit event and job
+transition rolling back together. The API build and a 68-test API suite
+(67 passing, one PostgreSQL integration test skipped without a disposable
+database, including the durable-state approval, state-reader and guarded
+job-pointer transaction tests) pass, and the new reader and transition
+statements were parse/plan-validated with `PREPARE` against the local
+PostgreSQL 17 schema. The complete `tools/verify.sh` gate with the live
+tenant-isolation migration check has not been re-run since this correction.
+
+On 2026-10-07, the API build and test suite passed with 88 tests passing and the
+PostgreSQL tenant-isolation integration test skipped because
+`TEST_POSTGRES_URL` was not configured. Added report tests cover
+snapshot/template idempotency, role checks, authenticated controller
+serialization, atomic request-audit behavior, retry after completion
+persistence failure, reserved revision allocation, late superseded revisions,
+approval-time review-history rechecks, one cancellable render deadline,
+acknowledgement/start-time separation, private local object writes, and binary
+PDF contract/client types. Migration `006` is included in static schema checks;
+its live tenant/RLS and reservation-index assertions still require the
+disposable PostgreSQL gate.
+`tools/contracts.sh --generate` updated the checked-in OpenAPI document and
+Kotlin/TypeScript clients; `tools/contracts.sh --check` passed, including
+repeat generation, client compilation and compatibility fixture checks. On the
+same day, the complete `tools/verify.sh` gate then passed against disposable
+PostgreSQL 17, including the live tenant-isolation migration/RLS check
+(89 API tests, no skips), provider portability, PDF, offline-lease and Android
+storage/job-pack checks; the disposable PostgreSQL container was removed
+afterwards.
+
 ## Relevant files
 
 `AGENTS.md`; `docs/product/`; `docs/discovery/`; `docs/requirements/`;
@@ -578,6 +654,10 @@ Stage 3A-03 identity boundary: `apps/api/src/identity/`,
 Stage 3D-02 approved snapshots: `apps/api/src/approved-snapshot/`,
 `apps/api/migrations/001_initial_tenant_schema.sql` and
 `apps/api/test/approved-snapshot.test.mjs`.
+Stage 3D-03 reports: `apps/api/src/reports/`,
+`apps/api/migrations/006_report_generation_runtime.sql`,
+`apps/api/test/report-generation.test.mjs`, and the generated API contract and
+clients.
 Android field domain boundary (D-026): `docs/architecture/ANDROID_DOMAIN_BOUNDARY.md`.
 ADR: `docs/adr/0001-kmp-ready-android-domain.md`.
 AS 5532 review: `docs/standards/AS-5532-2025-INTEGRATION.md`.

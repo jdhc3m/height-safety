@@ -26,6 +26,9 @@ docs/JobWorkflowApi.md
 docs/PhotoUploadChunkDto.md
 docs/PhotoUploadChunkResponseDto.md
 docs/ProviderAccessTokenDto.md
+docs/ReportGenerationResponseDto.md
+docs/ReportsApi.md
+docs/RequestReportGenerationDto.md
 docs/ResolveReviewIssueDto.md
 docs/ReviewActionResponseDto.md
 docs/ReviewApi.md
@@ -51,6 +54,7 @@ settings.gradle
 src/main/kotlin/au/com/heightsafety/api/apis/ApprovalsApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/IdentityApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/JobWorkflowApi.kt
+src/main/kotlin/au/com/heightsafety/api/apis/ReportsApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/ReviewApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/SiteRegisterApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/SynchronisationApi.kt
@@ -95,6 +99,8 @@ src/main/kotlin/au/com/heightsafety/api/models/JobResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/PhotoUploadChunkDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/PhotoUploadChunkResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/ProviderAccessTokenDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/ReportGenerationResponseDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/RequestReportGenerationDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/ResolveReviewIssueDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/ReviewActionResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/ReviewIssueResolutionResponseDto.kt
@@ -114,6 +120,7 @@ src/main/kotlin/au/com/heightsafety/api/models/UpdateSiteDto.kt
 src/test/kotlin/au/com/heightsafety/api/apis/ApprovalsApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/IdentityApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/JobWorkflowApiTest.kt
+src/test/kotlin/au/com/heightsafety/api/apis/ReportsApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/ReviewApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/SiteRegisterApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/SynchronisationApiTest.kt
@@ -141,6 +148,8 @@ src/test/kotlin/au/com/heightsafety/api/models/JobResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/PhotoUploadChunkDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/PhotoUploadChunkResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/ProviderAccessTokenDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/ReportGenerationResponseDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/RequestReportGenerationDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/ResolveReviewIssueDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/ReviewActionResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/ReviewIssueResolutionResponseDtoTest.kt

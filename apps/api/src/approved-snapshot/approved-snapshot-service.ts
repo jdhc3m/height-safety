@@ -19,6 +19,7 @@ import {
   type ApprovedSnapshotClock,
   type ApprovedSnapshotDocument,
   type ApprovedSnapshotIdGenerator,
+  type ApprovedSnapshotReportContext,
   type ApprovedSnapshotSource,
   type ApprovedSnapshotStateReader,
   type ApprovedSnapshotStore,
@@ -28,6 +29,7 @@ import {
 } from './approved-snapshot.types';
 import {
   copyApprovedSnapshot,
+  copyApprovedSnapshotReportContext,
   copySubmissionPayload,
 } from './approved-snapshot-store';
 
@@ -74,6 +76,46 @@ function optionalText(
     );
   }
   return value;
+}
+
+function requiredText(
+  value: unknown,
+  field: string,
+  maxLength = TEXT_MAX_LENGTH,
+): string {
+  if (
+    typeof value !== 'string' ||
+    value.trim().length === 0 ||
+    value.length > maxLength
+  ) {
+    throw new ApprovedSnapshotFailure(
+      'INVALID_INPUT',
+      `${field} must be a non-empty string of at most ${maxLength} characters`,
+    );
+  }
+  return value;
+}
+
+function requiredTimestamp(value: unknown, field: string): string {
+  if (typeof value !== 'string') {
+    throw new ApprovedSnapshotFailure(
+      'INVALID_INPUT',
+      `${field} must be a timestamp`,
+    );
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new ApprovedSnapshotFailure(
+      'INVALID_INPUT',
+      `${field} must be a timestamp`,
+    );
+  }
+  return date.toISOString();
+}
+
+function optionalTimestamp(value: unknown, field: string): string | null {
+  if (value === undefined || value === null) return null;
+  return requiredTimestamp(value, field);
 }
 
 function requiredInteger(
@@ -320,6 +362,219 @@ function normalizeSubmission(value: unknown): SyncInspectionSubmissionPayload {
   };
 }
 
+function normalizeReportContext(
+  value: unknown,
+  expected: {
+    readonly jobPackVersion: number;
+    readonly siteId: string;
+    readonly jurisdiction: SyncInspectionSubmissionPayload['jurisdiction'];
+  },
+): ApprovedSnapshotReportContext {
+  const candidate = requiredObject(value, 'reportContext');
+  const siteCandidate = requiredObject(candidate.site, 'reportContext.site');
+  const expectedAnchors = requiredArray(
+    candidate.expectedAnchors,
+    'reportContext.expectedAnchors',
+  );
+  const reviewIssues = requiredArray(
+    candidate.reviewIssues,
+    'reportContext.reviewIssues',
+  );
+  if (expectedAnchors.length > 1_000 || reviewIssues.length > 10_000) {
+    throw new ApprovedSnapshotFailure(
+      'INVALID_INPUT',
+      'report context exceeds the supported record count',
+    );
+  }
+
+  const jobPackVersion = requiredInteger(
+    candidate.jobPackVersion,
+    'reportContext.jobPackVersion',
+    1,
+  );
+  const siteId = requiredId(siteCandidate.siteId, 'reportContext.site.siteId');
+  const jurisdiction = requiredEnum(
+    siteCandidate.jurisdiction,
+    'reportContext.site.jurisdiction',
+    SYNC_JURISDICTIONS,
+  );
+  if (
+    jobPackVersion !== expected.jobPackVersion ||
+    siteId !== expected.siteId ||
+    jurisdiction !== expected.jurisdiction
+  ) {
+    throw new ApprovedSnapshotFailure(
+      'CONFLICT',
+      'report context does not match the approved job-pack identity',
+    );
+  }
+
+  const site = {
+    siteId,
+    clientId: requiredId(siteCandidate.clientId, 'reportContext.site.clientId'),
+    name: requiredText(siteCandidate.name, 'reportContext.site.name'),
+    address: optionalText(siteCandidate.address, 'reportContext.site.address'),
+    jurisdiction,
+    siteReference: optionalText(
+      siteCandidate.siteReference,
+      'reportContext.site.siteReference',
+      ID_MAX_LENGTH,
+    ),
+  };
+
+  const seenAnchorIds = new Set<string>();
+  const anchors = expectedAnchors.map((item, index) => {
+    const anchor = requiredObject(
+      item,
+      `reportContext.expectedAnchors[${index}]`,
+    );
+    const anchorId = requiredId(
+      anchor.anchorId,
+      `reportContext.expectedAnchors[${index}].anchorId`,
+    );
+    if (seenAnchorIds.has(anchorId)) {
+      throw new ApprovedSnapshotFailure(
+        'CONFLICT',
+        'report context contains duplicate expected anchor identities',
+      );
+    }
+    seenAnchorIds.add(anchorId);
+    return {
+      anchorId,
+      label: optionalText(
+        anchor.label,
+        `reportContext.expectedAnchors[${index}].label`,
+      ),
+      registerId: optionalText(
+        anchor.registerId,
+        `reportContext.expectedAnchors[${index}].registerId`,
+        ID_MAX_LENGTH,
+      ),
+      location: optionalText(
+        anchor.location,
+        `reportContext.expectedAnchors[${index}].location`,
+      ),
+      anchorType: requiredEnum(
+        anchor.anchorType,
+        `reportContext.expectedAnchors[${index}].anchorType`,
+        ['single_point'] as const,
+      ),
+      manufacturer: optionalText(
+        anchor.manufacturer,
+        `reportContext.expectedAnchors[${index}].manufacturer`,
+      ),
+      model: optionalText(
+        anchor.model,
+        `reportContext.expectedAnchors[${index}].model`,
+      ),
+      installContext: optionalText(
+        anchor.installContext,
+        `reportContext.expectedAnchors[${index}].installContext`,
+      ),
+      registerStatus: requiredEnum(
+        anchor.registerStatus,
+        `reportContext.expectedAnchors[${index}].registerStatus`,
+        ['active', 'inactive', 'archived'] as const,
+      ),
+    };
+  });
+
+  const normalizedIssues = reviewIssues.map((item, index) => {
+    const issue = requiredObject(item, `reportContext.reviewIssues[${index}]`);
+    const issueActions = requiredArray(
+      issue.actions,
+      `reportContext.reviewIssues[${index}].actions`,
+    );
+    if (issueActions.length > 1_000) {
+      throw new ApprovedSnapshotFailure(
+        'INVALID_INPUT',
+        `report context review issue ${index} has too many actions`,
+      );
+    }
+    return {
+      reviewIssueId: requiredId(
+        issue.reviewIssueId,
+        `reportContext.reviewIssues[${index}].reviewIssueId`,
+      ),
+      anchorInspectionId: optionalText(
+        issue.anchorInspectionId,
+        `reportContext.reviewIssues[${index}].anchorInspectionId`,
+        ID_MAX_LENGTH,
+      ),
+      issueType: requiredEnum(
+        issue.issueType,
+        `reportContext.reviewIssues[${index}].issueType`,
+        ['blocker', 'warning', 'conflict', 'change'] as const,
+      ),
+      status: requiredEnum(
+        issue.status,
+        `reportContext.reviewIssues[${index}].status`,
+        ['open', 'resolved'] as const,
+      ),
+      reviewerUserId: requiredId(
+        issue.reviewerUserId,
+        `reportContext.reviewIssues[${index}].reviewerUserId`,
+      ),
+      reason: requiredText(
+        issue.reason,
+        `reportContext.reviewIssues[${index}].reason`,
+      ),
+      createdAt: requiredTimestamp(
+        issue.createdAt,
+        `reportContext.reviewIssues[${index}].createdAt`,
+      ),
+      resolvedAt: optionalTimestamp(
+        issue.resolvedAt,
+        `reportContext.reviewIssues[${index}].resolvedAt`,
+      ),
+      actions: issueActions.map((actionValue, actionIndex) => {
+        const action = requiredObject(
+          actionValue,
+          `reportContext.reviewIssues[${index}].actions[${actionIndex}]`,
+        );
+        return {
+          reviewActionId: requiredId(
+            action.reviewActionId,
+            `reportContext.reviewIssues[${index}].actions[${actionIndex}].reviewActionId`,
+          ),
+          reviewerUserId: requiredId(
+            action.reviewerUserId,
+            `reportContext.reviewIssues[${index}].actions[${actionIndex}].reviewerUserId`,
+          ),
+          action: requiredEnum(
+            action.action,
+            `reportContext.reviewIssues[${index}].actions[${actionIndex}].action`,
+            ['issue_created', 'changes_requested', 'resolved'] as const,
+          ),
+          reason: requiredText(
+            action.reason,
+            `reportContext.reviewIssues[${index}].actions[${actionIndex}].reason`,
+          ),
+          createdAt: requiredTimestamp(
+            action.createdAt,
+            `reportContext.reviewIssues[${index}].actions[${actionIndex}].createdAt`,
+          ),
+        };
+      }),
+    };
+  });
+
+  return {
+    jobPackVersion,
+    inspectionStartedAt: optionalTimestamp(
+      candidate.inspectionStartedAt,
+      'reportContext.inspectionStartedAt',
+    ),
+    inspectionSubmittedAt: requiredTimestamp(
+      candidate.inspectionSubmittedAt,
+      'reportContext.inspectionSubmittedAt',
+    ),
+    site,
+    expectedAnchors: anchors,
+    reviewIssues: normalizedIssues,
+  };
+}
+
 function normalizeSource(value: unknown): ApprovedSnapshotSource {
   const candidate = requiredObject(value, 'approved snapshot source');
   const submission = normalizeSubmission(candidate.submission);
@@ -370,6 +625,19 @@ function normalizeSource(value: unknown): ApprovedSnapshotSource {
       0,
     ),
     submission,
+    reportContext: normalizeReportContext(candidate.reportContext, {
+      jobPackVersion: requiredInteger(
+        candidate.jobPackVersion,
+        'jobPackVersion',
+        1,
+      ),
+      siteId: requiredId(candidate.siteId, 'siteId'),
+      jurisdiction: requiredEnum(
+        candidate.jurisdiction,
+        'jurisdiction',
+        SYNC_JURISDICTIONS,
+      ),
+    }),
   };
 
   if (
@@ -403,6 +671,19 @@ function canonicalSourceIdentity(source: ApprovedSnapshotSource): string {
     jobPackVersion: source.jobPackVersion,
     inspectorUserId: source.inspectorUserId,
     inspectionSubmission: copySubmissionPayload(source.submission),
+    reportContext: {
+      jobPackVersion: source.reportContext.jobPackVersion,
+      inspectionStartedAt: source.reportContext.inspectionStartedAt,
+      inspectionSubmittedAt: source.reportContext.inspectionSubmittedAt,
+      site: { ...source.reportContext.site },
+      expectedAnchors: source.reportContext.expectedAnchors.map((anchor) => ({
+        ...anchor,
+      })),
+      reviewIssues: source.reportContext.reviewIssues.map((issue) => ({
+        ...issue,
+        actions: issue.actions.map((action) => ({ ...action })),
+      })),
+    },
   });
 }
 
@@ -487,6 +768,7 @@ export class ApprovedSnapshotService {
       openHardBlockerCount: state.openHardBlockerCount,
       openChangeRequestCount: state.openChangeRequestCount,
       submission: state.submission,
+      reportContext: state.reportContext,
     });
     this.assertApprovalGates(normalized);
     return this.freeze(principal, normalized, { moveJobPointer: true });
@@ -555,7 +837,7 @@ export class ApprovedSnapshotService {
       'snapshotId',
     );
     const document: ApprovedSnapshotDocument = {
-      snapshotSchemaVersion: 1,
+      snapshotSchemaVersion: 2,
       approvalId: normalized.approvalId,
       reviewStatus: normalized.reviewStatus,
       companyId: normalized.companyId,
@@ -571,6 +853,9 @@ export class ApprovedSnapshotService {
       approvedAt: approvedAt.toISOString(),
       sourceIdentitySha256,
       inspectionSubmission: copySubmissionPayload(normalized.submission),
+      reportContext: copyApprovedSnapshotReportContext(
+        normalized.reportContext,
+      ),
     };
     const documentJson = JSON.stringify(document);
     const snapshot: ApprovedSnapshot = {

@@ -28,6 +28,9 @@ docs/JobWorkflowApi.md
 docs/PhotoUploadChunkDto.md
 docs/PhotoUploadChunkResponseDto.md
 docs/ProviderAccessTokenDto.md
+docs/ReportGenerationResponseDto.md
+docs/ReportsApi.md
+docs/RequestReportGenerationDto.md
 docs/ResolveReviewIssueDto.md
 docs/ReviewActionResponseDto.md
 docs/ReviewApi.md
@@ -52,6 +55,7 @@ package.json
 src/apis/ApprovalsApi.ts
 src/apis/IdentityApi.ts
 src/apis/JobWorkflowApi.ts
+src/apis/ReportsApi.ts
 src/apis/ReviewApi.ts
 src/apis/SiteRegisterApi.ts
 src/apis/SynchronisationApi.ts
@@ -81,6 +85,8 @@ src/models/JobResponseDto.ts
 src/models/PhotoUploadChunkDto.ts
 src/models/PhotoUploadChunkResponseDto.ts
 src/models/ProviderAccessTokenDto.ts
+src/models/ReportGenerationResponseDto.ts
+src/models/RequestReportGenerationDto.ts
 src/models/ResolveReviewIssueDto.ts
 src/models/ReviewActionResponseDto.ts
 src/models/ReviewIssueResolutionResponseDto.ts

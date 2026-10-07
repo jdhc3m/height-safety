@@ -3,6 +3,7 @@ import {
   type ApprovedSnapshot,
   type ApprovedSnapshotAuditEvent,
   type ApprovedSnapshotDocument,
+  type ApprovedSnapshotReportContext,
   type ApprovedSnapshotStateReader,
   type ApprovedSnapshotStore,
   type ApprovedSnapshotSubmissionState,
@@ -42,12 +43,33 @@ export function copySubmissionPayload(
   };
 }
 
+export function copyApprovedSnapshotReportContext(
+  context: ApprovedSnapshotReportContext,
+): ApprovedSnapshotReportContext {
+  return {
+    ...context,
+    site: { ...context.site },
+    expectedAnchors: context.expectedAnchors.map((anchor) => ({ ...anchor })),
+    reviewIssues: context.reviewIssues.map((issue) => ({
+      ...issue,
+      actions: issue.actions.map((action) => ({ ...action })),
+    })),
+  };
+}
+
 function copyDocument(
   document: ApprovedSnapshotDocument,
 ): ApprovedSnapshotDocument {
   return {
     ...document,
     inspectionSubmission: copySubmissionPayload(document.inspectionSubmission),
+    ...(document.reportContext
+      ? {
+          reportContext: copyApprovedSnapshotReportContext(
+            document.reportContext,
+          ),
+        }
+      : {}),
   };
 }
 
@@ -163,6 +185,7 @@ export class InMemoryApprovedSnapshotStateReader
     return {
       ...found,
       submission: copySubmissionPayload(found.submission),
+      reportContext: copyApprovedSnapshotReportContext(found.reportContext),
     };
   }
 }

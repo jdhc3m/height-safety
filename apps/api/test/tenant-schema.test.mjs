@@ -29,6 +29,10 @@ const REVIEW_HISTORY_MIGRATION = new URL(
   '../migrations/005_review_history_runtime.sql',
   import.meta.url,
 );
+const REPORT_GENERATION_MIGRATION = new URL(
+  '../migrations/006_report_generation_runtime.sql',
+  import.meta.url,
+);
 const TENANT_TABLES = [
   'companies',
   'users',
@@ -47,6 +51,7 @@ const TENANT_TABLES = [
   'inspection_snapshots',
   'reports',
   'report_revisions',
+  'report_generation_jobs',
   'review_issues',
   'review_actions',
   'sync_mutations',
@@ -95,7 +100,7 @@ async function readMigration(url) {
   return readFile(url, 'utf8');
 }
 
-test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async () => {
+test('tenant migrations define the report-generation queue and its isolation boundary', async () => {
   const [
     runtimeRoleMigration,
     tenantSchemaMigration,
@@ -103,6 +108,7 @@ test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async
     jobPackSchemaMigration,
     syncRuntimeMigration,
     reviewHistoryMigration,
+    reportGenerationMigration,
   ] = await Promise.all([
     readMigration(RUNTIME_ROLE_MIGRATION),
     readMigration(TENANT_SCHEMA_MIGRATION),
@@ -110,8 +116,9 @@ test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async
     readMigration(JOB_PACK_SCHEMA_MIGRATION),
     readMigration(SYNC_RUNTIME_MIGRATION),
     readMigration(REVIEW_HISTORY_MIGRATION),
+    readMigration(REPORT_GENERATION_MIGRATION),
   ]);
-  const productSchema = `${tenantSchemaMigration}\n${authSchemaMigration}\n${jobPackSchemaMigration}`;
+  const productSchema = `${tenantSchemaMigration}\n${authSchemaMigration}\n${jobPackSchemaMigration}\n${reportGenerationMigration}`;
 
   assert.match(runtimeRoleMigration, /height_safety_runtime/);
   assert.match(runtimeRoleMigration, /NOBYPASSRLS/);
@@ -160,6 +167,14 @@ test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async
     reviewHistoryMigration,
     /REVOKE UPDATE, DELETE ON review_actions/,
   );
+  assert.match(
+    reportGenerationMigration,
+    /report_generation_jobs_tenant_policy/,
+  );
+  assert.match(
+    reportGenerationMigration,
+    /status IN \('queued', 'processing'\) AND revision_number IS NOT NULL/,
+  );
 
   for (const table of TENANT_TABLES) {
     assert.match(
@@ -181,6 +196,7 @@ test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async
     new URL('003_job_pack_snapshots.sql', MIGRATION_DIRECTORY),
     new URL('004_sync_payload_runtime.sql', MIGRATION_DIRECTORY),
     new URL('005_review_history_runtime.sql', MIGRATION_DIRECTORY),
+    new URL('006_report_generation_runtime.sql', MIGRATION_DIRECTORY),
   ];
   assert.deepEqual(
     migrationFiles.map((url) => url.pathname.split('/').at(-1)),
@@ -191,6 +207,7 @@ test('3A-02 and 3A-03 migrations define one tenant-scoped product schema', async
       '003_job_pack_snapshots.sql',
       '004_sync_payload_runtime.sql',
       '005_review_history_runtime.sql',
+      '006_report_generation_runtime.sql',
     ],
   );
 });
@@ -220,6 +237,7 @@ test(
         JOB_PACK_SCHEMA_MIGRATION,
         SYNC_RUNTIME_MIGRATION,
         REVIEW_HISTORY_MIGRATION,
+        REPORT_GENERATION_MIGRATION,
       ]) {
         const migration = await readMigration(migrationUrl);
         runPsql(migration, { schema });
@@ -276,7 +294,8 @@ test(
             (company_id, snapshot_id, approval_id, inspection_id, jurisdiction, snapshot_document, sha256)
           VALUES
             ('company-a', 'snapshot-a', 'approval-a', 'inspection-a', 'NSW', '{}', 'snapshot-a-sha'),
-            ('company-a', 'snapshot-a-other', 'approval-a-other', 'inspection-a-other', 'NSW', '{}', 'snapshot-a-other-sha');
+            ('company-a', 'snapshot-a-other', 'approval-a-other', 'inspection-a-other', 'NSW', '{}', 'snapshot-a-other-sha'),
+            ('company-b', 'snapshot-b', 'approval-b', 'inspection-b', 'QLD', '{}', 'snapshot-b-sha');
           INSERT INTO anchor_inspections
             (company_id, anchor_inspection_id, inspection_id, site_id, anchor_id)
           VALUES
@@ -296,6 +315,18 @@ test(
           VALUES
             ('company-a', 'revision-a', 'report-a', 'job-a', 'inspection-a', 'snapshot-a',
              'NSW', 1, 'template-1', 'generation-a', 'report-object-a', 'revision-a-sha', 'inspector-a');
+          INSERT INTO report_generation_jobs
+            (company_id, generation_id, generation_idempotency_key, report_id,
+             report_revision_id, job_id, source_inspection_id, source_snapshot_id,
+             source_snapshot_sha256, jurisdiction, template_version,
+             created_by_user_id, reviewed_by_user_id, requested_at, available_at)
+          VALUES
+            ('company-a', 'generation-a', repeat('a', 64), 'report-a', 'queued-revision-a',
+             'job-a', 'inspection-a', 'snapshot-a', repeat('b', 64), 'NSW', 'template-1',
+             'inspector-a', 'administrator-a', '2026-08-25T00:00:00Z', '2026-08-25T00:00:00Z'),
+            ('company-b', 'generation-b', repeat('c', 64), 'report-b', 'queued-revision-b',
+             'job-b', 'inspection-b', 'snapshot-b', repeat('d', 64), 'QLD', 'template-1',
+             'inspector-b', 'administrator-b', '2026-08-25T00:00:00Z', '2026-08-25T00:00:00Z');
         `,
         { schema },
       );
@@ -348,6 +379,10 @@ test(
               AND has_table_privilege('height_safety_runtime', current_schema() || '.audit_events', 'DELETE') = FALSE
               AND has_table_privilege('height_safety_runtime', current_schema() || '.report_revisions', 'UPDATE') = FALSE
               AND has_table_privilege('height_safety_runtime', current_schema() || '.report_revisions', 'DELETE') = FALSE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.report_generation_jobs', 'SELECT') = TRUE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.report_generation_jobs', 'INSERT') = TRUE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.report_generation_jobs', 'UPDATE') = TRUE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.report_generation_jobs', 'DELETE') = FALSE
               AND has_column_privilege('height_safety_runtime', current_schema() || '.report_revisions', 'superseded_at', 'UPDATE') = TRUE
               AND has_table_privilege('height_safety_runtime', current_schema() || '.inspection_snapshots', 'UPDATE') = FALSE
               AND has_table_privilege('height_safety_runtime', current_schema() || '.inspection_snapshots', 'DELETE') = FALSE
@@ -378,6 +413,8 @@ test(
               AND (SELECT count(*) FROM user_invitations) = 1
               AND (SELECT count(*) FROM user_sessions) = 1
               AND (SELECT count(*) FROM user_sessions WHERE session_id = 'session-b') = 0
+              AND (SELECT count(*) FROM report_generation_jobs WHERE generation_id = 'generation-a') = 1
+              AND (SELECT count(*) FROM report_generation_jobs WHERE generation_id = 'generation-b') = 0
             THEN 'tenant-read-isolation-passed'
             ELSE 'tenant-read-isolation-failed'
           END;
@@ -428,6 +465,25 @@ test(
             END;
           END
           $$;
+          DO $$
+          BEGIN
+            BEGIN
+              INSERT INTO report_generation_jobs
+                (company_id, generation_id, generation_idempotency_key, report_id,
+                 report_revision_id, job_id, source_inspection_id, source_snapshot_id,
+                 source_snapshot_sha256, jurisdiction, template_version,
+                 created_by_user_id, reviewed_by_user_id, requested_at, available_at)
+              VALUES
+                ('company-b', 'generation-cross-tenant', repeat('e', 64), 'report-b',
+                 'queued-cross-tenant', 'job-b', 'inspection-b', 'snapshot-b',
+                 repeat('f', 64), 'QLD', 'template-1', 'inspector-b', 'administrator-b',
+                 '2026-08-25T00:00:00Z', '2026-08-25T00:00:00Z');
+              RAISE EXCEPTION 'cross-tenant report generation insert unexpectedly succeeded';
+            EXCEPTION WHEN insufficient_privilege THEN
+              NULL;
+            END;
+          END
+          $$;
           UPDATE sites SET name = 'must not change' WHERE site_id = 'site-b';
           UPDATE user_sessions
           SET revoked_at = '2026-08-25T00:30:00Z'
@@ -437,6 +493,7 @@ test(
             WHEN (SELECT count(*) FROM sites WHERE site_id = 'site-b') = 0
               AND (SELECT count(*) FROM clients WHERE client_id = 'client-b') = 0
               AND (SELECT count(*) FROM user_sessions WHERE session_id = 'session-b') = 0
+              AND (SELECT count(*) FROM report_generation_jobs WHERE generation_id = 'generation-b') = 0
             THEN 'tenant-write-isolation-passed'
             ELSE 'tenant-write-isolation-failed'
           END;
@@ -637,6 +694,40 @@ test(
             END IF;
           END
           $$;
+          INSERT INTO report_generation_jobs
+            (company_id, generation_id, generation_idempotency_key, report_id,
+             report_revision_id, job_id, source_inspection_id, source_snapshot_id,
+             source_snapshot_sha256, jurisdiction, template_version,
+             created_by_user_id, reviewed_by_user_id, requested_at, available_at,
+             revision_number)
+          VALUES
+            ('company-a', 'generation-reserved-a', repeat('1', 64), 'report-a',
+             'reserved-revision-a', 'job-a', 'inspection-a', 'snapshot-a',
+             repeat('2', 64), 'NSW', 'template-1', 'inspector-a', 'administrator-a',
+             '2026-08-25T00:00:00Z', '2026-08-25T00:00:00Z', 9);
+          DO $$
+          DECLARE rejected boolean := FALSE;
+          BEGIN
+            BEGIN
+              INSERT INTO report_generation_jobs
+                (company_id, generation_id, generation_idempotency_key, report_id,
+                 report_revision_id, job_id, source_inspection_id, source_snapshot_id,
+                 source_snapshot_sha256, jurisdiction, template_version,
+                 created_by_user_id, reviewed_by_user_id, requested_at, available_at,
+                 revision_number)
+              VALUES
+                ('company-a', 'generation-reserved-b', repeat('3', 64), 'report-a',
+                 'reserved-revision-b', 'job-a', 'inspection-a', 'snapshot-a',
+                 repeat('4', 64), 'NSW', 'template-2', 'inspector-a', 'administrator-a',
+                 '2026-08-25T00:00:00Z', '2026-08-25T00:00:00Z', 9);
+            EXCEPTION WHEN unique_violation THEN
+              rejected := TRUE;
+            END;
+            IF NOT rejected THEN
+              RAISE EXCEPTION 'duplicate queued report revision reservation unexpectedly succeeded';
+            END IF;
+          END
+          $$;
           SELECT CASE
             WHEN (SELECT count(*) FROM audit_events WHERE audit_event_id = 'audit-event-a' AND action = 'created') = 1
               AND (SELECT sha256 FROM inspection_snapshots WHERE snapshot_id = 'snapshot-a') = 'snapshot-a-sha'
@@ -673,6 +764,7 @@ test(
           SELECT set_config('app.company_id', '', true);
           SELECT CASE
             WHEN (SELECT count(*) FROM companies) = 0
+              AND (SELECT count(*) FROM report_generation_jobs) = 0
             THEN 'missing-context-read-passed'
             ELSE 'missing-context-read-failed'
           END;

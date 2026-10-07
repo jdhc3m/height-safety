@@ -9,6 +9,61 @@ export const APPROVED_REVIEW_STATUSES = [
 ] as const;
 export type ApprovedReviewStatus = (typeof APPROVED_REVIEW_STATUSES)[number];
 
+export interface ApprovedSnapshotSiteContext {
+  readonly siteId: string;
+  readonly clientId: string;
+  readonly name: string;
+  readonly address: string | null;
+  readonly jurisdiction: SyncJurisdiction;
+  readonly siteReference: string | null;
+}
+
+export interface ApprovedSnapshotExpectedAnchor {
+  readonly anchorId: string;
+  readonly label: string | null;
+  readonly registerId: string | null;
+  readonly location: string | null;
+  readonly anchorType: 'single_point';
+  readonly manufacturer: string | null;
+  readonly model: string | null;
+  readonly installContext: string | null;
+  readonly registerStatus: 'active' | 'inactive' | 'archived';
+}
+
+export interface ApprovedSnapshotReviewAction {
+  readonly reviewActionId: string;
+  readonly reviewerUserId: string;
+  readonly action: 'issue_created' | 'changes_requested' | 'resolved';
+  readonly reason: string;
+  readonly createdAt: string;
+}
+
+export interface ApprovedSnapshotReviewIssue {
+  readonly reviewIssueId: string;
+  readonly anchorInspectionId: string | null;
+  readonly issueType: 'blocker' | 'warning' | 'conflict' | 'change';
+  readonly status: 'open' | 'resolved';
+  readonly reviewerUserId: string;
+  readonly reason: string;
+  readonly createdAt: string;
+  readonly resolvedAt: string | null;
+  readonly actions: readonly ApprovedSnapshotReviewAction[];
+}
+
+/**
+ * Values copied from immutable release-time job-pack data and review history
+ * when the inspection snapshot is approved. A report renderer must not query
+ * mutable site/register/review records after this boundary.
+ */
+export interface ApprovedSnapshotReportContext {
+  readonly jobPackVersion: number;
+  readonly inspectionStartedAt: string | null;
+  readonly inspectionSubmittedAt: string;
+  readonly site: ApprovedSnapshotSiteContext;
+  readonly expectedAnchors: readonly ApprovedSnapshotExpectedAnchor[];
+  readonly reviewIssues: readonly ApprovedSnapshotReviewIssue[];
+}
+
 export type ApprovedSnapshotFailureCode =
   | 'INVALID_INPUT'
   | 'NOT_FOUND'
@@ -47,10 +102,11 @@ export interface ApprovedSnapshotSource {
   readonly openHardBlockerCount: number;
   readonly openChangeRequestCount: number;
   readonly submission: SyncInspectionSubmissionPayload;
+  readonly reportContext: ApprovedSnapshotReportContext;
 }
 
 export interface ApprovedSnapshotDocument {
-  readonly snapshotSchemaVersion: 1;
+  readonly snapshotSchemaVersion: 1 | 2;
   readonly approvalId: string;
   readonly reviewStatus: ApprovedReviewStatus;
   readonly companyId: string;
@@ -66,6 +122,7 @@ export interface ApprovedSnapshotDocument {
   readonly approvedAt: string;
   readonly sourceIdentitySha256: string;
   readonly inspectionSubmission: SyncInspectionSubmissionPayload;
+  readonly reportContext?: ApprovedSnapshotReportContext;
 }
 
 export interface ApprovedSnapshot {
@@ -119,6 +176,7 @@ export interface ApprovedSnapshotSubmissionState {
    */
   readonly evidenceVersion: number;
   readonly submission: SyncInspectionSubmissionPayload;
+  readonly reportContext: ApprovedSnapshotReportContext;
 }
 
 export interface ApprovedSnapshotStateReader {

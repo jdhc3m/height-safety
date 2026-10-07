@@ -416,6 +416,15 @@ test('PostgreSQL sync assigns a new inspection revision for a resubmission of th
   assert.equal(inspectionInserts.length, 2);
   assert.equal(inspectionInserts[0].values[5], 1);
   assert.equal(inspectionInserts[1].values[5], 2);
+  assert.match(
+    inspectionInserts[0].text,
+    /submission_intent, started_at, submitted_at, created_at, updated_at/,
+  );
+  assert.match(inspectionInserts[0].text, /TRUE, NULL, \$8, \$8, \$8/);
+  assert.equal(
+    inspectionInserts[0].values[7].toISOString(),
+    '2026-09-15T00:00:00.000Z',
+  );
   const locks = database.queries.filter((query) =>
     query.text.includes('pg_advisory_xact_lock'),
   );

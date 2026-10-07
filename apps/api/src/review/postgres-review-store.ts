@@ -4,6 +4,10 @@ import {
   createTenantContext,
   setTenantContextStatement,
 } from '../database/tenant-context';
+import {
+  INSPECTION_REVISION_LOCK_SQL,
+  inspectionRevisionLockValues,
+} from '../database/inspection-revision-lock';
 import type {
   SqlDatabase,
   SqlResult,
@@ -212,6 +216,11 @@ export class PostgresReviewStore implements ReviewStore {
     auditEvent: ReviewAuditEvent,
   ): Promise<void> {
     await this.withTenant(issue.companyId, async (transaction) => {
+      await this.lockInspectionRevisions(
+        transaction,
+        issue.companyId,
+        issue.inspectionId,
+      );
       await transaction.query(
         `
           INSERT INTO review_issues (
@@ -317,6 +326,29 @@ export class PostgresReviewStore implements ReviewStore {
     auditEvent: ReviewAuditEvent,
   ): Promise<boolean> {
     return this.withTenant(issue.companyId, async (transaction) => {
+      const target = firstRow(
+        await transaction.query<Record<string, unknown>>(
+          `
+            SELECT inspection.job_id
+            FROM review_issues issue
+            JOIN inspections inspection
+              ON inspection.company_id = issue.company_id
+             AND inspection.inspection_id = issue.inspection_id
+            WHERE issue.company_id = $1
+              AND issue.review_issue_id = $2
+              AND issue.inspection_id = $3
+          `,
+          [issue.companyId, issue.reviewIssueId, issue.inspectionId],
+        ),
+      );
+      if (!target) {
+        throw new ReviewFailure('NOT_FOUND', 'review issue was not found');
+      }
+      await this.lockJobInspectionRevisions(
+        transaction,
+        issue.companyId,
+        storedString(target.job_id, 'job_id'),
+      );
       const result = await transaction.query<Record<string, unknown>>(
         `
           UPDATE review_issues
@@ -332,6 +364,42 @@ export class PostgresReviewStore implements ReviewStore {
       await this.insertAuditEvent(transaction, auditEvent);
       return true;
     });
+  }
+
+  private async lockInspectionRevisions(
+    transaction: SqlTransaction,
+    companyId: string,
+    inspectionId: string,
+  ): Promise<void> {
+    const inspection = firstRow(
+      await transaction.query<Record<string, unknown>>(
+        `
+          SELECT job_id
+          FROM inspections
+          WHERE company_id = $1 AND inspection_id = $2
+        `,
+        [companyId, inspectionId],
+      ),
+    );
+    if (!inspection) {
+      throw new ReviewFailure('NOT_FOUND', 'review inspection was not found');
+    }
+    await this.lockJobInspectionRevisions(
+      transaction,
+      companyId,
+      storedString(inspection.job_id, 'job_id'),
+    );
+  }
+
+  private async lockJobInspectionRevisions(
+    transaction: SqlTransaction,
+    companyId: string,
+    jobId: string,
+  ): Promise<void> {
+    await transaction.query(
+      INSPECTION_REVISION_LOCK_SQL,
+      inspectionRevisionLockValues(companyId, jobId),
+    );
   }
 
   private async insertAction(

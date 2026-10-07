@@ -93,7 +93,88 @@ function submission(overrides = {}) {
   };
 }
 
+function reportContext({
+  jobPackVersion = 2,
+  siteId = 'site-a',
+  jurisdiction = 'NSW',
+  inspectionStartedAt = '2026-09-06T23:00:00.000Z',
+} = {}) {
+  return {
+    jobPackVersion,
+    inspectionStartedAt,
+    inspectionSubmittedAt: '2026-09-07T00:00:00.000Z',
+    site: {
+      siteId,
+      clientId: 'client-a',
+      name: 'Fictional site',
+      address: '1 Example Road',
+      jurisdiction,
+      siteReference: 'SITE-001',
+    },
+    expectedAnchors: [
+      {
+        anchorId: 'anchor-a',
+        label: 'A-01',
+        registerId: 'REG-01',
+        location: 'North roof',
+        anchorType: 'single_point',
+        manufacturer: 'Fictional maker',
+        model: 'Example model',
+        installContext: 'Roof access hatch',
+        registerStatus: 'active',
+      },
+    ],
+    reviewIssues: [
+      {
+        reviewIssueId: 'review-warning-a',
+        anchorInspectionId: 'anchor-inspection-a',
+        issueType: 'warning',
+        status: 'resolved',
+        reviewerUserId: 'reviewer-a',
+        reason: 'The recorded location is brief.',
+        createdAt: '2026-09-06T23:30:00.000Z',
+        resolvedAt: '2026-09-06T23:45:00.000Z',
+        actions: [
+          {
+            reviewActionId: 'review-action-a',
+            reviewerUserId: 'reviewer-a',
+            action: 'resolved',
+            reason: 'The location context was reviewed.',
+            createdAt: '2026-09-06T23:45:00.000Z',
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function databaseReviewHistory(context = reportContext()) {
+  return {
+    issueRows: context.reviewIssues.map((issue) => ({
+      review_issue_id: issue.reviewIssueId,
+      anchor_inspection_id: issue.anchorInspectionId,
+      issue_type: issue.issueType,
+      status: issue.status,
+      reviewer_user_id: issue.reviewerUserId,
+      reason: issue.reason,
+      created_at: new Date(issue.createdAt),
+      resolved_at: issue.resolvedAt ? new Date(issue.resolvedAt) : null,
+    })),
+    actionRows: context.reviewIssues.flatMap((issue) =>
+      issue.actions.map((action) => ({
+        review_action_id: action.reviewActionId,
+        review_issue_id: issue.reviewIssueId,
+        reviewer_user_id: action.reviewerUserId,
+        action: action.action,
+        reason: action.reason,
+        created_at: new Date(action.createdAt),
+      })),
+    ),
+  };
+}
+
 function source(overrides = {}) {
+  const payload = overrides.submission ?? submission();
   return {
     approvalId: 'approval-a',
     reviewStatus: 'approved_for_report_generation',
@@ -109,7 +190,14 @@ function source(overrides = {}) {
     requiredEvidenceSynchronised: true,
     openHardBlockerCount: 0,
     openChangeRequestCount: 0,
-    submission: submission(),
+    submission: payload,
+    reportContext:
+      overrides.reportContext ??
+      reportContext({
+        jobPackVersion: overrides.jobPackVersion ?? payload.jobPackVersion,
+        siteId: payload.siteId,
+        jurisdiction: payload.jurisdiction,
+      }),
     ...overrides,
   };
 }
@@ -131,6 +219,7 @@ function makeHarness() {
 }
 
 function durableState(overrides = {}) {
+  const payload = overrides.submission ?? submission();
   return {
     inspectionId: 'inspection-a',
     revisionNumber: 3,
@@ -142,7 +231,14 @@ function durableState(overrides = {}) {
     openHardBlockerCount: 0,
     openChangeRequestCount: 0,
     evidenceVersion: 7,
-    submission: submission(),
+    submission: payload,
+    reportContext:
+      overrides.reportContext ??
+      reportContext({
+        jobPackVersion: overrides.jobPackVersion ?? payload.jobPackVersion,
+        siteId: payload.siteId,
+        jurisdiction: payload.jurisdiction,
+      }),
     ...overrides,
   };
 }
@@ -191,10 +287,12 @@ class FakeSqlDatabase {
     rows = [],
     queryError = null,
     transitionRows = [{ job_id: 'job-a' }],
+    reviewHistory = databaseReviewHistory(),
   ) {
     this.rows = rows;
     this.queryError = queryError;
     this.transitionRows = transitionRows;
+    this.reviewHistory = reviewHistory;
     this.queries = [];
     this.transactionCount = 0;
     this.committedTransactions = 0;
@@ -213,7 +311,11 @@ class FakeSqlDatabase {
           return {
             rows: /RETURNING job_id/.test(text)
               ? this.transitionRows
-              : this.rows,
+              : /SELECT review_issue_id, anchor_inspection_id/.test(text)
+                ? this.reviewHistory.issueRows
+                : /SELECT action\.review_action_id/.test(text)
+                  ? this.reviewHistory.actionRows
+                  : this.rows,
           };
         },
       });
@@ -283,6 +385,15 @@ test('freezes a tenant-scoped approved inspection revision with evidence referen
       .storageReference,
     'company-a/photo-a.jpg',
   );
+  assert.equal(result.snapshot.document.snapshotSchemaVersion, 2);
+  assert.equal(
+    result.snapshot.document.reportContext.expectedAnchors[0].registerId,
+    'REG-01',
+  );
+  assert.equal(
+    result.snapshot.document.reportContext.reviewIssues[0].actions[0].reason,
+    'The location context was reviewed.',
+  );
   assert.deepEqual(
     audit.events.map((event) => event.action),
     ['inspection.snapshot_approved'],
@@ -301,6 +412,24 @@ test('replaying one review approval returns the same immutable snapshot', async 
   await expectFailure(
     () =>
       service.create(principal('company-a'), source({ inspectionRevision: 4 })),
+    'CONFLICT',
+  );
+});
+
+test('approval replay detects changed frozen review history', async () => {
+  const { service } = makeHarness();
+  await service.create(principal('company-a'), source());
+
+  const changedContext = reportContext();
+  changedContext.reviewIssues[0].actions[0].reason =
+    'A different review action was recorded.';
+
+  await expectFailure(
+    () =>
+      service.create(
+        principal('company-a'),
+        source({ reportContext: changedContext }),
+      ),
     'CONFLICT',
   );
 });
@@ -704,29 +833,88 @@ test('PostgreSQL state reader reads review counts, payload and photo state in on
         inspector_user_id: 'inspector-a',
         inspection_workflow_status: 'submitted',
         job_pack_version: 2,
+        submitted_at: new Date('2026-09-07T00:00:00.000Z'),
       },
     ],
     [{ latest_revision: 3 }],
     [{ open_blockers: 0, open_changes: 0 }],
     [{ entity_version: 7, request_body: JSON.stringify({ payload }) }],
     [{ pending_photos: 0 }],
+    [
+      {
+        job_id: 'job-a',
+        job_pack_version: 2,
+        site_id: 'site-a',
+        jurisdiction: 'NSW',
+        site_document: JSON.stringify({
+          companyId: 'company-a',
+          siteId: 'site-a',
+          clientId: 'client-a',
+          name: 'Fictional site',
+          address: '1 Example Road',
+          jurisdiction: 'NSW',
+          siteReference: 'SITE-001',
+        }),
+        anchors_document: JSON.stringify([
+          {
+            companyId: 'company-a',
+            anchorId: 'anchor-a',
+            siteId: 'site-a',
+            label: 'A-01',
+            registerId: 'REG-01',
+            location: 'North roof',
+            anchorType: 'single_point',
+            manufacturer: 'Fictional maker',
+            model: 'Example model',
+            installContext: 'Roof access hatch',
+            registerStatus: 'active',
+          },
+        ]),
+      },
+    ],
+    [
+      {
+        review_issue_id: 'review-warning-a',
+        anchor_inspection_id: 'anchor-inspection-a',
+        issue_type: 'warning',
+        status: 'resolved',
+        reviewer_user_id: 'reviewer-a',
+        reason: 'The recorded location is brief.',
+        created_at: new Date('2026-09-06T23:30:00.000Z'),
+        resolved_at: new Date('2026-09-06T23:45:00.000Z'),
+      },
+    ],
+    [
+      {
+        review_action_id: 'review-action-a',
+        review_issue_id: 'review-warning-a',
+        reviewer_user_id: 'reviewer-a',
+        action: 'resolved',
+        reason: 'The location context was reviewed.',
+        created_at: new Date('2026-09-06T23:45:00.000Z'),
+      },
+    ],
   ]);
   const reader = new PostgresApprovedSnapshotStateReader(database);
 
   const state = await reader.findSubmissionState('company-a', 'inspection-a');
 
-  assert.equal(database.queries.length, 6);
+  assert.equal(database.queries.length, 9);
   assert.equal(
     database.queries[0].text,
     "SELECT set_config('app.company_id', $1, true)",
   );
   assert.match(database.queries[1].text, /FROM inspections i/);
+  assert.doesNotMatch(database.queries[1].text, /i\.started_at/);
   assert.match(database.queries[2].text, /MAX\(revision_number\)/);
   assert.match(database.queries[3].text, /FILTER \(WHERE status = 'open'/);
   assert.match(database.queries[4].text, /SELECT entity_version, request_body/);
   assert.doesNotMatch(database.queries[4].text, /->/);
   assert.match(database.queries[5].text, /upload_state <> 'uploaded'/);
   assert.deepEqual(database.queries[5].values, ['company-a', 'inspection-a']);
+  assert.match(database.queries[6].text, /FROM job_pack_snapshots/);
+  assert.match(database.queries[7].text, /FROM review_issues/);
+  assert.match(database.queries[8].text, /FROM review_actions/);
   assert.deepEqual(state, {
     inspectionId: 'inspection-a',
     revisionNumber: 3,
@@ -739,6 +927,7 @@ test('PostgreSQL state reader reads review counts, payload and photo state in on
     openChangeRequestCount: 0,
     evidenceVersion: 7,
     submission: payload,
+    reportContext: reportContext({ inspectionStartedAt: null }),
   });
 });
 
@@ -765,6 +954,7 @@ test('PostgreSQL state reader fails closed on unknown rows and payload mismatch'
           inspector_user_id: 'inspector-a',
           inspection_workflow_status: 'submitted',
           job_pack_version: 2,
+          submitted_at: new Date('2026-09-07T00:00:00.000Z'),
         },
       ],
       [{ latest_revision: 3 }],
@@ -778,6 +968,24 @@ test('PostgreSQL state reader fails closed on unknown rows and payload mismatch'
         },
       ],
       [{ pending_photos: 0 }],
+      [
+        {
+          job_id: 'job-a',
+          job_pack_version: 2,
+          site_id: 'site-a',
+          jurisdiction: 'NSW',
+          site_document: JSON.stringify({
+            companyId: 'company-a',
+            siteId: 'site-a',
+            clientId: 'client-a',
+            name: 'Fictional site',
+            jurisdiction: 'NSW',
+          }),
+          anchors_document: JSON.stringify([]),
+        },
+      ],
+      [],
+      [],
     ]),
   );
   await expectFailure(
@@ -797,7 +1005,7 @@ test('PostgreSQL approval commits snapshot, audit event and job pointer in one t
     inspectionId: 'inspection-a',
   });
 
-  assert.equal(database.queries.length, 7);
+  assert.equal(database.queries.length, 9);
   assert.equal(
     database.queries[0].text,
     "SELECT set_config('app.company_id', $1, true)",
@@ -809,13 +1017,15 @@ test('PostgreSQL approval commits snapshot, audit event and job pointer in one t
     'inspection_submission',
     'job-a',
   ]);
-  assert.match(database.queries[4].text, /INSERT INTO inspection_snapshots/);
-  assert.match(database.queries[5].text, /INSERT INTO audit_events/);
-  assert.match(database.queries[6].text, /UPDATE jobs/);
-  assert.match(database.queries[6].text, /'approved_for_report_generation'/);
-  assert.match(database.queries[6].text, /'changes_requested'/);
-  assert.match(database.queries[6].text, /RETURNING job_id/);
-  assert.deepEqual(database.queries[6].values.slice(0, 2), [
+  assert.match(database.queries[4].text, /FROM review_issues/);
+  assert.match(database.queries[5].text, /FROM review_actions/);
+  assert.match(database.queries[6].text, /INSERT INTO inspection_snapshots/);
+  assert.match(database.queries[7].text, /INSERT INTO audit_events/);
+  assert.match(database.queries[8].text, /UPDATE jobs/);
+  assert.match(database.queries[8].text, /'approved_for_report_generation'/);
+  assert.match(database.queries[8].text, /'changes_requested'/);
+  assert.match(database.queries[8].text, /RETURNING job_id/);
+  assert.deepEqual(database.queries[8].values.slice(0, 2), [
     'company-a',
     'job-a',
   ]);
@@ -824,10 +1034,120 @@ test('PostgreSQL approval commits snapshot, audit event and job pointer in one t
   assert.equal(database.queries[4].transactionId, approvalTransactionId);
   assert.equal(database.queries[5].transactionId, approvalTransactionId);
   assert.equal(database.queries[6].transactionId, approvalTransactionId);
+  assert.equal(database.queries[7].transactionId, approvalTransactionId);
+  assert.equal(database.queries[8].transactionId, approvalTransactionId);
   assert.equal(database.committedTransactions, 2);
   assert.deepEqual(
     audit.events.map((event) => event.action),
     [],
+  );
+});
+
+test('PostgreSQL approval rechecks and freezes current review history under the job lock', async () => {
+  const state = durableState();
+  const appendedWarning = {
+    reviewIssueId: 'review-warning-added-late',
+    anchorInspectionId: 'anchor-inspection-a',
+    issueType: 'warning',
+    status: 'open',
+    reviewerUserId: 'reviewer-a',
+    reason: 'Additional context was requested.',
+    createdAt: '2026-09-07T00:01:00.000Z',
+    resolvedAt: null,
+    actions: [
+      {
+        reviewActionId: 'review-action-added-late',
+        reviewerUserId: 'reviewer-a',
+        action: 'issue_created',
+        reason: 'Additional context was requested.',
+        createdAt: '2026-09-07T00:01:00.000Z',
+      },
+    ],
+  };
+  const changedHistory = databaseReviewHistory({
+    ...state.reportContext,
+    reviewIssues: [...state.reportContext.reviewIssues, appendedWarning],
+  });
+  const database = new FakeSqlDatabase([], null, undefined, changedHistory);
+  const { service } = makeAuthoritativeHarness(
+    state,
+    new PostgresApprovedSnapshotStore(database),
+  );
+
+  await expectFailure(
+    () =>
+      service.createApproved(principal('company-a'), {
+        inspectionId: 'inspection-a',
+      }),
+    'CONFLICT',
+  );
+
+  const lockIndex = database.queries.findIndex(({ text }) =>
+    text.includes('pg_advisory_xact_lock'),
+  );
+  const currentHistoryIndex = database.queries.findIndex(({ text }) =>
+    /SELECT review_issue_id, anchor_inspection_id/.test(text),
+  );
+  assert.ok(lockIndex >= 0);
+  assert.ok(currentHistoryIndex > lockIndex);
+  assert.equal(
+    database.queries.some(({ text }) =>
+      text.includes('INSERT INTO inspection_snapshots'),
+    ),
+    false,
+  );
+  assert.equal(
+    database.queries.some(({ text }) => text.includes('UPDATE jobs')),
+    false,
+  );
+});
+
+test('PostgreSQL approval cannot pass a hard blocker added after the source read', async () => {
+  const state = durableState();
+  const lateBlocker = {
+    reviewIssueId: 'review-blocker-added-late',
+    anchorInspectionId: 'anchor-inspection-a',
+    issueType: 'blocker',
+    status: 'open',
+    reviewerUserId: 'reviewer-a',
+    reason: 'Required evidence remains unresolved.',
+    createdAt: '2026-09-07T00:02:00.000Z',
+    resolvedAt: null,
+    actions: [
+      {
+        reviewActionId: 'review-action-blocker-added-late',
+        reviewerUserId: 'reviewer-a',
+        action: 'issue_created',
+        reason: 'Required evidence remains unresolved.',
+        createdAt: '2026-09-07T00:02:00.000Z',
+      },
+    ],
+  };
+  const changedHistory = databaseReviewHistory({
+    ...state.reportContext,
+    reviewIssues: [...state.reportContext.reviewIssues, lateBlocker],
+  });
+  const database = new FakeSqlDatabase([], null, undefined, changedHistory);
+  const { service } = makeAuthoritativeHarness(
+    state,
+    new PostgresApprovedSnapshotStore(database),
+  );
+
+  await assert.rejects(
+    () =>
+      service.createApproved(principal('company-a'), {
+        inspectionId: 'inspection-a',
+      }),
+    (error) =>
+      error instanceof ApprovedSnapshotFailure &&
+      error.code === 'CONFLICT' &&
+      error.message === 'inspection has unresolved hard blockers',
+  );
+  assert.equal(
+    database.queries.some(({ text }) =>
+      text.includes('INSERT INTO inspection_snapshots'),
+    ),
+    false,
   );
 });
 

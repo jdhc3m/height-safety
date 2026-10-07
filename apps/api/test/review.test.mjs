@@ -239,10 +239,16 @@ test('controller authenticates, serialises and maps review routes', async () => 
 });
 
 class FakeSqlDatabase {
-  constructor({ queryError = null, updateRowCount = 1, rows = [] } = {}) {
+  constructor({
+    queryError = null,
+    updateRowCount = 1,
+    rows = [],
+    inspectionRows = [{ job_id: 'job-a' }],
+  } = {}) {
     this.queryError = queryError;
     this.updateRowCount = updateRowCount;
     this.rows = rows;
+    this.inspectionRows = inspectionRows;
     this.queries = [];
   }
 
@@ -255,6 +261,15 @@ class FakeSqlDatabase {
         }
         if (text.includes('UPDATE review_issues')) {
           return { rows: [], rowCount: this.updateRowCount };
+        }
+        if (
+          text.includes('FROM inspections') ||
+          text.includes('FROM review_issues issue')
+        ) {
+          return {
+            rows: this.inspectionRows,
+            rowCount: this.inspectionRows.length,
+          };
         }
         return { rows: this.rows, rowCount: this.rows.length };
       },
@@ -311,9 +326,19 @@ test('PostgreSQL review adapter binds tenant context and writes issue/action/aud
 
   assert.match(database.queries[0].text, /set_config\('app\.company_id'/);
   assert.equal(database.queries[0].values[0], 'company-a');
-  assert.match(database.queries[1].text, /INSERT INTO review_issues/);
-  assert.match(database.queries[2].text, /INSERT INTO review_actions/);
-  assert.match(database.queries[3].text, /INSERT INTO audit_events/);
+  assert.match(
+    database.queries[1].text,
+    /SELECT job_id[\s\S]*FROM inspections/,
+  );
+  assert.match(database.queries[2].text, /pg_advisory_xact_lock/);
+  assert.deepEqual(database.queries[2].values, [
+    'company-a',
+    'inspection_submission',
+    'job-a',
+  ]);
+  assert.match(database.queries[3].text, /INSERT INTO review_issues/);
+  assert.match(database.queries[4].text, /INSERT INTO review_actions/);
+  assert.match(database.queries[5].text, /INSERT INTO audit_events/);
 
   const resolved = await store.resolveIssue(
     reviewIssueForSql({ resolvedAt: new Date('2026-09-15T01:00:00.000Z') }),
@@ -329,10 +354,17 @@ test('PostgreSQL review adapter binds tenant context and writes issue/action/aud
     }),
   );
   assert.equal(resolved, true);
-  assert.match(database.queries[4].text, /set_config\('app\.company_id'/);
-  assert.match(database.queries[5].text, /UPDATE review_issues/);
-  assert.match(database.queries[6].text, /INSERT INTO review_actions/);
-  assert.match(database.queries[7].text, /INSERT INTO audit_events/);
+  assert.match(database.queries[6].text, /set_config\('app\.company_id'/);
+  assert.match(database.queries[7].text, /FROM review_issues issue/);
+  assert.match(database.queries[8].text, /pg_advisory_xact_lock/);
+  assert.deepEqual(database.queries[8].values, [
+    'company-a',
+    'inspection_submission',
+    'job-a',
+  ]);
+  assert.match(database.queries[9].text, /UPDATE review_issues/);
+  assert.match(database.queries[10].text, /INSERT INTO review_actions/);
+  assert.match(database.queries[11].text, /INSERT INTO audit_events/);
 });
 
 test('PostgreSQL change requests move the job workflow pointer without mutating the submitted inspection', async () => {
@@ -344,18 +376,18 @@ test('PostgreSQL change requests move the job workflow pointer without mutating 
     auditForSql({ action: 'review.changes_requested' }),
   );
 
-  assert.match(database.queries[4].text, /UPDATE jobs/);
+  assert.match(database.queries[6].text, /UPDATE jobs/);
   assert.match(
-    database.queries[4].text,
+    database.queries[6].text,
     /workflow_status = 'changes_requested'/,
   );
-  assert.deepEqual(database.queries[4].values, [
+  assert.deepEqual(database.queries[6].values, [
     'company-a',
     'inspection-a',
     new Date('2026-09-15T00:00:00.000Z'),
   ]);
-  assert.match(database.queries[4].text, /FROM inspections/);
-  assert.doesNotMatch(database.queries[4].text, /UPDATE inspections/);
+  assert.match(database.queries[6].text, /FROM inspections/);
+  assert.doesNotMatch(database.queries[6].text, /UPDATE inspections/);
 });
 
 test('PostgreSQL review adapter exposes replay and persistence failure states', async () => {
@@ -369,7 +401,7 @@ test('PostgreSQL review adapter exposes replay and persistence failure states', 
     ),
     false,
   );
-  assert.equal(replayDatabase.queries.length, 2);
+  assert.equal(replayDatabase.queries.length, 4);
 
   const failureDatabase = new FakeSqlDatabase({
     queryError: {

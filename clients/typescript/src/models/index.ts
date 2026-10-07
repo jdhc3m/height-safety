@@ -23,6 +23,8 @@ export * from './JobResponseDto';
 export * from './PhotoUploadChunkDto';
 export * from './PhotoUploadChunkResponseDto';
 export * from './ProviderAccessTokenDto';
+export * from './ReportGenerationResponseDto';
+export * from './RequestReportGenerationDto';
 export * from './ResolveReviewIssueDto';
 export * from './ReviewActionResponseDto';
 export * from './ReviewIssueResolutionResponseDto';

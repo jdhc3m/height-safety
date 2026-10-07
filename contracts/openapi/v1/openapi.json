@@ -811,6 +811,87 @@
         ],
         "type": "object"
       },
+      "ReportGenerationResponseDto": {
+        "properties": {
+          "attemptCount": {
+            "type": "number"
+          },
+          "completedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "generationId": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "jurisdiction": {
+            "enum": [
+              "NSW",
+              "QLD"
+            ],
+            "type": "string"
+          },
+          "lastFailureCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "reportRevisionId": {
+            "type": "string"
+          },
+          "requestedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "revisionNumber": {
+            "nullable": true,
+            "type": "number"
+          },
+          "snapshotId": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "processing",
+              "completed",
+              "failed",
+              "superseded"
+            ],
+            "type": "string"
+          },
+          "templateVersion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "generationId",
+          "reportRevisionId",
+          "snapshotId",
+          "jobId",
+          "jurisdiction",
+          "templateVersion",
+          "status",
+          "attemptCount",
+          "requestedAt"
+        ],
+        "type": "object"
+      },
+      "RequestReportGenerationDto": {
+        "properties": {
+          "snapshotId": {
+            "example": "snapshot-001",
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "snapshotId"
+        ],
+        "type": "object"
+      },
       "ResolveReviewIssueDto": {
         "properties": {
           "reason": {
@@ -2384,6 +2465,141 @@
         "summary": "Release a draft job",
         "tags": [
           "job-workflow"
+        ]
+      }
+    },
+    "/reports/generations": {
+      "post": {
+        "operationId": "requestDraftReportGeneration",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestReportGenerationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportGenerationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Queue one deterministic draft report revision from an approved snapshot",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/reports/generations/{generationId}": {
+      "get": {
+        "operationId": "getDraftReportGeneration",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "generationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportGenerationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Read status for a tenant-scoped draft report generation",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/reports/generations/{generationId}/file": {
+      "get": {
+        "operationId": "downloadDraftReport",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "generationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "A private draft report PDF"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Download one completed private draft report revision",
+        "tags": [
+          "reports"
         ]
       }
     },

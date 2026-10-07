@@ -100,6 +100,6 @@ export const APPROVED_SNAPSHOT_ID_GENERATOR = Symbol(
       ],
     },
   ],
-  exports: [ApprovedSnapshotService],
+  exports: [APPROVED_SNAPSHOT_STORE, ApprovedSnapshotService],
 })
 export class ApprovedSnapshotModule {}

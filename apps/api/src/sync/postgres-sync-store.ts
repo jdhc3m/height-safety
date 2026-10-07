@@ -598,7 +598,7 @@ export class PostgresSyncMutationStore
           company_id, inspection_id, job_id, site_id, jurisdiction,
           revision_number, inspector_user_id, workflow_status,
           submission_intent, started_at, submitted_at, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'submitted', TRUE, $8, $8, $8, $8)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'submitted', TRUE, NULL, $8, $8, $8)
       `,
       [
         principal.companyId,

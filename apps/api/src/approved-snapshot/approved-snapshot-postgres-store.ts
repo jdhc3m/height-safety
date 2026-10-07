@@ -5,20 +5,22 @@ import {
   setTenantContextStatement,
 } from '../database/tenant-context';
 import {
-  SYNC_JURISDICTIONS,
-  SYNC_MUTATION_ENTITY_TYPES,
-  type SyncJurisdiction,
-} from '../sync/sync.types';
+  INSPECTION_REVISION_LOCK_SQL,
+  inspectionRevisionLockValues,
+} from '../database/inspection-revision-lock';
+import { SYNC_JURISDICTIONS, type SyncJurisdiction } from '../sync/sync.types';
 import {
   APPROVED_REVIEW_STATUSES,
   ApprovedSnapshotFailure,
   type ApprovedSnapshot,
   type ApprovedSnapshotAuditEvent,
   type ApprovedSnapshotDocument,
+  type ApprovedSnapshotReportContext,
   type AtomicApprovedSnapshotStore,
   type JobTransitionApprovalStore,
 } from './approved-snapshot.types';
 import { copyApprovedSnapshot } from './approved-snapshot-store';
+import { readApprovedSnapshotReviewIssues } from './approved-snapshot-postgres-state-reader';
 
 export interface ApprovedSnapshotSqlResult<Row> {
   readonly rows: readonly Row[];
@@ -93,6 +95,81 @@ function sha256(value: string): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isReportContext(
+  value: unknown,
+): value is ApprovedSnapshotReportContext {
+  if (!isRecord(value) || !isRecord(value.site)) return false;
+  if (
+    !Number.isSafeInteger(value.jobPackVersion) ||
+    (value.jobPackVersion as number) < 1 ||
+    typeof value.inspectionSubmittedAt !== 'string' ||
+    !(
+      value.inspectionStartedAt === null ||
+      typeof value.inspectionStartedAt === 'string'
+    ) ||
+    typeof value.site.siteId !== 'string' ||
+    typeof value.site.clientId !== 'string' ||
+    typeof value.site.name !== 'string' ||
+    !(value.site.address === null || typeof value.site.address === 'string') ||
+    (value.site.jurisdiction !== 'NSW' && value.site.jurisdiction !== 'QLD') ||
+    !(
+      value.site.siteReference === null ||
+      typeof value.site.siteReference === 'string'
+    ) ||
+    !Array.isArray(value.expectedAnchors) ||
+    !Array.isArray(value.reviewIssues)
+  ) {
+    return false;
+  }
+  return (
+    value.expectedAnchors.every(
+      (anchor) =>
+        isRecord(anchor) &&
+        typeof anchor.anchorId === 'string' &&
+        (anchor.label === null || typeof anchor.label === 'string') &&
+        (anchor.registerId === null || typeof anchor.registerId === 'string') &&
+        (anchor.location === null || typeof anchor.location === 'string') &&
+        anchor.anchorType === 'single_point' &&
+        (anchor.manufacturer === null ||
+          typeof anchor.manufacturer === 'string') &&
+        (anchor.model === null || typeof anchor.model === 'string') &&
+        (anchor.installContext === null ||
+          typeof anchor.installContext === 'string') &&
+        (anchor.registerStatus === 'active' ||
+          anchor.registerStatus === 'inactive' ||
+          anchor.registerStatus === 'archived'),
+    ) &&
+    value.reviewIssues.every(
+      (issue) =>
+        isRecord(issue) &&
+        typeof issue.reviewIssueId === 'string' &&
+        (issue.anchorInspectionId === null ||
+          typeof issue.anchorInspectionId === 'string') &&
+        (issue.issueType === 'blocker' ||
+          issue.issueType === 'warning' ||
+          issue.issueType === 'conflict' ||
+          issue.issueType === 'change') &&
+        (issue.status === 'open' || issue.status === 'resolved') &&
+        typeof issue.reviewerUserId === 'string' &&
+        typeof issue.reason === 'string' &&
+        typeof issue.createdAt === 'string' &&
+        (issue.resolvedAt === null || typeof issue.resolvedAt === 'string') &&
+        Array.isArray(issue.actions) &&
+        issue.actions.every(
+          (action) =>
+            isRecord(action) &&
+            typeof action.reviewActionId === 'string' &&
+            typeof action.reviewerUserId === 'string' &&
+            (action.action === 'issue_created' ||
+              action.action === 'changes_requested' ||
+              action.action === 'resolved') &&
+            typeof action.reason === 'string' &&
+            typeof action.createdAt === 'string',
+        ),
+    )
+  );
 }
 
 function storedFailure(message: string): ApprovedSnapshotFailure {
@@ -193,8 +270,9 @@ function parseStoredDocument(
     document.jobPackVersion,
     'job_pack_version',
   );
+  const schemaVersion = document.snapshotSchemaVersion;
   if (
-    document.snapshotSchemaVersion !== 1 ||
+    (schemaVersion !== 1 && schemaVersion !== 2) ||
     document.companyId !== rowCompanyId ||
     document.approvalId !== approvalId ||
     document.sourceInspectionId !== inspectionId ||
@@ -208,6 +286,15 @@ function parseStoredDocument(
     submission.jobPackVersion !== jobPackVersion
   ) {
     throw storedFailure('approved snapshot document does not match its row');
+  }
+  if (
+    schemaVersion === 2 &&
+    (!isReportContext(document.reportContext) ||
+      document.reportContext.jobPackVersion !== jobPackVersion ||
+      document.reportContext.site.siteId !== siteId ||
+      document.reportContext.site.jurisdiction !== jurisdiction)
+  ) {
+    throw storedFailure('approved snapshot report context is invalid');
   }
 
   const approvedAt = new Date(
@@ -343,17 +430,53 @@ export class PostgresApprovedSnapshotStore
     this.assertApprovalInput(snapshot, event);
     try {
       await this.withTenant(snapshot.companyId, async (transaction) => {
-        // Serialise with the D-048 revision allocator for this company/job so a
-        // resubmission cannot allocate a newer revision between the approval
-        // boundary's read-time gate checks and this write.
+        // Share the D-048 per-company/job lock with inspection submissions and
+        // review writes, then re-read the frozen review history while holding it.
         await transaction.query(
-          `
-            SELECT pg_advisory_xact_lock(
-              hashtextextended(concat_ws(':', $1::text, $2::text, $3::text), 0)
-            )
-          `,
-          [snapshot.companyId, SYNC_MUTATION_ENTITY_TYPES[0], snapshot.jobId],
+          INSPECTION_REVISION_LOCK_SQL,
+          inspectionRevisionLockValues(snapshot.companyId, snapshot.jobId),
         );
+        const reportContext = snapshot.document.reportContext;
+        if (!reportContext) {
+          throw new ApprovedSnapshotFailure(
+            'CONFLICT',
+            'approved snapshot does not contain frozen review history',
+          );
+        }
+        const currentReviewIssues = await readApprovedSnapshotReviewIssues(
+          transaction,
+          snapshot.companyId,
+          snapshot.sourceInspectionId,
+        );
+        if (
+          currentReviewIssues.some(
+            (issue) => issue.status === 'open' && issue.issueType === 'blocker',
+          )
+        ) {
+          throw new ApprovedSnapshotFailure(
+            'CONFLICT',
+            'inspection has unresolved hard blockers',
+          );
+        }
+        if (
+          currentReviewIssues.some(
+            (issue) => issue.status === 'open' && issue.issueType === 'change',
+          )
+        ) {
+          throw new ApprovedSnapshotFailure(
+            'CONFLICT',
+            'inspection has open change requests',
+          );
+        }
+        if (
+          JSON.stringify(currentReviewIssues) !==
+          JSON.stringify(reportContext.reviewIssues)
+        ) {
+          throw new ApprovedSnapshotFailure(
+            'CONFLICT',
+            'review history changed before approval was committed',
+          );
+        }
         await this.insertSnapshot(transaction, snapshot);
         await this.insertAuditEvent(transaction, event);
         // The job row is the mutable workflow pointer. The submitted

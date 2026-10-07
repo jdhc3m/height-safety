@@ -8,6 +8,7 @@ import { SiteRegisterModule } from './site-register/site-register.module';
 import { SyncModule } from './sync/sync.module';
 import { DatabaseModule } from './database/database.module';
 import { ReviewModule } from './review/review.module';
+import { ReportGenerationModule } from './reports/report-generation.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ReviewModule } from './review/review.module';
     JobWorkflowModule,
     SyncModule,
     ReviewModule,
+    ReportGenerationModule,
   ],
   controllers: [HealthController],
 })

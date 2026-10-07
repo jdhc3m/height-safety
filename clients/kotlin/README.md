@@ -60,6 +60,9 @@ All URIs are relative to */api/v1*
 | *JobWorkflowApi* | [**getJob**](docs/JobWorkflowApi.md#getjob) | **GET** jobs/{jobId} | Read an authorised job |
 | *JobWorkflowApi* | [**listJobs**](docs/JobWorkflowApi.md#listjobs) | **GET** jobs | List authorised jobs |
 | *JobWorkflowApi* | [**releaseJob**](docs/JobWorkflowApi.md#releasejob) | **POST** jobs/{jobId}/release | Release a draft job |
+| *ReportsApi* | [**downloadDraftReport**](docs/ReportsApi.md#downloaddraftreport) | **GET** reports/generations/{generationId}/file | Download one completed private draft report revision |
+| *ReportsApi* | [**getDraftReportGeneration**](docs/ReportsApi.md#getdraftreportgeneration) | **GET** reports/generations/{generationId} | Read status for a tenant-scoped draft report generation |
+| *ReportsApi* | [**requestDraftReportGeneration**](docs/ReportsApi.md#requestdraftreportgeneration) | **POST** reports/generations | Queue one deterministic draft report revision from an approved snapshot |
 | *ReviewApi* | [**createReviewIssue**](docs/ReviewApi.md#createreviewissue) | **POST** reviews/issues | Record an append-only office review issue or change request |
 | *ReviewApi* | [**listReviewActions**](docs/ReviewApi.md#listreviewactions) | **GET** reviews/issues/{reviewIssueId}/actions | List append-only actions for one review issue |
 | *ReviewApi* | [**listReviewIssues**](docs/ReviewApi.md#listreviewissues) | **GET** reviews/inspections/{inspectionId}/issues | List review issues for one submitted inspection revision |
@@ -108,6 +111,8 @@ All URIs are relative to */api/v1*
  - [au.com.heightsafety.api.models.PhotoUploadChunkDto](docs/PhotoUploadChunkDto.md)
  - [au.com.heightsafety.api.models.PhotoUploadChunkResponseDto](docs/PhotoUploadChunkResponseDto.md)
  - [au.com.heightsafety.api.models.ProviderAccessTokenDto](docs/ProviderAccessTokenDto.md)
+ - [au.com.heightsafety.api.models.ReportGenerationResponseDto](docs/ReportGenerationResponseDto.md)
+ - [au.com.heightsafety.api.models.RequestReportGenerationDto](docs/RequestReportGenerationDto.md)
  - [au.com.heightsafety.api.models.ResolveReviewIssueDto](docs/ResolveReviewIssueDto.md)
  - [au.com.heightsafety.api.models.ReviewActionResponseDto](docs/ReviewActionResponseDto.md)
  - [au.com.heightsafety.api.models.ReviewIssueResolutionResponseDto](docs/ReviewIssueResolutionResponseDto.md)
