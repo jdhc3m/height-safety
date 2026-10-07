@@ -90,3 +90,71 @@ The rebuilt debug APK installed and launched on the physical Pixel 10 Pro, and
 the Inspector sign-in screen rendered. This follow-up does not claim a
 production tenant, production storage, Administrator recovery upload or
 provider invitation endpoint.
+
+## Owner wizard configuration and office runtime verification
+
+Verification date: **2026-10-07** (Australia/Brisbane)
+
+The Auth0 owner wizard stages were completed for the existing US-5 dev tenant
+(D-046) with browser-driven owner configuration. Non-secret configuration
+facts:
+
+- Tenant domain: the recorded US development tenant; custom API audience
+  `https://height-safety-api.local`; web and Android callback/logout URLs set
+  as the wizard specifies.
+- A Post-Login Action (`Height Safety Post Login Claims`) is deployed and
+  attached to the signup-and-login trigger. It writes the `mfa_satisfied`
+  claim only when a real MFA method ran, and writes the D-049 office company
+  claim for the mapped owner identity. No MFA factor can be enabled on the
+  free plan, so the MFA claim is false in this tenant by design (D-050);
+  administrator authentication is therefore not verifiable locally.
+- Invitation delivery remains unconfigured and fail-closed (owner decision).
+- Local secrets live in the ignored `.env.auth0.local`; API on port 3001,
+  office web on port 3000, local PostgreSQL container for persistence.
+
+Checks completed in the office web and on the physical device with the
+tenant's verified Google social identity, holding an `inspector` membership
+of the seeded test company (the tenant's database-connection identity from
+September is stale; all working logins resolve to the Google identity):
+
+- Auth0 Universal Login, consent and callback completed in the office web.
+- The office web exchanged the provider token plus the configured company
+  claim for an application-owned opaque session.
+- The authorised job queue rendered the three seeded QLD jobs with their
+  recorded workflow states and job-pack versions.
+
+Physical Pixel verification (same date, USB install, device on the same
+Wi-Fi): the inspector signed in on the device, the app displayed the seeded
+company and job list, the job pack downloaded with a 24-hour offline lease,
+and the pack view was gated by device authentication (D-025). Offline
+restart after a device reboot was also verified: the restore preserved local
+evidence and surfaced the cached pack's job with an honest sync-failure
+marker, and a later online refresh cleared the device-lock state.
+
+Two Android fixes were required and are covered by new domain and
+view-model tests:
+
+1. The offline-lease state machine threw `IllegalArgumentException` when a
+   restore followed a device reboot plus wall-clock advance (the elapsed
+   delta was negative and the rollback branch violated the monotonic-clock
+   invariant instead of raising its lock). The rollback lock still raises
+   and persists; the branch now also advances the wall-clock high-water
+   mark and re-bases the elapsed accumulator to the current boot so the
+   lock does not re-raise on every later tick. One online refresh clears
+   it, as the specification requires.
+2. The session-restore path required online revalidation unconditionally
+   and showed an error offline, ignoring the valid offline lease. With the
+   lease valid and a downloaded pack present, restore now serves the cached
+   pack's job list offline (assignment details marked as not recorded until
+   the next online refresh); the job-pack store gained a per-company
+   listing used for this fallback.
+
+One code fix was required: the office web called `POST /api/v1/sessions`
+(the wording in D-049) while the implemented API contract is
+`POST /api/v1/auth/sessions`; the web now calls the implemented path. The
+API remains the authority for token verification and company membership.
+
+Not covered here: the physical Pixel field test, report generation (the
+office slice is read-only and does not wire report generation), administrator
+flows (blocked by the free-plan MFA boundary, D-050), and any production
+tenant or deployment.
