@@ -5,14 +5,13 @@
 #      OR install github.com/apps/opencode-agent manually and add the workflow secrets below.
 #   2. Add secret OPENROUTER_API_KEY (provider key for z-ai/glm-5.3-flash and deepseek-v4.1-flash).
 #
-# Trigger contract (GitHub Issues as the state machine):
-#   status:in-progress | status:changes-requested  -> builder job
-#   status:validating                             -> validator job
-# Builder and validator run in the SAME workflow run (chained via `needs`) so the
-# `status:validating` label written with GITHUB_TOKEN does not need to re-trigger a
-# workflow (GitHub suppresses downstream runs from GITHUB_TOKEN events).
+# Trigger contract:
+#   status:in-progress | status:changes-requested -> builder job
+#   builder opens a PR into design-system and marks the issue validating
+#   design-pr-check.yml runs the deterministic repository tests and sets the verdict
 #
-# Model routing and agent prompts live in opencode.json (agents: builder, validator).
+# Builder model and prompt live in opencode.json. Tests, not model assertions,
+# determine whether a PR passes.
 #
 # This file lives on the default branch (main) because `issues` events only run
 # workflows present on the default branch. It checks out `design-system`, where
@@ -40,7 +39,7 @@ jobs:
       github.event.label.name == 'status:in-progress' ||
       github.event.label.name == 'status:changes-requested'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
     steps:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -51,6 +50,7 @@ jobs:
 
       - name: Run builder
         uses: anomalyco/opencode/github@latest
+        timeout-minutes: 35
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         with:
@@ -61,6 +61,29 @@ jobs:
             design-system workstream. Read the issue body, its acceptance checklist and its
             dependencies. Open a pull request into the `design-system` branch when done and
             never merge.
+
+      - name: Retarget PR to design-system
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
+          GH_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          pr_json="$(gh pr list --repo "$GH_REPOSITORY" --state open --limit 100 \
+            --json number,title,body)"
+          pr_number="$(PR_JSON="$pr_json" ISSUE_NUMBER="$ISSUE_NUMBER" node -e '
+            const prs = JSON.parse(process.env.PR_JSON);
+            const n = process.env.ISSUE_NUMBER;
+            const pr = prs.find((item) => new RegExp(`#${n}(?![0-9])`).test(`${item.title}\n${item.body ?? ""}`));
+            if (pr) process.stdout.write(String(pr.number));
+          ')"
+          if [ -z "$pr_number" ]; then
+            echo "Builder did not open a PR referencing issue #$ISSUE_NUMBER" >&2
+            exit 1
+          fi
+          base="$(gh pr view "$pr_number" --repo "$GH_REPOSITORY" --json baseRefName --jq .baseRefName)"
+          if [ "$base" != "design-system" ]; then
+            gh pr edit "$pr_number" --repo "$GH_REPOSITORY" --base design-system
+          fi
 
       - name: Reset on builder failure
         if: failure()
@@ -80,61 +103,3 @@ jobs:
             --remove-label "status:in-progress" \
             --remove-label "status:changes-requested" \
             --add-label "status:validating"
-
-  validate:
-    needs: build
-    if: >-
-      always() && (
-        needs.build.result == 'success' ||
-        github.event.label.name == 'status:validating'
-      )
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      TEST_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
-      TEST_POSTGRES_ALLOW_MIGRATION: '1'
-      HEIGHT_SAFETY_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          ref: design-system
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Run validator
-        uses: anomalyco/opencode/github@latest
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        with:
-          model: openrouter/deepseek/deepseek-v4.1-flash
-          agent: validator
-          prompt: |
-            Validate the open pull request for GitHub issue #${{ github.event.issue.number }}
-            against its acceptance checklist and design/DESIGN.md. Run tools/verify.sh and
-            pnpm run design-tokens:check, plus instrumentation/screenshot checks where the
-            ticket requires them. Post one verdict comment on the issue and move the issue to
-            `status:done` on PASS or `status:changes-requested` on FAIL with a numbered fix
-            list. Never merge on a red gate.
-
-      - name: Reset on validator failure
-        if: failure()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh issue comment "${{ github.event.issue.number }}" --repo "${{ github.repository }}" \
-            --body "Validator run failed; returning the issue to status:changes-requested for the builder."
-          gh issue edit "${{ github.event.issue.number }}" --repo "${{ github.repository }}" \
-            --remove-label "status:validating" --add-label "status:changes-requested"
