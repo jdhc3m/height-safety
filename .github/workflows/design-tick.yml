@@ -5,7 +5,7 @@
 # GITHUB_TOKEN, because label changes made with GITHUB_TOKEN do not trigger other
 # workflows, so the builder would never start.
 #
-# Each tick (every 15 min, or manual dispatch):
+# Each tick (hourly, on a done/closed design ticket, or manual dispatch):
 #   1. Merge the open PR and close issues that the validator marked status:done.
 #   2. Start the next eligible status:ready/status:blocked ticket (all dependencies
 #      closed) by moving it to status:in-progress, up to MAX_CONCURRENT.
@@ -16,7 +16,9 @@ name: Design tick
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "0 * * * *"
+  issues:
+    types: [closed, labeled]
   workflow_dispatch:
 
 permissions:
@@ -31,6 +33,10 @@ concurrency:
 
 jobs:
   tick:
+    if: >-
+      github.event_name != 'issues' ||
+      github.event.action == 'closed' ||
+      github.event.label.name == 'status:done'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
