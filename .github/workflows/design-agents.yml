@@ -47,6 +47,7 @@ jobs:
         with:
           ref: design-system
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Run builder
         uses: anomalyco/opencode/github@latest
@@ -60,6 +61,16 @@ jobs:
             design-system workstream. Read the issue body, its acceptance checklist and its
             dependencies. Open a pull request into the `design-system` branch when done and
             never merge.
+
+      - name: Reset on builder failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" --repo "${{ github.repository }}" \
+            --body "Builder run failed before opening a PR; returning the issue to status:ready for retry. See the workflow run logs."
+          gh issue edit "${{ github.event.issue.number }}" --repo "${{ github.repository }}" \
+            --remove-label "status:in-progress" --add-label "status:ready"
 
       - name: Mark validating
         env:
@@ -101,6 +112,7 @@ jobs:
         with:
           ref: design-system
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Run validator
         uses: anomalyco/opencode/github@latest
@@ -116,3 +128,13 @@ jobs:
             ticket requires them. Post one verdict comment on the issue and move the issue to
             `status:done` on PASS or `status:changes-requested` on FAIL with a numbered fix
             list. Never merge on a red gate.
+
+      - name: Reset on validator failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" --repo "${{ github.repository }}" \
+            --body "Validator run failed; returning the issue to status:changes-requested for the builder."
+          gh issue edit "${{ github.event.issue.number }}" --repo "${{ github.repository }}" \
+            --remove-label "status:validating" --add-label "status:changes-requested"
