@@ -1,6 +1,6 @@
 # Current Status
 
-Last update: 2026-10-07
+Last update: 2026-10-09
 
 ## Active stage
 
@@ -42,11 +42,15 @@ G-03 is Done as D-027.
 reviewers and Administrators can create blocker, warning, conflict or change
 issues against a submitted inspection/anchor context, resolve them with a
 reason, and read append-only actions. The PostgreSQL adapter writes the issue,
-review action and generic audit event in one tenant-bound transaction. This
-does not yet expose a connected office UI. Change requests now move the mutable
-job workflow pointer to `changes_requested` without mutating the submitted
-inspection; the next sync submission against the same pack receives a new
-server-assigned inspection revision, serialized per company/job (D-048).
+review action and generic audit event in one tenant-bound transaction. The
+connected office web can read issue records for an explicit inspection ID and
+submit reasoned resolve, change-request and approval actions through server-side
+actions; the API remains authoritative for role and tenant checks. There is not
+yet a submitted-inspection queue, submission-evidence view or authenticated
+office photo viewer. Change requests move the mutable job workflow pointer to
+`changes_requested` without mutating the submitted inspection; the next sync
+submission against the same pack receives a new server-assigned inspection
+revision, serialized per company/job (D-048).
 
 `3D-02` is now in progress with a bounded provider-neutral approved-snapshot
 freeze boundary. The slice preserves the exact inspection/evidence revision,
@@ -69,7 +73,8 @@ history and hard gates in its write transaction, so intervening review changes
 roll the approval back. A stale revision or a store that cannot move the pointer
 also rolls the approval back. Approval identity is derived from the
 server-assigned inspection revision (D-048), so each resubmission requires its
-own approval. The bounded office UI surface for approval remains open.
+own approval. The per-inspection approval action is connected; queue discovery
+and a full submitted-evidence/photo review surface remain open.
 
 `3D-03` has a bounded local report-generation API/worker implementation in
 review. Generation is idempotent per company, approved snapshot and template;
@@ -83,8 +88,17 @@ for explicit development or test mode; unset/other modes use an unavailable
 adapter, and production fails closed until a durable private adapter is
 provided. Submission acknowledgement time is not recorded as inspection start
 time, so reports show the start as not recorded unless a trusted start value
-exists. Cloud Tasks, Cloud Storage and production deployment remain open
-operational work.
+exists. The office web now carries the approved snapshot ID into an explicit
+draft-generation request, reads generation status and serves the completed PDF
+through an authenticated, server-side download route. This continuation is
+local/synthetic only. Cloud Tasks, Cloud Storage and production deployment
+remain open operational work.
+
+D-051 records the synthetic-only retention baseline: no automatic deletion of
+server evidence/reports/audit history, audited synthetic-tenant reset after a
+verified tenant export, and a 30-day cap for persistent synthetic development
+backups. G-06 remains open for real customer data; no real-data retention period
+is inferred or approved.
 
 ## Completed
 
@@ -379,7 +393,8 @@ operational work.
   D-048 company/job lock; approval rechecks frozen review history and hard gates
   before inserting the snapshot. The reader parses the `request_body` JSON text
   in the adapter instead of using a JSON operator on the text column. The
-  bounded office UI surface for approval remains open.
+  per-inspection approval action is connected; queue discovery and the
+  submitted-evidence/photo review surface remain open.
 - `3D-03` report-generation API and sequential worker are in implementation
   review. Approved snapshots and associated photos are rechecked before render;
   request identity includes the frozen snapshot and template version. One
@@ -400,17 +415,19 @@ operational work.
 
 ## Next recommended task
 
-The bounded `3D-03` API/worker implementation and generated API contract now
-pass the root gate against disposable PostgreSQL, including migration `006`
-tenant isolation and reserved-revision constraints.
-Next, continue the bounded office approval/review UI. The local report object
-store is development/test-only. Production Cloud SQL, private Cloud Storage,
-Cloud Tasks, worker concurrency configuration and Administrator recovery
-verification remain operational gates. The local `3C` runtime integration is
-implemented and smoke-tested, but remains a development adapter until those
-operational gates close. Do not treat bounded protocol, payload-applier,
-process-memory worker or domain state-machine slices as production
-synchronisation.
+The `3D-03` API/worker implementation and generated API contract pass the root
+gate against disposable PostgreSQL, including migration `006` tenant isolation
+and reserved-revision constraints. The office web now connects approval to
+draft generation, status refresh and authenticated PDF download. Next, add the
+company-scoped submitted-inspection queue and read-only evidence/photo detail
+surface so reviewers can locate and inspect submitted records before acting.
+Keep this work synthetic/local. The local report object store is
+development/test-only. Production Cloud SQL, private Cloud Storage, Cloud Tasks,
+worker concurrency configuration and Administrator recovery verification
+remain operational gates. The local `3C` runtime integration is implemented
+and smoke-tested, but remains a development adapter until those operational
+gates close. Do not treat bounded protocol, payload-applier, process-memory
+worker or domain state-machine slices as production synchronisation.
 Do not add Kotlin
 Multiplatform, an iOS target or deferred standards candidates. Auth0 tenant
 setup and production identity/runtime deployment remain open. The US-5 tenant
@@ -431,6 +448,9 @@ controlled pilot.
 - Offline-authorisation lease duration and recovery of unsynchronised evidence
   after account revocation are owner-approved as D-025. G-05 still requires
   design-partner review before a controlled pilot.
+- D-051 applies only to synthetic/local development. G-06 still requires owner
+  plus legal/privacy review of real-data terms, export, backup/deletion periods
+  and authorised audited cleanup before any real customer data.
 - Required fields, outcome meanings, signatures, measurements, retention and
   report wording await partner/legal/professional review.
 - AS 5532 product evidence must be validated against the licensed Standard and
@@ -627,6 +647,14 @@ PostgreSQL 17, including the live tenant-isolation migration/RLS check
 storage/job-pack checks; the disposable PostgreSQL container was removed
 afterwards.
 
+On 2026-10-09, the office web gained the server-side approval-to-report flow:
+idempotent generation request, generation-status read and authenticated PDF
+download. The focused web suite passed 7/7 tests, TypeScript typecheck and Next
+production build passed, and `tools/verify.sh` passed again against a fresh
+disposable PostgreSQL 17 database (89 API tests, no skips), including provider
+portability, PDF, offline-lease and Android storage/job-pack checks. D-051 records
+the synthetic-only retention/reset baseline; G-06 remains open for real data.
+
 ## Relevant files
 
 `AGENTS.md`; `docs/product/`; `docs/discovery/`; `docs/requirements/`;
@@ -646,6 +674,7 @@ Stage 2D-04 comparison: `docs/roadmap/STAGE_2D_04_PROVIDER_COMPARISON.md`.
 Stage 2D-04 managed evidence: `docs/roadmap/STAGE_2D_04_MANAGED_EVIDENCE.json`.
 Stage 2D-05: `docs/roadmap/STAGE_2D_05_ANDROID_ENCRYPTED_STORAGE_PROOF.md`.
 Stage 2D-06: `docs/roadmap/STAGE_2D_06_OFFLINE_LEASE_RECOVERY.md`.
+G-06 retention research: `docs/roadmap/G-06_REAL_DATA_RETENTION_RESEARCH.md`.
 Stage 3A-02 migrations: `apps/api/migrations/` and
 `apps/api/test/tenant-schema.test.mjs`.
 Stage 3A-03 identity boundary: `apps/api/src/identity/`,
