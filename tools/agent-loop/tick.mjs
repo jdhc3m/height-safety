@@ -40,7 +40,7 @@ const DESIGN_TICKET_MARKER = "Part of #32";
 const isDesignIssue = (issue) => (issue.body ?? "").includes(DESIGN_TICKET_MARKER);
 
 const listIssues = (label) =>
-  ghJson(["issue", "list", "--repo", repo, "--state", "open", "--label", label, "--limit", "200", "--json", "number,title,body"]);
+  ghJson(["issue", "list", "--repo", repo, "--state", "open", "--label", label, "--limit", "200", "--json", "number,title,body,labels"]);
 
 const stateOf = (number) =>
   gh(["issue", "view", String(number), "--repo", repo, "--json", "state", "--jq", ".state"]).trim().toUpperCase();
@@ -101,7 +101,9 @@ if (slots > 0) {
     const openDeps = depNumbers(issue.body).filter((dep) => stateOf(dep) !== "CLOSED");
     if (openDeps.length === 0) eligible.push(issue);
   }
-  eligible.sort((a, b) => a.number - b.number);
+  const priority = (issue) =>
+    issue.labels?.some(({ name }) => name === "priority:validation") ? 0 : 1;
+  eligible.sort((a, b) => priority(a) - priority(b) || a.number - b.number);
 
   for (const issue of eligible) {
     if (slots <= 0) break;
