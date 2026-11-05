@@ -1,0 +1,54 @@
+# Unattended orchestrator for the design-system agent loop.
+#
+# Requires the AGENT_TOKEN secret: a PAT (or GitHub App token) with Actions: write,
+# Contents: write, Issues: write and Pull requests: write. It must NOT be the default
+# GITHUB_TOKEN, because label changes made with GITHUB_TOKEN do not trigger other
+# workflows, so the builder would never start.
+#
+# Each tick (every 15 min, or manual dispatch):
+#   1. Merge the open PR and close issues that the validator marked status:done.
+#   2. Start the next eligible status:ready/status:blocked ticket (all dependencies
+#      closed) by moving it to status:in-progress, up to MAX_CONCURRENT.
+# This file lives on the default branch because schedule/dispatch events only run
+# workflows present on the default branch; it checks out design-system for the code.
+
+name: Design tick
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: design-tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      MAX_CONCURRENT: "1"
+    steps:
+      - name: Require PAT
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "AGENT_TOKEN secret is required so label changes trigger workflows" >&2
+            exit 1
+          fi
+
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: design-system
+
+      - name: Run tick
+        run: node tools/agent-loop/tick.mjs
