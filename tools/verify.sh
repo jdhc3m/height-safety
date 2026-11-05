@@ -33,4 +33,5 @@ pnpm run provider-spike:check
 pnpm run offline-lease:check
 bash "$ROOT/tools/android-storage-spike.sh" --check
 bash "$ROOT/tools/android-job-pack.sh" --check
+bash "$ROOT/tools/android-theme.sh" --check
 git -C "$ROOT" diff --check

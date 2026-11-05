@@ -349,6 +349,14 @@ is inferred or approved.
 
 ## In progress
 
+- Design-system theme core (`T1`, issue #34) is implemented for the Android
+  field app: light and dark Material 3 color schemes, field typography
+  minimums (`bodyLarge` 16sp, `titleLarge` 22sp) and shapes now derive from the
+  generated `DesignTokens` (brand seed `#1D7AFC`), with the old Signal Field
+  theme kept only as a compatibility entry point. Roborazzi light/dark theme
+  baselines are committed and gated through
+  `tools/android-theme.sh --check` in the root verify command. Screens, icons
+  and navigation remain separate design-system tickets.
 - `3C-01` is in review: durable idempotent mutation outbox and background
   drain seam are implemented, and the local API now commits mutation envelopes,
   inspection evidence and replayable acknowledgements atomically. Production
