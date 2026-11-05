@@ -36,6 +36,9 @@ const depNumbers = (body) => {
   return [...found];
 };
 
+const DESIGN_TICKET_MARKER = "Part of #32";
+const isDesignIssue = (issue) => (issue.body ?? "").includes(DESIGN_TICKET_MARKER);
+
 const listIssues = (label) =>
   ghJson(["issue", "list", "--repo", repo, "--state", "open", "--label", label, "--limit", "200", "--json", "number,title,body"]);
 
@@ -57,11 +60,15 @@ const openPrs = ghJson([
 
 const prForIssue = (number) =>
   openPrs.find(
-    (pr) => pr.headRefName === `ticket-${number}` || new RegExp(`#${number}\\b`).test(`${pr.title}\n${pr.body ?? ""}`),
+    (pr) =>
+      pr.headRefName === `ticket-${number}` ||
+      new RegExp(`\\bissue[-_]?${number}\\b`, "i").test(pr.headRefName) ||
+      new RegExp(`#${number}\\b`).test(`${pr.title}\n${pr.body ?? ""}`),
   );
 
 // 1. Merge and close finished tickets.
 for (const issue of listIssues("status:done")) {
+  if (!isDesignIssue(issue)) continue;
   const pr = prForIssue(issue.number);
   if (!pr) {
     log(`#${issue.number}: status:done but no open PR found; leaving for inspection`);
@@ -81,7 +88,7 @@ for (const issue of listIssues("status:done")) {
 }
 
 // 2. Capacity check.
-const active = listIssues("status:in-progress").length + listIssues("status:validating").length;
+const active = [...listIssues("status:in-progress"), ...listIssues("status:validating")].filter(isDesignIssue).length;
 let slots = Math.max(0, maxConcurrent - active);
 log(`active=${active} max=${maxConcurrent} slots=${slots}`);
 
@@ -89,6 +96,7 @@ if (slots > 0) {
   const candidates = [...listIssues("status:ready"), ...listIssues("status:blocked")];
   const eligible = [];
   for (const issue of candidates) {
+    if (!isDesignIssue(issue)) continue;
     if (prForIssue(issue.number)) continue;
     const openDeps = depNumbers(issue.body).filter((dep) => stateOf(dep) !== "CLOSED");
     if (openDeps.length === 0) eligible.push(issue);

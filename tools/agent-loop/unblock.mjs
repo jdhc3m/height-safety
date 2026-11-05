@@ -57,8 +57,12 @@ const blockedIssues = JSON.parse(
 const stateOf = (number) =>
   gh(["issue", "view", String(number), "--repo", repo, "--json", "state", "--jq", ".state"]).trim().toUpperCase();
 
+const DESIGN_TICKET_MARKER = "Part of #32";
+const isDesignIssue = (issue) => (issue.body ?? "").includes(DESIGN_TICKET_MARKER);
+
 let promoted = 0;
 for (const issue of blockedIssues) {
+  if (!isDesignIssue(issue)) continue;
   const deps = depNumbers(issue.body);
   if (!deps.includes(closedIssue)) continue;
   const stillOpen = deps.filter((dep) => stateOf(dep) !== "CLOSED");
