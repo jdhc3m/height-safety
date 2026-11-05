@@ -1,0 +1,112 @@
+# Design-system builder/validator loop.
+#
+# Setup (one-time, by the repository owner):
+#   1. Run `opencode github install` to install the OpenCode GitHub App and add secrets,
+#      OR install github.com/apps/opencode-agent manually and add the workflow secrets below.
+#   2. Add secret OPENROUTER_API_KEY (provider key for z-ai/glm-5.3-flash and deepseek-v4.1-flash).
+#
+# Trigger contract (GitHub Issues as the state machine):
+#   status:in-progress | status:changes-requested  -> builder job
+#   status:validating                             -> validator job
+# Builder and validator run in the SAME workflow run (chained via `needs`) so the
+# `status:validating` label written with GITHUB_TOKEN does not need to re-trigger a
+# workflow (GitHub suppresses downstream runs from GITHUB_TOKEN events).
+#
+# Model routing and agent prompts live in opencode.json (agents: builder, validator).
+
+name: Design agents
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: design-agent-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: >-
+      github.event.label.name == 'status:in-progress' ||
+      github.event.label.name == 'status:changes-requested'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Run builder
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        with:
+          model: openrouter/z-ai/glm-5.3-flash
+          agent: builder
+          prompt: |
+            Implement GitHub issue #${{ github.event.issue.number }} for the height-safety
+            design-system workstream. Read the issue body, its acceptance checklist and its
+            dependencies. Open a pull request into the `design-system` branch when done and
+            never merge.
+
+      - name: Mark validating
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue edit "${{ github.event.issue.number }}" \
+            --remove-label "status:in-progress" \
+            --remove-label "status:changes-requested" \
+            --add-label "status:validating"
+
+  validate:
+    needs: build
+    if: >-
+      always() && (
+        needs.build.result == 'success' ||
+        github.event.label.name == 'status:validating'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TEST_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      TEST_POSTGRES_ALLOW_MIGRATION: '1'
+      HEIGHT_SAFETY_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Run validator
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        with:
+          model: openrouter/deepseek/deepseek-v4.1-flash
+          agent: validator
+          prompt: |
+            Validate the open pull request for GitHub issue #${{ github.event.issue.number }}
+            against its acceptance checklist and design/DESIGN.md. Run tools/verify.sh and
+            pnpm run design-tokens:check, plus instrumentation/screenshot checks where the
+            ticket requires them. Post one verdict comment on the issue and move the issue to
+            `status:done` on PASS or `status:changes-requested` on FAIL with a numbered fix
+            list. Never merge on a red gate.
