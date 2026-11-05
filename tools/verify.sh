@@ -22,6 +22,7 @@ bash "$ROOT/tools/verify-docs.sh"
 bash "$ROOT/tools/format.sh" --check
 bash "$ROOT/tools/lint.sh"
 bash "$ROOT/tools/contracts.sh" --check
+bash "$ROOT/tools/design-tokens.sh" --check
 pnpm --dir "$ROOT" run test
 HEIGHT_SAFETY_POSTGRES_URL="$HEIGHT_SAFETY_POSTGRES_URL" \
   bash "$ROOT/tools/provider-portability/postgresql-check.sh"

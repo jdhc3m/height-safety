@@ -1,0 +1,45 @@
+/* Generated from design/tokens.json by tools/design-tokens/generate.mjs. Do not edit. */
+:root {
+  --hs-color-brand-primary: #1d7afc;
+  --hs-color-brand-primary-pressed: #0c66e4;
+  --hs-color-teal: #2898bd;
+  --hs-color-teal-bold: #227d9b;
+  --hs-color-purple: #9f8fef;
+  --hs-color-purple-bold: #6e5dc6;
+  --hs-color-green: #22a06b;
+  --hs-color-green-bold: #1f845a;
+  --hs-color-orange: #f38a3f;
+  --hs-color-orange-bold: #e56910;
+  --hs-color-red: #f15b50;
+  --hs-color-red-bold: #c9372c;
+  --hs-color-yellow: #f5cd47;
+  --hs-color-yellow-bold: #cf9f02;
+  --hs-color-slate: #758195;
+  --hs-color-slate-bold: #44546f;
+  --hs-color-surface: #ffffff;
+  --hs-color-background: #f7f8fa;
+  --hs-color-text-primary: #172b4d;
+  --hs-color-text-secondary: #44546f;
+  --hs-type-web-font-stack: Inter, system-ui, -apple-system, sans-serif;
+  --hs-type-web-body: 14px;
+  --hs-type-web-table: 13px;
+  --hs-type-web-page-title: 24px;
+  --hs-space-grid: 8px;
+  --hs-space-page-margin-phone: 16px;
+  --hs-radius-card: 12px;
+  --hs-radius-chip: 8px;
+  --hs-radius-tile-ratio: 0.25;
+  --hs-touch-field-control: 56px;
+  --hs-touch-outcome-tile: 72px;
+  --hs-touch-photo-add-tile: 72px;
+  --hs-touch-bottom-bar: 64px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --hs-color-surface: #1e1f22;
+    --hs-color-background: #121316;
+    --hs-color-text-primary: #f1f2f4;
+    --hs-color-text-secondary: #b6bcc6;
+  }
+}
