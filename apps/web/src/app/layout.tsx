@@ -13,7 +13,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en-AU">
+    <html lang="en-AU" suppressHydrationWarning>
       {/*
         suppressHydrationWarning: browser extensions (for example Grammarly)
         inject attributes such as data-gr-ext-installed into <body> before

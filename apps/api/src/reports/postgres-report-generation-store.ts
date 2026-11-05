@@ -131,7 +131,8 @@ const GENERATION_SELECT_COLUMNS = `
   generation.revision_number,
   generation.attempt_count,
   generation.last_failure_code,
-  generation.completed_at
+  generation.completed_at,
+  generation.lease_expires_at
 `;
 
 const REVISION_COLUMNS = `
@@ -1048,7 +1049,8 @@ export class PostgresReportGenerationStore implements ReportGenerationStore {
               END,
               available_at = CASE
                 WHEN $4 AND attempt_count < 3
-                  THEN $3 + (LEAST(attempt_count * 30, 120) * INTERVAL '1 second')
+                  THEN $3::timestamptz
+                    + (LEAST(attempt_count * 30, 120) * INTERVAL '1 second')
                 ELSE available_at
               END,
               revision_number = CASE

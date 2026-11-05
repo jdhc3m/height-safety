@@ -68,3 +68,43 @@ test('office review keeps neutral language and bounded failure states', async ()
     /Nothing is displayed rather than showing unverified state/,
   );
 });
+
+test('approved snapshots flow to server-authenticated draft report delivery', async () => {
+  const api = await read('../src/lib/office-api.ts');
+  const actions = await read(
+    '../src/app/office/reviews/[inspectionId]/actions.ts',
+  );
+  const review = await read(
+    '../src/app/office/reviews/[inspectionId]/page.tsx',
+  );
+  const fileRoute = await read(
+    '../src/app/office/reports/[generationId]/file/route.ts',
+  );
+
+  assert.match(api, /getApprovedSnapshot/);
+  assert.match(api, /requestDraftReportGeneration/);
+  assert.match(api, /getDraftReportGeneration/);
+  assert.match(
+    api,
+    /reports\/generations\/\$\{encodeURIComponent\(generationId\)\}\/file/,
+  );
+
+  assert.match(actions, /requestDraftReportAction/);
+  assert.match(actions, /snapshot\.sourceInspectionId !== inspectionId/);
+  assert.match(actions, /requestDraftReportGeneration\(session, snapshotId\)/);
+  assert.doesNotMatch(actions, /console\.|accessToken/);
+
+  assert.match(review, /<form action={requestDraftReportAction}/);
+  assert.match(review, /getDraftReportGeneration/);
+  assert.match(review, /Download draft report PDF/);
+  assert.match(
+    review,
+    /does not issue a certificate or\s+determine compliance/,
+  );
+
+  assert.match(fileRoute, /openOfficeSession\(\)/);
+  assert.match(fileRoute, /getDraftReportFile/);
+  assert.match(fileRoute, /application\/pdf/);
+  assert.match(fileRoute, /private, no-store/);
+  assert.doesNotMatch(fileRoute, /console\.|accessToken/);
+});

@@ -429,6 +429,17 @@ h3 {
   outline-offset: 2px;
 }
 
+.report-generation {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1.5rem;
+}
+
+.report-generation__meta {
+  color: #74859b;
+  font-size: 0.85rem;
+}
+
 @media (max-width: 720px) {
   .hero,
   .auth-panel,

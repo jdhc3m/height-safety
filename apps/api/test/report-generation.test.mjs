@@ -670,6 +670,12 @@ test('late lower report revisions are retained as superseded', async () => {
   );
 
   assert.equal(revision.supersededAt.toISOString(), NOW.toISOString());
+  const completionSelect = database.queries.find(({ text }) =>
+    text.includes('FOR UPDATE OF generation'),
+  );
+  // The adapter reads lease_expires_at to validate the lease, so the query
+  // must actually select it; the fake database cannot hide the omission.
+  assert.match(completionSelect.text, /lease_expires_at/);
   assert.match(database.insertedRevision.text, /created_at, superseded_at/);
   assert.equal(
     database.insertedRevision.values[15].toISOString(),
@@ -682,6 +688,40 @@ test('late lower report revisions are retained as superseded', async () => {
     JSON.parse(auditInsert.values[4]).supersededAt,
     NOW.toISOString(),
   );
+});
+
+test('retry scheduling casts the retry timestamp so the failure update can run', async () => {
+  const claim = {
+    ...generationRecord({
+      status: 'processing',
+      revisionNumber: 1,
+      attemptCount: 1,
+    }),
+    leaseToken: 'lease-fail',
+  };
+  const queries = [];
+  const database = {
+    async transaction(work) {
+      return work({
+        query: async (text, values) => {
+          queries.push({ text, values });
+          return { rows: [], rowCount: 1 };
+        },
+      });
+    },
+  };
+  await new PostgresReportGenerationStore(database).fail(
+    claim,
+    'RENDERER_UNAVAILABLE',
+    true,
+    NOW,
+  );
+  const failureUpdate = queries.find(({ text }) =>
+    text.includes('UPDATE report_generation_jobs'),
+  );
+  // An untyped $3 in `$3 + interval` makes Postgres infer an interval and
+  // reject the CASE, which previously wedged the job in `processing`.
+  assert.match(failureUpdate.text, /\$3::timestamptz/);
 });
 
 test('report request audit failure rolls back enqueue', async () => {

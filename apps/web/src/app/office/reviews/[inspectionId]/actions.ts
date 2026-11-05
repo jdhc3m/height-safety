@@ -7,7 +7,9 @@ import {
   OfficeApiFailure,
   approveInspection,
   createReviewIssue,
+  getApprovedSnapshot,
   openOfficeSession,
+  requestDraftReportGeneration,
   resolveReviewIssue,
 } from '../../../../lib/office-api';
 
@@ -39,9 +41,19 @@ function redirectFailure(
   reviewRedirect(inspectionId, params);
 }
 
-function redirectApiFailure(inspectionId: string, error: unknown): never {
+function redirectApiFailure(
+  inspectionId: string,
+  error: unknown,
+  errorCode?: string,
+): never {
   if (error instanceof OfficeApiFailure) {
-    redirectFailure(inspectionId, error.code, error.status);
+    const params: Record<string, string> = {
+      error: errorCode ?? error.code,
+    };
+    if (error.status !== undefined) {
+      params.status = String(error.status);
+    }
+    reviewRedirect(inspectionId, params);
   }
   throw error;
 }
@@ -116,11 +128,45 @@ export async function approveInspectionAction(
   }
 
   try {
-    await approveInspection(await openOfficeSession(), inspectionId);
+    const result = await approveInspection(
+      await openOfficeSession(),
+      inspectionId,
+    );
+    revalidatePath(reviewPath(inspectionId));
+    reviewRedirect(inspectionId, {
+      status: 'approved',
+      snapshotId: result.snapshot.snapshotId,
+    });
   } catch (error) {
     redirectApiFailure(inspectionId, error);
   }
+}
 
-  revalidatePath(reviewPath(inspectionId));
-  reviewRedirect(inspectionId, { status: 'approved' });
+/** Requests an idempotent draft revision from the exact approved snapshot. */
+export async function requestDraftReportAction(
+  formData: FormData,
+): Promise<void> {
+  const inspectionId = field(formData, 'inspectionId');
+  const snapshotId = field(formData, 'snapshotId');
+
+  if (!inspectionId || !snapshotId) {
+    redirectFailure(inspectionId, 'INVALID_INPUT');
+  }
+
+  try {
+    const session = await openOfficeSession();
+    const snapshot = await getApprovedSnapshot(session, snapshotId);
+    if (snapshot.sourceInspectionId !== inspectionId) {
+      redirectFailure(inspectionId, 'INVALID_INPUT');
+    }
+    const generation = await requestDraftReportGeneration(session, snapshotId);
+    revalidatePath(reviewPath(inspectionId));
+    reviewRedirect(inspectionId, {
+      status: 'report-requested',
+      snapshotId,
+      generationId: generation.generationId,
+    });
+  } catch (error) {
+    redirectApiFailure(inspectionId, error, 'REPORT_UPSTREAM');
+  }
 }

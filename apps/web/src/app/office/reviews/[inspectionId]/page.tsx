@@ -4,14 +4,18 @@ import { redirect } from 'next/navigation';
 import { auth0, isAuth0Configured } from '../../../../lib/auth0';
 import {
   OfficeApiFailure,
+  getDraftReportGeneration,
   isOfficeApiConfigured,
   listReviewIssues,
   openOfficeSession,
   type ReviewIssue,
   type ReviewIssueType,
+  type ReportGeneration,
+  type ReportGenerationStatus,
 } from '../../../../lib/office-api';
 import {
   approveInspectionAction,
+  requestDraftReportAction,
   requestChangesAction,
   resolveIssueAction,
 } from './actions';
@@ -30,6 +34,14 @@ const ISSUE_TONE: Record<ReviewIssueType, string> = {
   warning: 'chip--warn',
   conflict: 'chip--neutral',
   change: 'chip--warn',
+};
+
+const GENERATION_LABEL: Record<ReportGenerationStatus, string> = {
+  queued: 'Queued',
+  processing: 'Processing',
+  completed: 'Completed',
+  failed: 'Failed',
+  superseded: 'Superseded',
 };
 
 type Banner = { readonly tone: 'ok' | 'warn'; readonly text: string };
@@ -64,6 +76,12 @@ function resultBanner(
       text: 'Snapshot approved. The exact submitted revision is frozen for draft report generation.',
     };
   }
+  if (status === 'report-requested') {
+    return {
+      tone: 'ok',
+      text: 'Draft report generation was requested from the approved snapshot.',
+    };
+  }
 
   if (error === 'REASON_REQUIRED') {
     return {
@@ -95,6 +113,24 @@ function resultBanner(
       text: 'The inspection or review issue was not found.',
     };
   }
+  if (error === 'REPORT_UPSTREAM') {
+    if (httpStatus === 403) {
+      return {
+        tone: 'warn',
+        text: 'Your company role cannot generate or read this draft report.',
+      };
+    }
+    if (httpStatus === 404) {
+      return {
+        tone: 'warn',
+        text: 'The approved snapshot or draft report generation was not found.',
+      };
+    }
+    return {
+      tone: 'warn',
+      text: `Draft report generation was refused${httpStatus ? ` (${httpStatus})` : ''}. The approved snapshot remains unchanged.`,
+    };
+  }
   if (error) {
     return {
       tone: 'warn',
@@ -122,6 +158,10 @@ export default async function ReviewPage({
 }) {
   const { inspectionId } = await params;
   const query = await searchParams;
+  const snapshotId =
+    typeof query.snapshotId === 'string' ? query.snapshotId : undefined;
+  const generationId =
+    typeof query.generationId === 'string' ? query.generationId : undefined;
 
   if (!isAuth0Configured || !auth0) {
     return (
@@ -149,14 +189,42 @@ export default async function ReviewPage({
 
   let issues: readonly ReviewIssue[] | undefined;
   let failure: OfficeApiFailure | undefined;
+  let reportGeneration: ReportGeneration | undefined;
+  let reportFailure: OfficeApiFailure | undefined;
   if (isOfficeApiConfigured()) {
+    let officeSession;
     try {
-      issues = await listReviewIssues(await openOfficeSession(), inspectionId);
+      officeSession = await openOfficeSession();
     } catch (error) {
       if (error instanceof OfficeApiFailure) {
         failure = error;
       } else {
         throw error;
+      }
+    }
+    if (officeSession) {
+      try {
+        issues = await listReviewIssues(officeSession, inspectionId);
+      } catch (error) {
+        if (error instanceof OfficeApiFailure) {
+          failure = error;
+        } else {
+          throw error;
+        }
+      }
+      if (generationId) {
+        try {
+          reportGeneration = await getDraftReportGeneration(
+            officeSession,
+            generationId,
+          );
+        } catch (error) {
+          if (error instanceof OfficeApiFailure) {
+            reportFailure = error;
+          } else {
+            throw error;
+          }
+        }
       }
     }
   }
@@ -239,6 +307,109 @@ export default async function ReviewPage({
           </div>
         ) : null}
       </section>
+
+      {snapshotId || generationId ? (
+        <section className="preview" aria-labelledby="draft-report-title">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Draft report</p>
+              <h2 id="draft-report-title">Generate from approved snapshot</h2>
+            </div>
+            <p className="section-copy">
+              Report generation uses the frozen approved snapshot and creates an
+              immutable draft revision. It does not issue a certificate or
+              determine compliance.
+            </p>
+          </div>
+
+          {reportFailure ? (
+            <p className="disclaimer" role="alert">
+              Draft report status could not be read ({reportFailure.code}). The
+              approved snapshot remains unchanged.
+            </p>
+          ) : reportGeneration ? (
+            <div className="report-generation" aria-live="polite">
+              <div className="chip-row">
+                <span
+                  className={`chip ${
+                    reportGeneration.status === 'completed'
+                      ? 'chip--ok'
+                      : reportGeneration.status === 'failed' ||
+                          reportGeneration.status === 'superseded'
+                        ? 'chip--warn'
+                        : 'chip--info'
+                  }`}
+                >
+                  {GENERATION_LABEL[reportGeneration.status]}
+                </span>
+                {reportGeneration.revisionNumber !== null ? (
+                  <span className="chip chip--neutral">
+                    Draft revision {reportGeneration.revisionNumber}
+                  </span>
+                ) : null}
+              </div>
+              <p className="report-generation__meta">
+                Generation{' '}
+                <span className="mono">{reportGeneration.generationId}</span>
+                {' · '}requested{' '}
+                {new Date(reportGeneration.requestedAt)
+                  .toISOString()
+                  .slice(0, 16)
+                  .replace('T', ' ')}
+              </p>
+              {reportGeneration.status === 'completed' ? (
+                <a
+                  className="action-link"
+                  href={`/office/reports/${encodeURIComponent(reportGeneration.generationId)}/file`}
+                >
+                  Download draft report PDF
+                </a>
+              ) : reportGeneration.status === 'queued' ||
+                reportGeneration.status === 'processing' ? (
+                <Link
+                  className="quiet-link"
+                  href={`/office/reviews/${encodeURIComponent(inspectionId)}?snapshotId=${encodeURIComponent(reportGeneration.snapshotId)}&generationId=${encodeURIComponent(reportGeneration.generationId)}`}
+                >
+                  Refresh generation status
+                </Link>
+              ) : reportGeneration.status === 'failed' ? (
+                <p className="disclaimer" role="status">
+                  Generation did not complete
+                  {reportGeneration.lastFailureCode
+                    ? ` (${reportGeneration.lastFailureCode})`
+                    : ''}
+                  . The approved snapshot is unchanged.
+                </p>
+              ) : (
+                <p className="disclaimer" role="status">
+                  This draft revision was superseded by a later revision; its
+                  file is unchanged.
+                </p>
+              )}
+            </div>
+          ) : snapshotId && isOfficeApiConfigured() && !failure ? (
+            <form action={requestDraftReportAction} className="action-form">
+              <input type="hidden" name="inspectionId" value={inspectionId} />
+              <input type="hidden" name="snapshotId" value={snapshotId} />
+              <p className="action-form__note">
+                Requesting again for this snapshot is idempotent and will not
+                replace an existing report revision.
+              </p>
+              <button
+                className="action-button action-button--primary"
+                type="submit"
+              >
+                Generate draft report
+              </button>
+            </form>
+          ) : (
+            <p className="disclaimer" role="note">
+              The approved snapshot is not available in this page context. No
+              report request was sent.
+            </p>
+          )}
+        </section>
+      ) : null}
 
       <section className="preview" aria-labelledby="review-issues-title">
         <div className="section-heading">

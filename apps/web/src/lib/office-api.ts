@@ -205,17 +205,46 @@ export interface ReviewIssueResolution {
 }
 
 export interface ApprovedSnapshotSummary {
-  readonly snapshot: {
-    readonly snapshotId: string;
-    readonly approvalId: string;
-    readonly jobId: string;
-    readonly jurisdiction: 'NSW' | 'QLD';
-    readonly sourceInspectionRevision: number;
-    readonly approvedByUserId: string;
-    readonly approvedAt: string;
-    readonly sha256: string;
-  };
+  readonly snapshot: ApprovedSnapshot;
   readonly replayed: boolean;
+}
+
+export interface ApprovedSnapshot {
+  readonly companyId: string;
+  readonly snapshotId: string;
+  readonly approvalId: string;
+  readonly jobId: string;
+  readonly siteId: string;
+  readonly jurisdiction: 'NSW' | 'QLD';
+  readonly sourceInspectionId: string;
+  readonly sourceInspectionRevision: number;
+  readonly sourceEvidenceVersion: number;
+  readonly approvedByUserId: string;
+  readonly approvedAt: string;
+  readonly sourceIdentitySha256: string;
+  readonly sha256: string;
+}
+
+export type ReportGenerationStatus =
+  | 'queued'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'superseded';
+
+export interface ReportGeneration {
+  readonly generationId: string;
+  readonly reportRevisionId: string;
+  readonly snapshotId: string;
+  readonly jobId: string;
+  readonly jurisdiction: 'NSW' | 'QLD';
+  readonly templateVersion: string;
+  readonly status: ReportGenerationStatus;
+  readonly revisionNumber: number | null;
+  readonly attemptCount: number;
+  readonly lastFailureCode: string | null;
+  readonly requestedAt: string;
+  readonly completedAt: string | null;
 }
 
 function jsonHeaders(session: OfficeSession): Record<string, string> {
@@ -282,4 +311,82 @@ export function approveInspection(
     },
     'the approval',
   );
+}
+
+export function getApprovedSnapshot(
+  session: OfficeSession,
+  snapshotId: string,
+): Promise<ApprovedSnapshot> {
+  return requestJson<ApprovedSnapshot>(
+    `/approvals/${encodeURIComponent(snapshotId)}`,
+    { headers: authorisedHeaders(session), method: 'GET' },
+    'the approved snapshot',
+  );
+}
+
+export function requestDraftReportGeneration(
+  session: OfficeSession,
+  snapshotId: string,
+): Promise<ReportGeneration> {
+  return requestJson<ReportGeneration>(
+    '/reports/generations',
+    {
+      method: 'POST',
+      headers: jsonHeaders(session),
+      body: JSON.stringify({ snapshotId }),
+    },
+    'the draft report generation',
+  );
+}
+
+export function getDraftReportGeneration(
+  session: OfficeSession,
+  generationId: string,
+): Promise<ReportGeneration> {
+  return requestJson<ReportGeneration>(
+    `/reports/generations/${encodeURIComponent(generationId)}`,
+    { headers: authorisedHeaders(session), method: 'GET' },
+    'the draft report generation status',
+  );
+}
+
+/** Fetches the private PDF through the server-side office session boundary. */
+export async function getDraftReportFile(
+  session: OfficeSession,
+  generationId: string,
+): Promise<Response> {
+  let response: Response;
+  try {
+    response = await fetch(
+      `${requireBaseUrl()}/reports/generations/${encodeURIComponent(generationId)}/file`,
+      {
+        method: 'GET',
+        headers: authorisedHeaders(session),
+        cache: 'no-store',
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      },
+    );
+  } catch {
+    throw new OfficeApiFailure(
+      'UPSTREAM',
+      'the draft report file is unavailable',
+    );
+  }
+
+  if (!response.ok) {
+    throw new OfficeApiFailure(
+      'UPSTREAM',
+      `the draft report file was refused with status ${response.status}`,
+      response.status,
+    );
+  }
+
+  if (!response.headers.get('content-type')?.includes('application/pdf')) {
+    throw new OfficeApiFailure(
+      'UPSTREAM',
+      'the draft report endpoint returned an unexpected content type',
+    );
+  }
+
+  return response;
 }
