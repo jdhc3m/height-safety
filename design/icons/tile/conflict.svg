@@ -1,0 +1,10 @@
+<!-- Generated from design/icons/conflict.svg by tools/design-icons/generate.mjs. Do not edit. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-name="Conflict" data-colour="orange" data-variant="tile">
+  <rect data-role="tile" x="0" y="0" width="24" height="24" rx="6" fill="#F38A3F"/>
+  <path data-role="detail" fill="none" stroke="#FFFFFF" d="M5,5.2 L14.6,14.8" stroke-width="3" stroke-linecap="butt" stroke-linejoin="round"/>
+  <path data-role="base" fill="none" stroke="#FFFFFF" d="M6.6,17.4 L16.6,7.4" stroke-width="3" stroke-linecap="butt" stroke-linejoin="round"/>
+  <path data-role="base" fill="none" stroke="#FFFFFF" d="M18.1,9.1 L19.3,4.7 L15.1,5.7" stroke-width="3" stroke-linecap="butt" stroke-linejoin="round"/>
+  <path data-role="accent" fill="#F15B50" fill-rule="evenodd" d="M12.7,17 A4.3,4.3 0 1 1 21.3,17 A4.3,4.3 0 1 1 12.7,17 Z"/>
+  <path data-role="accent-mark" fill="undefined" fill-rule="evenodd" d="M16.2,15.3 A0.8,0.8 0 0 1 17.8,15.3 L17.8,17.3 A0.8,0.8 0 0 1 16.2,17.3 Z"/>
+  <path data-role="accent-mark" fill="undefined" fill-rule="evenodd" d="M16.05,19.55 A0.95,0.95 0 1 1 17.95,19.55 A0.95,0.95 0 1 1 16.05,19.55 Z"/>
+</svg>

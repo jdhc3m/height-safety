@@ -1,0 +1,5 @@
+<!-- Generated from design/icons/retry.svg by tools/design-icons/generate.mjs. Do not edit. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-name="Retry" data-colour="red" data-variant="free">
+  <path data-role="base" fill="none" stroke="#F15B50" d="M17.3,7.1 A6.9,6.9 0 1 0 17.3,16.9" stroke-width="2.9" stroke-linecap="butt" stroke-linejoin="round"/>
+  <path data-role="base" fill="none" stroke="#F15B50" d="M18.9,18.4 L19.9,14.6 L16.2,15.3" stroke-width="2.9" stroke-linecap="butt" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,6 @@
+<!-- Generated from design/icons/sign.svg by tools/design-icons/generate.mjs. Do not edit. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-name="Sign" data-colour="green" data-variant="free">
+  <path data-role="base" fill="none" stroke="#22A06B" d="M16.1,5.2 L11.3,10" stroke-width="3.2" stroke-linecap="butt" stroke-linejoin="round"/>
+  <path data-role="base" fill="#22A06B" fill-rule="evenodd" d="M8.3,12.5 L11.4,12.2 L8.6,9.4 Z"/>
+  <path data-role="base" fill="none" stroke="#22A06B" d="M5.2,19.5 C6.8,18.3 8.4,20.3 10,19.1 C11.4,18 12.6,18.3 13.6,19.1" stroke-width="2.2" stroke-linecap="butt" stroke-linejoin="round"/>
+</svg>

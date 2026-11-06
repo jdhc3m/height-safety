@@ -349,6 +349,20 @@ is inferred or approved.
 
 ## In progress
 
+- Design-system icon source set (`T2a`, issue #35) is drafted for owner
+  review: all 39 glyphs listed in `design/DESIGN.md` §9 (17 navigation/object,
+  9 action and 13 status icons) are authored as SVG sources under
+  `design/icons/` on a documented 24px-grid, 2px-keyline convention with
+  `base/detail/mark/accent` path roles. Tile and free-glyph SVG variants and a
+  self-contained light/dark contact sheet are derived from the sources by
+  `tools/design-icons/generate.mjs`, with hue pairs read from
+  `design/tokens.json` and drift, completeness and rule checks gated by
+  `tools/design-icons.sh --check` in the root verify command. No Android
+  ImageVector, web sprite or screen call-site change is included: that
+  generation work stays with `T2b` (issue #66) until the owner approves this
+  source set, so this ticket changes no app code and adds no runtime
+  behavior. Emulator instrumented coverage for icon rendering belongs to the
+  code-generation ticket.
 - Design-system theme core (`T1`, issue #34) is implemented for the Android
   field app: light and dark Material 3 color schemes, field typography
   minimums (`bodyLarge` 16sp, `titleLarge` 22sp) and shapes now derive from the

@@ -23,6 +23,7 @@ bash "$ROOT/tools/format.sh" --check
 bash "$ROOT/tools/lint.sh"
 bash "$ROOT/tools/contracts.sh" --check
 bash "$ROOT/tools/design-tokens.sh" --check
+bash "$ROOT/tools/design-icons.sh" --check
 node "$ROOT/tools/agent-loop/unblock.mjs" --self-test
 pnpm --dir "$ROOT" run test
 HEIGHT_SAFETY_POSTGRES_URL="$HEIGHT_SAFETY_POSTGRES_URL" \
