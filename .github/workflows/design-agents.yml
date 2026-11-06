@@ -39,7 +39,7 @@ jobs:
       github.event.label.name == 'status:in-progress' ||
       github.event.label.name == 'status:changes-requested'
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 135
     steps:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -50,7 +50,7 @@ jobs:
 
       - name: Run builder
         uses: anomalyco/opencode/github@latest
-        timeout-minutes: 45
+        timeout-minutes: 120
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         with:
@@ -94,12 +94,25 @@ jobs:
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          gh issue comment "${{ github.event.issue.number }}" --repo "${{ github.repository }}" \
-            --body "Builder run failed or timed out. Ticket is quarantined as agent:failed; inspect the run and remove that label before retrying."
-          gh issue edit "${{ github.event.issue.number }}" --repo "${{ github.repository }}" \
-            --remove-label "status:in-progress" --remove-label "status:changes-requested" \
-            --remove-label "status:ready" --add-label "status:blocked" --add-label "agent:failed"
+          retry_used="$(gh issue view "$ISSUE_NUMBER" --repo "$REPOSITORY" --json labels \
+            --jq '[.labels[].name] | index("agent:retry-1") != null')"
+          if [ "$retry_used" = "false" ]; then
+            gh issue comment "$ISSUE_NUMBER" --repo "$REPOSITORY" \
+              --body "Builder failed/timed out once; automatically retrying once with the same ticket scope."
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" \
+              --remove-label "status:in-progress" --remove-label "status:changes-requested" \
+              --remove-label "status:ready" --add-label "agent:retry-1"
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" --add-label "status:in-progress"
+          else
+            gh issue comment "$ISSUE_NUMBER" --repo "$REPOSITORY" \
+              --body "Builder failed/timed out on its one retry. Ticket is quarantined as agent:failed; inspect the run and remove that label before retrying."
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" \
+              --remove-label "status:in-progress" --remove-label "status:changes-requested" \
+              --remove-label "status:ready" --add-label "status:blocked" --add-label "agent:failed"
+          fi
 
       - name: Mark validating
         env:
@@ -108,4 +121,5 @@ jobs:
           gh issue edit "${{ github.event.issue.number }}" \
             --remove-label "status:in-progress" \
             --remove-label "status:changes-requested" \
+            --remove-label "agent:retry-1" \
             --add-label "status:validating"
