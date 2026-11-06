@@ -1,0 +1,155 @@
+# Tests the actual design-system PR in a disposable GitHub runner/database.
+# Only this workflow can turn a design ticket into status:done.
+
+name: Design PR checks
+
+on:
+  pull_request:
+    branches: [design-system]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Existing design-system PR number to validate
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: design-pr-check-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      TEST_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      TEST_POSTGRES_ALLOW_MIGRATION: '1'
+      HEIGHT_SAFETY_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Resolve PR and linked ticket
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+        run: |
+          pr_json="$(gh pr view "$PR_NUMBER" --repo "$REPOSITORY" \
+            --json headRefName,baseRefName,title,body)"
+          PR_JSON="$pr_json" node -e '
+            const fs = require("node:fs");
+            const pr = JSON.parse(process.env.PR_JSON);
+            const linkedIssue = `${pr.title}\n${pr.body ?? ""}`.match(/(?:Issue|Closes|Fixes)\s+#([0-9]+)/i)?.[1] ?? "";
+            fs.appendFileSync(process.env.GITHUB_OUTPUT,
+              `number=${process.env.PR_NUMBER}\nhead_ref=${pr.headRefName}\nissue_number=${linkedIssue}\nbase_ref=${pr.baseRefName}\n`);
+          '
+          if [ "$(gh pr view "$PR_NUMBER" --repo "$REPOSITORY" --json baseRefName --jq .baseRefName)" != "design-system" ]; then
+            echo "PR must target design-system" >&2
+            exit 1
+          fi
+
+      - name: Check out PR revision
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.sha || steps.pr.outputs.head_ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+        with:
+          version: 11.4.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run repository verification gate
+        timeout-minutes: 45
+        run: tools/verify.sh
+
+      - name: Run Android instrumented tests on emulator
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        timeout-minutes: 30
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          target: google_apis
+          disable-animations: true
+          script: |
+            source tools/android-env.sh
+            bash tools/gradle.sh -p apps/android :app:connectedDebugAndroidTest --no-daemon
+
+      - name: Mark linked ticket done
+        if: success() && steps.pr.outputs.issue_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ steps.pr.outputs.issue_number }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$REPOSITORY" \
+            --body "Validator: PASS. GitHub Actions ran tools/verify.sh successfully for PR #$PR_NUMBER. The scheduled tick will merge and close this ticket."
+          gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" \
+            --remove-label status:validating --remove-label status:in-progress \
+            --remove-label status:changes-requested --add-label status:done
+
+      - name: Return linked ticket for fixes
+        if: failure() && steps.pr.outputs.issue_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ steps.pr.outputs.issue_number }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$REPOSITORY" \
+            --body "Validator: FAIL. The verification gate failed for PR #$PR_NUMBER; see this Design PR checks run for the failing command. Returning to the builder."
+          gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" \
+            --remove-label status:validating --add-label status:changes-requested
+
+      - name: Upload Android build reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: design-pr-${{ steps.pr.outputs.number }}-reports
+          path: |
+            apps/android/app/build/reports/**
+            apps/android/app/build/outputs/**
+            apps/android/app/build/outputs/androidTest-results/connected/**
+          if-no-files-found: ignore
+          retention-days: 7
