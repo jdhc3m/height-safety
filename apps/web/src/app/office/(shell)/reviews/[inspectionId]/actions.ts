@@ -11,7 +11,7 @@ import {
   openOfficeSession,
   requestDraftReportGeneration,
   resolveReviewIssue,
-} from '../../../../lib/office-api';
+} from '../../../../../lib/office-api';
 
 function reviewPath(inspectionId: string): string {
   return `/office/reviews/${encodeURIComponent(inspectionId)}`;

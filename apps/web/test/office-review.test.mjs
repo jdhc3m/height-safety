@@ -25,10 +25,10 @@ test('office API reads the company scope from a configured identity claim', asyn
 test('office write actions are server actions that require a recorded reason', async () => {
   const api = await read('../src/lib/office-api.ts');
   const actions = await read(
-    '../src/app/office/reviews/[inspectionId]/actions.ts',
+    '../src/app/office/(shell)/reviews/[inspectionId]/actions.ts',
   );
   const review = await read(
-    '../src/app/office/reviews/[inspectionId]/page.tsx',
+    '../src/app/office/(shell)/reviews/[inspectionId]/page.tsx',
   );
 
   // Writes run only through the authenticated server-side session; the opaque
@@ -55,12 +55,18 @@ test('office write actions are server actions that require a recorded reason', a
 
 test('office review keeps neutral language and bounded failure states', async () => {
   const review = await read(
-    '../src/app/office/reviews/[inspectionId]/page.tsx',
+    '../src/app/office/(shell)/reviews/[inspectionId]/page.tsx',
   );
-  const office = await read('../src/app/office/page.tsx');
+  const office = await read('../src/app/office/(shell)/page.tsx');
+  const legal = await read('../src/app/legal/page.tsx');
 
   assert.match(review, /never rewrite the\s+inspector/);
-  assert.match(review, /does not certify an anchor or determine\s+compliance/);
+  assert.match(review, /Scope and legal/);
+  assert.doesNotMatch(review, /certif/);
+  assert.match(
+    legal,
+    /does not certify an\s+anchor, approve engineering work or\s+determine compliance/,
+  );
   assert.match(review, /failure\.code/);
   assert.match(office, /isOfficeApiConfigured\(\)/);
   assert.match(
@@ -72,14 +78,15 @@ test('office review keeps neutral language and bounded failure states', async ()
 test('approved snapshots flow to server-authenticated draft report delivery', async () => {
   const api = await read('../src/lib/office-api.ts');
   const actions = await read(
-    '../src/app/office/reviews/[inspectionId]/actions.ts',
+    '../src/app/office/(shell)/reviews/[inspectionId]/actions.ts',
   );
   const review = await read(
-    '../src/app/office/reviews/[inspectionId]/page.tsx',
+    '../src/app/office/(shell)/reviews/[inspectionId]/page.tsx',
   );
   const fileRoute = await read(
-    '../src/app/office/reports/[generationId]/file/route.ts',
+    '../src/app/office/(shell)/reports/[generationId]/file/route.ts',
   );
+  const legal = await read('../src/app/legal/page.tsx');
 
   assert.match(api, /getApprovedSnapshot/);
   assert.match(api, /requestDraftReportGeneration/);
@@ -98,8 +105,8 @@ test('approved snapshots flow to server-authenticated draft report delivery', as
   assert.match(review, /getDraftReportGeneration/);
   assert.match(review, /Download draft report PDF/);
   assert.match(
-    review,
-    /does not issue a certificate or\s+determine compliance/,
+    legal,
+    /A draft report does not issue a\s+certificate or determine compliance/,
   );
 
   assert.match(fileRoute, /openOfficeSession\(\)/);
