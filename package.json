@@ -11,6 +11,8 @@
     "contracts:check": "tools/contracts.sh --check",
     "design-tokens:generate": "node tools/design-tokens/generate.mjs --generate",
     "design-tokens:check": "node tools/design-tokens/generate.mjs --check",
+    "design-icons:generate": "node tools/design-icons/generate.mjs --generate",
+    "design-icons:check": "node tools/design-icons/generate.mjs --check",
     "format:check": "tools/format.sh --check",
     "lint": "tools/lint.sh",
     "pdf-spike:check": "node tools/pdf-spike/check.mjs",

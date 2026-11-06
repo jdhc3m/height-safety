@@ -349,6 +349,18 @@ is inferred or approved.
 
 ## In progress
 
+- Design-system icon core (`T2`, issue #35) is implemented for the Android
+  field app: 11 authored core glyphs (Jobs, Sites, Anchors, Reports, Review
+  queue, Sync, Account, Serviceable, Defective, Not inspected, Further
+  assessment) live as SVG sources under `design/icons/` on a documented
+  24px/2px-keyline convention, and `tools/design-icons/generate.mjs` generates
+  the `HeightSafetyIcons` ImageVectors (tile + free-glyph variants, fixed hue
+  tokens from `design/tokens.json`, `contentDescription` supplied at call
+  sites). Roborazzi light/dark icon contact sheets are committed and gated
+  through `tools/android-theme.sh --check`; `tools/design-icons.sh --check`
+  gates Kotlin drift in the root verify command. The set still needs owner
+  review before merge; remaining action/proposal icons, call-site migration
+  and screen redesigns remain separate tickets.
 - Design-system theme core (`T1`, issue #34) is implemented for the Android
   field app: light and dark Material 3 color schemes, field typography
   minimums (`bodyLarge` 16sp, `titleLarge` 22sp) and shapes now derive from the
