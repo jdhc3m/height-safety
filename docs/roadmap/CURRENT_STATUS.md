@@ -357,6 +357,16 @@ is inferred or approved.
   baselines are committed and gated through
   `tools/android-theme.sh --check` in the root verify command. Screens, icons
   and navigation remain separate design-system tickets.
+- Design-system web tokens and app shell (`T8`, issue #41) is implemented for
+  the office web: `globals.css` is replaced with styles driven by the
+  generated `tokens.css` custom properties, the office pages render inside a
+  `/office/(shell)` route-group layout with sidebar navigation, a breadcrumb
+  header and a footer link to a new single `/legal` scope-and-legal page, and
+  one `StatusPill` component maps recorded outcome, sync and workflow values
+  with a neutral fallback for unknown values. Playwright coverage renders the
+  shell on every office route and every status pill variant; existing office
+  routes keep their current URLs. New information-architecture pages remain
+  later design-system tickets.
 - `3C-01` is in review: durable idempotent mutation outbox and background
   drain seam are implemented, and the local API now commits mutation envelopes,
   inspection evidence and replayable acknowledgements atomically. Production
