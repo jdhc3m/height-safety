@@ -19,6 +19,8 @@ on:
     - cron: "0 * * * *"
   issues:
     types: [closed, labeled]
+  pull_request_review:
+    types: [submitted]
   workflow_dispatch:
 
 permissions:
@@ -34,9 +36,10 @@ concurrency:
 jobs:
   tick:
     if: >-
-      github.event_name != 'issues' ||
+      (github.event_name != 'issues' && github.event_name != 'pull_request_review') ||
       github.event.action == 'closed' ||
-      github.event.label.name == 'status:done'
+      github.event.label.name == 'status:done' ||
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'approved')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:

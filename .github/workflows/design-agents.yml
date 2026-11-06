@@ -84,6 +84,11 @@ jobs:
           if [ "$base" != "design-system" ]; then
             gh pr edit "$pr_number" --repo "$GH_REPOSITORY" --base design-system
           fi
+          needs_owner="$(gh issue view "$ISSUE_NUMBER" --repo "$GH_REPOSITORY" \
+            --json labels --jq '[.labels[].name] | index("needs-owner") != null')"
+          if [ "$needs_owner" = "true" ]; then
+            gh pr edit "$pr_number" --repo "$GH_REPOSITORY" --add-reviewer jdhc3m
+          fi
 
       - name: Reset on builder failure
         if: failure()
