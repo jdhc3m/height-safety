@@ -105,7 +105,11 @@ for (const issue of listIssues("status:done")) {
 }
 
 // 2. Capacity check.
-const active = [...listIssues("status:in-progress"), ...listIssues("status:validating")].filter(isDesignIssue).length;
+const active = [
+  ...listIssues("status:in-progress"),
+  ...listIssues("status:validating"),
+  ...listIssues("status:changes-requested"),
+].filter(isDesignIssue).length;
 let slots = Math.max(0, maxConcurrent - active);
 log(`active=${active} max=${maxConcurrent} slots=${slots}`);
 
