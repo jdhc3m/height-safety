@@ -1,38 +1,23 @@
 import { redirect } from 'next/navigation';
 
-import { auth0, isAuth0Configured } from '../../lib/auth0';
+import { auth0, isAuth0Configured } from '../../../lib/auth0';
 import {
   OfficeApiFailure,
   isOfficeApiConfigured,
   listJobs,
   openOfficeSession,
   type OfficeJob,
-} from '../../lib/office-api';
+} from '../../../lib/office-api';
+import { StatusPill } from '../../../components/StatusPill';
 
 export const dynamic = 'force-dynamic';
 
 function JurisdictionChip({ jurisdiction }: { jurisdiction: 'NSW' | 'QLD' }) {
   return (
-    <span
-      className={`chip ${jurisdiction === 'NSW' ? 'chip--nsw' : 'chip--qld'}`}
-    >
-      {jurisdiction}
+    <span className="chip chip--neutral">
+      Jurisdiction recorded: {jurisdiction}
     </span>
   );
-}
-
-function WorkflowChip({ status }: { status: string }) {
-  const tone =
-    status === 'changes_requested'
-      ? 'chip--warn'
-      : status === 'approved_for_report_generation' ||
-          status === 'report_generated'
-        ? 'chip--ok'
-        : status === 'submitted' || status === 'under_review'
-          ? 'chip--info'
-          : 'chip--neutral';
-
-  return <span className={`chip ${tone}`}>{status.replaceAll('_', ' ')}</span>;
 }
 
 async function loadJobs(): Promise<
@@ -51,7 +36,7 @@ async function loadJobs(): Promise<
 export default async function OfficePage() {
   if (!isAuth0Configured || !auth0) {
     return (
-      <main className="shell">
+      <div className="page-stack">
         <section className="hero" aria-labelledby="office-title">
           <div>
             <p className="eyebrow">Height Safety / Office workspace</p>
@@ -66,7 +51,7 @@ export default async function OfficePage() {
             authorisation.
           </p>
         </section>
-      </main>
+      </div>
     );
   }
 
@@ -78,7 +63,7 @@ export default async function OfficePage() {
   const result = isOfficeApiConfigured() ? await loadJobs() : undefined;
 
   return (
-    <main className="shell">
+    <div className="page-stack">
       <section className="hero" aria-labelledby="office-title">
         <div>
           <p className="eyebrow">Height Safety / Office workspace</p>
@@ -144,7 +129,7 @@ export default async function OfficePage() {
                   <JurisdictionChip jurisdiction={job.jurisdiction} />
                 </span>
                 <span role="cell">
-                  <WorkflowChip status={job.workflowStatus} />
+                  <StatusPill kind="workflow" value={job.workflowStatus} />
                 </span>
                 <span role="cell">v{job.jobPackVersion}</span>
                 <span role="cell">
@@ -174,6 +159,6 @@ export default async function OfficePage() {
           Approval, change requests and report generation are not wired here.
         </p>
       </section>
-    </main>
+    </div>
   );
 }

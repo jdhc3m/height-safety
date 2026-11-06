@@ -2,7 +2,7 @@ import {
   getDraftReportFile,
   OfficeApiFailure,
   openOfficeSession,
-} from '../../../../../lib/office-api';
+} from '../../../../../../lib/office-api';
 
 export const dynamic = 'force-dynamic';
 

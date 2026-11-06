@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import { auth0, isAuth0Configured } from '../../../../lib/auth0';
+import { auth0, isAuth0Configured } from '../../../../../lib/auth0';
 import {
   OfficeApiFailure,
   getDraftReportGeneration,
@@ -11,8 +11,8 @@ import {
   type ReviewIssue,
   type ReviewIssueType,
   type ReportGeneration,
-  type ReportGenerationStatus,
-} from '../../../../lib/office-api';
+} from '../../../../../lib/office-api';
+import { StatusPill } from '../../../../../components/StatusPill';
 import {
   approveInspectionAction,
   requestDraftReportAction,
@@ -34,14 +34,6 @@ const ISSUE_TONE: Record<ReviewIssueType, string> = {
   warning: 'chip--warn',
   conflict: 'chip--neutral',
   change: 'chip--warn',
-};
-
-const GENERATION_LABEL: Record<ReportGenerationStatus, string> = {
-  queued: 'Queued',
-  processing: 'Processing',
-  completed: 'Completed',
-  failed: 'Failed',
-  superseded: 'Superseded',
 };
 
 type Banner = { readonly tone: 'ok' | 'warn'; readonly text: string };
@@ -165,7 +157,7 @@ export default async function ReviewPage({
 
   if (!isAuth0Configured || !auth0) {
     return (
-      <main className="shell">
+      <div className="page-stack">
         <section className="hero" aria-labelledby="review-title">
           <div>
             <p className="eyebrow">Height Safety / Office review</p>
@@ -176,7 +168,7 @@ export default async function ReviewPage({
             </p>
           </div>
         </section>
-      </main>
+      </div>
     );
   }
 
@@ -232,7 +224,7 @@ export default async function ReviewPage({
   const banner = resultBanner(query);
 
   return (
-    <main className="shell">
+    <div className="page-stack">
       <section className="hero" aria-labelledby="review-title">
         <div>
           <p className="eyebrow">Height Safety / Office review</p>
@@ -317,8 +309,7 @@ export default async function ReviewPage({
             </div>
             <p className="section-copy">
               Report generation uses the frozen approved snapshot and creates an
-              immutable draft revision. It does not issue a certificate or
-              determine compliance.
+              immutable draft revision.
             </p>
           </div>
 
@@ -330,18 +321,7 @@ export default async function ReviewPage({
           ) : reportGeneration ? (
             <div className="report-generation" aria-live="polite">
               <div className="chip-row">
-                <span
-                  className={`chip ${
-                    reportGeneration.status === 'completed'
-                      ? 'chip--ok'
-                      : reportGeneration.status === 'failed' ||
-                          reportGeneration.status === 'superseded'
-                        ? 'chip--warn'
-                        : 'chip--info'
-                  }`}
-                >
-                  {GENERATION_LABEL[reportGeneration.status]}
-                </span>
+                <StatusPill kind="workflow" value={reportGeneration.status} />
                 {reportGeneration.revisionNumber !== null ? (
                   <span className="chip chip--neutral">
                     Draft revision {reportGeneration.revisionNumber}
@@ -460,13 +440,7 @@ export default async function ReviewPage({
                     <span className={`chip ${ISSUE_TONE[issue.issueType]}`}>
                       {ISSUE_LABEL[issue.issueType]}
                     </span>
-                    <span
-                      className={`chip ${
-                        issue.status === 'open' ? 'chip--info' : 'chip--ok'
-                      }`}
-                    >
-                      {issue.status}
-                    </span>
+                    <StatusPill kind="workflow" value={issue.status} />
                     {issue.anchorInspectionId ? (
                       <span className="mono issue-card__ref">
                         {issue.anchorInspectionId}
@@ -524,11 +498,8 @@ export default async function ReviewPage({
 
       <section className="preview">
         <p className="disclaimer">
-          Prototype workflow awaiting professional validation. Recorded
-          inspection outcomes, technical decisions and report approval remain
-          the responsibility of the inspecting organisation and its authorised
-          personnel. This view does not certify an anchor or determine
-          compliance.
+          The standing scope and legal wording for this product lives in one
+          place: <Link href="/legal">Scope and legal</Link>.
         </p>
         <p>
           <Link className="quiet-link" href="/office">
@@ -536,6 +507,6 @@ export default async function ReviewPage({
           </Link>
         </p>
       </section>
-    </main>
+    </div>
   );
 }
