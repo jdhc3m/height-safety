@@ -45,7 +45,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
       GITHUB_REPOSITORY: ${{ github.repository }}
-      MAX_CONCURRENT: "1"
+      MAX_CONCURRENT: "2"
     steps:
       - name: Require PAT
         run: |
