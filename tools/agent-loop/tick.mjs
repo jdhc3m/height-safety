@@ -74,6 +74,23 @@ for (const issue of listIssues("status:done")) {
     log(`#${issue.number}: status:done but no open PR found; leaving for inspection`);
     continue;
   }
+  if (issue.labels?.some(({ name }) => name === "needs-owner")) {
+    const reviewDecision = gh([
+      "pr",
+      "view",
+      String(pr.number),
+      "--repo",
+      repo,
+      "--json",
+      "reviewDecision",
+      "--jq",
+      ".reviewDecision",
+    ]).trim();
+    if (reviewDecision !== "APPROVED") {
+      log(`#${issue.number}: waiting for owner approval on PR #${pr.number}`);
+      continue;
+    }
+  }
   log(`#${issue.number}: squash-merge PR #${pr.number}${dryRun ? " [dry-run]" : ""}`);
   if (!dryRun) {
     try {
