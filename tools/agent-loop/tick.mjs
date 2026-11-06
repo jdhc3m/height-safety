@@ -114,6 +114,7 @@ if (slots > 0) {
   const eligible = [];
   for (const issue of candidates) {
     if (!isDesignIssue(issue)) continue;
+    if (issue.labels?.some(({ name }) => name === "agent:failed")) continue;
     if (prForIssue(issue.number)) continue;
     const openDeps = depNumbers(issue.body).filter((dep) => stateOf(dep) !== "CLOSED");
     if (openDeps.length === 0) eligible.push(issue);
@@ -127,7 +128,7 @@ if (slots > 0) {
     slots -= 1;
     log(`#${issue.number}: start "${issue.title}"${dryRun ? " [dry-run]" : ""}`);
     if (dryRun) continue;
-    gh(["issue", "edit", String(issue.number), "--repo", repo, "--remove-label", "status:ready", "--remove-label", "status:blocked"]);
+    gh(["issue", "edit", String(issue.number), "--repo", repo, "--remove-label", "status:ready", "--remove-label", "status:blocked", "--remove-label", "agent:failed"]);
     gh(["issue", "edit", String(issue.number), "--repo", repo, "--add-label", "status:in-progress"]);
   }
 }
