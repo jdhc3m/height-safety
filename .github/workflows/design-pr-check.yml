@@ -72,6 +72,18 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Detect Android UI changes
+        id: android_changes
+        run: |
+          changed_paths="$(git diff --name-only origin/design-system...HEAD)"
+          if printf '%s\n' "$changed_paths" | grep -Eq '^(apps/android/app/src/(main|debug|androidTest)/|apps/android/app/build.gradle.kts$|apps/android/build.gradle.kts$|apps/android/gradle/|tools/android-theme.sh$)'; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+            echo "Android app/test files changed; emulator checks will run."
+          else
+            echo "required=false" >> "$GITHUB_OUTPUT"
+            echo "No Android app/test files changed; skipping emulator to save runner time."
+          fi
+
       - name: Set up pnpm
         uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
         with:
@@ -103,6 +115,7 @@ jobs:
         run: tools/verify.sh
 
       - name: Enable KVM for the Android emulator
+        if: steps.android_changes.outputs.required == 'true'
         run: |
           if [ ! -e /dev/kvm ]; then
             echo "GitHub runner has no /dev/kvm device; emulator tests cannot start" >&2
@@ -111,6 +124,7 @@ jobs:
           sudo chmod 666 /dev/kvm
 
       - name: Run Android instrumented tests on emulator
+        if: steps.android_changes.outputs.required == 'true'
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         timeout-minutes: 30
         with:
@@ -118,6 +132,7 @@ jobs:
           arch: x86_64
           profile: pixel_2
           target: google_apis
+          disk-size: 2G
           disable-animations: true
           disable-linux-hw-accel: false
           script: |
