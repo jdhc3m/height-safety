@@ -102,6 +102,14 @@ jobs:
         timeout-minutes: 45
         run: tools/verify.sh
 
+      - name: Enable KVM for the Android emulator
+        run: |
+          if [ ! -e /dev/kvm ]; then
+            echo "GitHub runner has no /dev/kvm device; emulator tests cannot start" >&2
+            exit 1
+          fi
+          sudo chmod 666 /dev/kvm
+
       - name: Run Android instrumented tests on emulator
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         timeout-minutes: 30
@@ -111,6 +119,7 @@ jobs:
           profile: pixel_2
           target: google_apis
           disable-animations: true
+          disable-linux-hw-accel: false
           script: |
             source tools/android-env.sh
             bash tools/gradle.sh -p apps/android :app:connectedDebugAndroidTest --no-daemon
