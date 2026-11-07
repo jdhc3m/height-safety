@@ -1,10 +1,11 @@
 <!-- Generated from design/icons/found-anchor.svg by tools/design-icons/generate.mjs. Do not edit. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-name="Found anchor (new)" data-colour="purple" data-variant="tile">
   <rect data-role="tile" x="0" y="0" width="24" height="24" rx="6" fill="#9F8FEF"/>
-  <path data-role="base" fill="none" stroke="#FFFFFF" d="M8.1,6.8 A2.3,2.3 0 1 1 12.7,6.8 A2.3,2.3 0 1 1 8.1,6.8 Z" stroke-width="2.1" stroke-linecap="butt" stroke-linejoin="round"/>
-  <path data-role="base" fill="#FFFFFF" fill-rule="evenodd" d="M9.3,16.6 L9.3,9 A1.1,1.1 0 0 1 11.5,9 L11.5,16.6 Z"/>
-  <path data-role="base" fill="#FFFFFF" fill-rule="evenodd" d="M6.85,9.7 L13.95,9.7 A0.95,0.95 0 0 1 13.95,11.6 L6.85,11.6 A0.95,0.95 0 0 1 6.85,9.7 Z"/>
-  <path data-role="base" fill="none" stroke="#FFFFFF" d="M5.9,13.6 A4.6,4.6 0 0 1 14.9,13.6" stroke-width="2.1" stroke-linecap="butt" stroke-linejoin="round"/>
-  <path data-role="detail" fill="#FFFFFF" fill-rule="evenodd" d="M13.4,17.3 A4.1,4.1 0 1 1 21.6,17.3 A4.1,4.1 0 1 1 13.4,17.3 Z"/>
-  <path data-role="mark" fill="none" stroke="#9F8FEF" d="M17.5,15.4 L17.5,19.2 M15.6,17.3 L19.4,17.3" stroke-width="1.9" stroke-linecap="butt" stroke-linejoin="round"/>
+  <path data-role="base" fill="#FFFFFF" fill-rule="evenodd" d="M8.5,6.2 A2.7,2.7 0 1 1 13.9,6.2 A2.7,2.7 0 1 1 8.5,6.2 Z M10,6.2 A1.2,1.2 0 1 1 12.4,6.2 A1.2,1.2 0 1 1 10,6.2 Z"/>
+  <path data-role="base" fill="#FFFFFF" fill-rule="evenodd" d="M11.1,7.4 L11.3,7.4 A1,1 0 0 1 12.3,8.4 L12.3,14.2 A1,1 0 0 1 11.3,15.2 L11.1,15.2 A1,1 0 0 1 10.1,14.2 L10.1,8.4 A1,1 0 0 1 11.1,7.4 Z"/>
+  <path data-role="base" fill="#FFFFFF" fill-rule="evenodd" d="M8.3,8.9 L14.1,8.9 A0.9,0.9 0 0 1 14.1,10.7 L8.3,10.7 A0.9,0.9 0 0 1 8.3,8.9 Z"/>
+  <path data-role="base" fill="#FFFFFF" fill-rule="evenodd" d="M5.6,13 A5.6,5.6 0 0 0 16.8,13 L14.8,13 A3.6,3.6 0 0 1 7.6,13 Z"/>
+  <path data-role="base" fill="#FFFFFF" fill-rule="evenodd" d="M3.6,10.6 L5.6,13.7 L7.6,11.7 Z M18.8,10.6 L16.8,13.7 L14.8,11.7 Z"/>
+  <path data-role="detail" fill="#FFFFFF" fill-rule="evenodd" d="M13.5,17.5 A4,4 0 1 1 21.5,17.5 A4,4 0 1 1 13.5,17.5 Z"/>
+  <path data-role="mark" fill="#9F8FEF" fill-rule="evenodd" d="M16.3,16.8 L18.7,16.8 A0.7,0.7 0 0 1 18.7,18.2 L16.3,18.2 A0.7,0.7 0 0 1 16.3,16.8 Z M17.5,15.6 A0.7,0.7 0 0 1 18.2,16.3 L18.2,18.7 A0.7,0.7 0 0 1 17.5,19.4 A0.7,0.7 0 0 1 16.8,18.7 L16.8,16.3 A0.7,0.7 0 0 1 17.5,15.6 Z"/>
 </svg>

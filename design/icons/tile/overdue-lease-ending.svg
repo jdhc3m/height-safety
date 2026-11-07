@@ -1,6 +1,6 @@
 <!-- Generated from design/icons/overdue-lease-ending.svg by tools/design-icons/generate.mjs. Do not edit. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-name="Overdue / lease ending" data-colour="red" data-variant="tile">
   <rect data-role="tile" x="0" y="0" width="24" height="24" rx="6" fill="#F15B50"/>
-  <path data-role="base" fill="none" stroke="#FFFFFF" d="M5.6,12.2 A6.4,6.4 0 1 1 18.4,12.2 A6.4,6.4 0 1 1 5.6,12.2 Z" stroke-width="2.7" stroke-linecap="butt" stroke-linejoin="round"/>
-  <path data-role="base" fill="none" stroke="#FFFFFF" d="M12,8.3 L12,12.2 L15.2,14.4" stroke-width="2.4" stroke-linecap="butt" stroke-linejoin="round"/>
+  <path data-role="base" fill="none" stroke="#FFFFFF" d="M5.6,12 A6.4,6.4 0 1 1 18.4,12 A6.4,6.4 0 1 1 5.6,12 Z" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round"/>
+  <path data-role="detail" fill="none" stroke="#FFFFFF" d="M12,8.2 L12,12 L15.1,14.2" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round"/>
 </svg>

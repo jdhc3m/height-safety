@@ -169,15 +169,15 @@ const parseSource = (slug, expectedName, expectedColour) => {
 const renderSvg = (source, variant, hues) => {
   const [base, bold] = hues[source.colour];
   const glyphColour = (p) => {
+    if (p.role === "accent") return p.attrs.fill;
+    if (p.role === "accent-mark") return "#FFFFFF";
     if (variant === "free") {
       if (p.role === "base") return base;
       if (p.role === "detail") return bold;
-      if (p.role === "mark") return "#FFFFFF";
-      return p.attrs.fill;
+      return "#FFFFFF";
     }
     if (p.role === "base" || p.role === "detail") return "#FFFFFF";
-    if (p.role === "mark") return base;
-    return p.attrs.fill;
+    return base;
   };
   const glyph = source.paths.map((p) => {
     const colour = glyphColour(p);

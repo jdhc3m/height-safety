@@ -38,9 +38,9 @@ Android screen call sites are unchanged by this ticket.
   time): extra subpaths inside the outline punch holes — transparent in free
   glyphs, tile colour in tile glyphs. Keep subpaths non-overlapping within one
   element.
-- Stroked paths use `fill="none"`, a `data-role`, an explicit `stroke-width`,
-  `stroke-linecap="butt"` and `stroke-linejoin="round"`; they never carry a
-  colour (the role decides it).
+- Stroked paths use `fill="none"`, a `data-role`, the 2px keyline
+  `stroke-width="2"`, `stroke-linecap="butt"` and `stroke-linejoin="round"`;
+  they never carry a colour (the role decides it).
 
 ## Variants (DESIGN.md §9)
 
