@@ -8,7 +8,7 @@ test('web authentication boundary uses Auth0 middleware and protected office rou
     'utf8',
   );
   const office = await readFile(
-    new URL('../src/app/office/page.tsx', import.meta.url),
+    new URL('../src/app/office/(shell)/page.tsx', import.meta.url),
     'utf8',
   );
 
