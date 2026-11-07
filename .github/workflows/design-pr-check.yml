@@ -118,6 +118,7 @@ jobs:
           arch: x86_64
           profile: pixel_2
           target: google_apis
+          disk-size: 2G
           disable-animations: true
           disable-linux-hw-accel: false
           script: |
