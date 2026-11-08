@@ -59,6 +59,10 @@ the API are labelled accordingly inside the sample.
   approval gate, draft reports, administration, flow map and handoff matrix.
   Fixed-column tables use system UI fonts for identifiers for offline
   legibility; semantic status roles follow `HEIGHT_SAFETY_UI_FLOW.md`.
+- [Web IA ↔ API map](WEB_IA_API_MAP.md)
+  — per-screen mapping of §6.2 data needs to the existing OpenAPI contract,
+  controllers and `office-api.ts` methods, with follow-up tickets for every
+  confirmed contract gap.
 
 ## Supporting reference
 
