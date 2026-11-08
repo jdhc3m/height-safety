@@ -1,0 +1,5 @@
+<!-- Generated from design/icons/defective.svg by tools/design-icons/generate.mjs. Do not edit. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-name="Defective" data-colour="red" data-variant="free">
+  <path data-role="base" fill="#F15B50" fill-rule="evenodd" d="M12,4.6 A1.25,1.25 0 0 1 13.25,5.85 L13.25,13.15 A1.25,1.25 0 0 1 12,14.4 A1.25,1.25 0 0 1 10.75,13.15 L10.75,5.85 A1.25,1.25 0 0 1 12,4.6 Z"/>
+  <path data-role="base" fill="#F15B50" fill-rule="evenodd" d="M13.75,18.3 A1.75,1.75 0 1 1 10.25,18.3 A1.75,1.75 0 1 1 13.75,18.3 Z"/>
+</svg>
