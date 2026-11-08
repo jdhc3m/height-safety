@@ -27,7 +27,6 @@ permissions:
   contents: read
   issues: write
   pull-requests: write
-  id-token: write
 
 concurrency:
   group: design-agent-${{ github.event.issue.number }}
@@ -46,16 +45,24 @@ jobs:
         with:
           ref: design-system
           fetch-depth: 0
-          persist-credentials: false
+          token: ${{ secrets.AGENT_TOKEN }}
+          persist-credentials: true
+
+      - name: Configure commit identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Run builder
         uses: anomalyco/opencode/github@latest
         timeout-minutes: 120
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.AGENT_TOKEN }}
         with:
           model: openrouter/z-ai/glm-5.3-flash
           agent: builder
+          use_github_token: true
           prompt: |
             Implement GitHub issue #${{ github.event.issue.number }} for the height-safety
             design-system workstream. Read the issue body, its acceptance checklist and its
