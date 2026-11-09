@@ -16,6 +16,7 @@ docs/CreateInvitationDto.md
 docs/CreateJobDto.md
 docs/CreateReviewIssueDto.md
 docs/CreateSiteDto.md
+docs/DecideReconciliationProposalDto.md
 docs/HealthResponseDto.md
 docs/IdentityApi.md
 docs/InvitationResponseDto.md
@@ -26,6 +27,10 @@ docs/JobWorkflowApi.md
 docs/PhotoUploadChunkDto.md
 docs/PhotoUploadChunkResponseDto.md
 docs/ProviderAccessTokenDto.md
+docs/ReconciliationProposalDecisionResponseDto.md
+docs/ReconciliationProposalPhotoDto.md
+docs/ReconciliationProposalResponseDto.md
+docs/RegisterReconciliationApi.md
 docs/ReportGenerationResponseDto.md
 docs/ReportsApi.md
 docs/RequestReportGenerationDto.md
@@ -57,6 +62,7 @@ settings.gradle
 src/main/kotlin/au/com/heightsafety/api/apis/ApprovalsApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/IdentityApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/JobWorkflowApi.kt
+src/main/kotlin/au/com/heightsafety/api/apis/RegisterReconciliationApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/ReportsApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/ReviewApi.kt
 src/main/kotlin/au/com/heightsafety/api/apis/SiteRegisterApi.kt
@@ -94,6 +100,7 @@ src/main/kotlin/au/com/heightsafety/api/models/CreateInvitationDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/CreateJobDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/CreateReviewIssueDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/CreateSiteDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/DecideReconciliationProposalDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/HealthResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/InvitationResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/JobAssignmentResponseDto.kt
@@ -102,6 +109,9 @@ src/main/kotlin/au/com/heightsafety/api/models/JobResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/PhotoUploadChunkDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/PhotoUploadChunkResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/ProviderAccessTokenDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/ReconciliationProposalDecisionResponseDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/ReconciliationProposalPhotoDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/ReconciliationProposalResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/ReportGenerationResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/RequestReportGenerationDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/ResolveReviewIssueDto.kt
@@ -126,6 +136,7 @@ src/main/kotlin/au/com/heightsafety/api/models/UpdateSiteDto.kt
 src/test/kotlin/au/com/heightsafety/api/apis/ApprovalsApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/IdentityApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/JobWorkflowApiTest.kt
+src/test/kotlin/au/com/heightsafety/api/apis/RegisterReconciliationApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/ReportsApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/ReviewApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/SiteRegisterApiTest.kt
@@ -146,6 +157,7 @@ src/test/kotlin/au/com/heightsafety/api/models/CreateInvitationDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/CreateJobDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/CreateReviewIssueDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/CreateSiteDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/DecideReconciliationProposalDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/HealthResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/InvitationResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/JobAssignmentResponseDtoTest.kt
@@ -154,6 +166,9 @@ src/test/kotlin/au/com/heightsafety/api/models/JobResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/PhotoUploadChunkDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/PhotoUploadChunkResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/ProviderAccessTokenDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/ReconciliationProposalDecisionResponseDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/ReconciliationProposalPhotoDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/ReconciliationProposalResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/ReportGenerationResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/RequestReportGenerationDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/ResolveReviewIssueDtoTest.kt

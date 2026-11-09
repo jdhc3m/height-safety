@@ -9,6 +9,7 @@ import { SyncModule } from './sync/sync.module';
 import { DatabaseModule } from './database/database.module';
 import { ReviewModule } from './review/review.module';
 import { ReportGenerationModule } from './reports/report-generation.module';
+import { RegisterReconciliationModule } from './register-reconciliation/register-reconciliation.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ReportGenerationModule } from './reports/report-generation.module';
     SyncModule,
     ReviewModule,
     ReportGenerationModule,
+    RegisterReconciliationModule,
   ],
   controllers: [HealthController],
 })
