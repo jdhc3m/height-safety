@@ -114,6 +114,14 @@ jobs:
         timeout-minutes: 45
         run: tools/verify.sh
 
+      - name: Free disk space for the Android emulator
+        if: steps.android_changes.outputs.required == 'true'
+        run: |
+          df -h / | tail -1
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android/sdk/ndm /opt/ghc /usr/local/share/boost /usr/local/lib/node_modules 2>/dev/null || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          df -h / | tail -1
+
       - name: Enable KVM for the Android emulator
         if: steps.android_changes.outputs.required == 'true'
         run: |

@@ -219,7 +219,8 @@ const renderSvg = (source, variant, hues) => {
     }
     if (p.role === "base" || p.role === "detail") return "#FFFFFF";
     return base;
-  };  const glyph = source.paths.map((p) => {
+  };
+  const glyph = source.paths.map((p) => {
     const colour = glyphColour(p);
     const kept = ["d", "stroke-width", "stroke-linecap", "stroke-linejoin"]
       .filter((key) => p.attrs[key] !== undefined)
@@ -269,20 +270,20 @@ const kotlinPath = (source, variant, p, hues) => {
   const colour = kotlinColour(source, variant, p, hues);
   if (p.stroked) {
     return (
-      `        svgPath(\n` +
-      `            "${p.attrs.d}",\n` +
-      `            stroke = Color(${argb(colour)}),\n` +
-      `            strokeWidth = ${p.attrs["stroke-width"]}f,\n` +
-      `            strokeLineCap = ${kotlinCap(p.attrs)},\n` +
-      `            strokeLineJoin = ${kotlinJoin(p.attrs)},\n` +
-      `        )`
+      `            svgPath(\n` +
+      `                "${p.attrs.d}",\n` +
+      `                stroke = Color(${argb(colour)}),\n` +
+      `                strokeWidth = ${p.attrs["stroke-width"]}f,\n` +
+      `                strokeLineCap = ${kotlinCap(p.attrs)},\n` +
+      `                strokeLineJoin = ${kotlinJoin(p.attrs)},\n` +
+      `            )`
     );
   }
   return (
-    `        svgPath(\n` +
-    `            "${p.attrs.d}",\n` +
-    `            fill = Color(${argb(colour)}),\n` +
-    `        )`
+    `            svgPath(\n` +
+    `                "${p.attrs.d}",\n` +
+    `                fill = Color(${argb(colour)}),\n` +
+    `            )`
   );
 };
 
@@ -311,10 +312,10 @@ const renderKotlinIcons = (sources, hues) => {
       lines.push(`    val ${name}${variant}: ImageVector by lazy {`);
       lines.push(`        imageVector("${name}${variant}") {`);
       if (variant === "Tile") {
-        lines.push(`        svgPath(`);
-        lines.push(`            "${TILE_RECT_PATH}",`);
-        lines.push(`            fill = Color(${argb(hues[source.colour][0])}),`);
-        lines.push(`        )`);
+        lines.push(`            svgPath(`);
+        lines.push(`                "${TILE_RECT_PATH}",`);
+        lines.push(`                fill = Color(${argb(hues[source.colour][0])}),`);
+        lines.push(`            )`);
       }
       for (const p of source.paths) {
         lines.push(kotlinPath(source, kind, p, hues));
