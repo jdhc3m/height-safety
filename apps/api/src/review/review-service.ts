@@ -1,20 +1,25 @@
+import { createHash } from 'node:crypto';
+
 import type { AuthPrincipal } from '../identity/auth.types';
 import {
   assertCanReview,
   REVIEW_ISSUE_TYPES,
   ReviewFailure,
   type CreateReviewIssueInput,
+  type PrivatePhotoObjectReader,
   type ReviewActionRecord,
   type ReviewClock,
   type ReviewIdGenerator,
   type ReviewIssueRecord,
   type ReviewIssueType,
+  type ReviewPhotoMedia,
   type ReviewResolutionResult,
   type ReviewStore,
   type SubmittedEvidenceAnchor,
   type SubmittedEvidencePhotoMetadata,
   type SubmittedEvidenceReader,
   type SubmittedInspectionEvidence,
+  type SubmittedPhotoMediaReader,
 } from './review.types';
 
 const ID_MAX_LENGTH = 128;
@@ -23,6 +28,8 @@ const REASON_MAX_LENGTH = 10_000;
 export interface ReviewServiceOptions {
   readonly store: ReviewStore;
   readonly evidenceReader: SubmittedEvidenceReader;
+  readonly photoMediaReader: SubmittedPhotoMediaReader;
+  readonly photoObjects: PrivatePhotoObjectReader;
   readonly clock: ReviewClock;
   readonly idGenerator: ReviewIdGenerator;
 }
@@ -212,6 +219,53 @@ export class ReviewService {
       );
     }
     return copyEvidence(evidence);
+  }
+
+  /**
+   * Read-only office read of one evidence photo's private bytes for a photo
+   * attached to a submitted inspection revision. Bytes come straight from the
+   * private object store through the authenticated session boundary; the
+   * stored checksum, byte size and recorded content type are verified before
+   * anything is served and no public or pre-signed URL is involved.
+   */
+  async getInspectionPhotoMedia(
+    principal: AuthPrincipal,
+    inspectionId: string,
+    photoId: string,
+  ): Promise<ReviewPhotoMedia> {
+    assertCanReview(principal);
+    const normalizedInspectionId = requiredId(inspectionId, 'inspectionId');
+    const normalizedPhotoId = requiredId(photoId, 'photoId');
+    const record = await this.options.photoMediaReader.find(
+      principal.companyId,
+      normalizedInspectionId,
+      normalizedPhotoId,
+    );
+    if (!record || record.companyId !== principal.companyId) {
+      throw new ReviewFailure('NOT_FOUND', 'photo media was not found');
+    }
+    if (record.uploadState !== 'uploaded') {
+      throw new ReviewFailure(
+        'NOT_FOUND',
+        'photo media has not been uploaded yet',
+      );
+    }
+    const bytes = await this.options.photoObjects.read(record.objectKey);
+    if (
+      !bytes ||
+      bytes.byteLength !== record.byteSize ||
+      createHash('sha256').update(bytes).digest('hex') !== record.sha256
+    ) {
+      throw new ReviewFailure(
+        'PERSISTENCE_UNAVAILABLE',
+        'private photo bytes failed their stored integrity check',
+      );
+    }
+    return {
+      photoId: record.photoId,
+      bytes,
+      contentType: record.contentType,
+    };
   }
 
   async listActions(

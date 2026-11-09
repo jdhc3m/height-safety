@@ -75,6 +75,7 @@ All URIs are relative to */api/v1*
 *ReportsApi* | [**getDraftReportGeneration**](docs/ReportsApi.md#getdraftreportgeneration) | **GET** /reports/generations/{generationId} | Read status for a tenant-scoped draft report generation
 *ReportsApi* | [**requestDraftReportGeneration**](docs/ReportsApi.md#requestdraftreportgeneration) | **POST** /reports/generations | Queue one deterministic draft report revision from an approved snapshot
 *ReviewApi* | [**createReviewIssue**](docs/ReviewApi.md#createreviewissue) | **POST** /reviews/issues | Record an append-only office review issue or change request
+*ReviewApi* | [**getInspectionPhotoMedia**](docs/ReviewApi.md#getinspectionphotomedia) | **GET** /reviews/inspections/{inspectionId}/photos/{photoId}/file | Read one private evidence photo attached to a submitted inspection revision
 *ReviewApi* | [**getSubmittedInspectionEvidence**](docs/ReviewApi.md#getsubmittedinspectionevidence) | **GET** /reviews/inspections/{inspectionId}/evidence | Read one submitted inspection revision, its anchor evidence and photo metadata
 *ReviewApi* | [**listReviewActions**](docs/ReviewApi.md#listreviewactions) | **GET** /reviews/issues/{reviewIssueId}/actions | List append-only actions for one review issue
 *ReviewApi* | [**listReviewIssues**](docs/ReviewApi.md#listreviewissues) | **GET** /reviews/inspections/{inspectionId}/issues | List review issues for one submitted inspection revision

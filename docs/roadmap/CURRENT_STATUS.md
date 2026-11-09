@@ -112,6 +112,20 @@ cross-checked against the submitted inspection row and the immutable released
 job-pack snapshot. Photo bytes remain a separate follow-up; there is still no
 submitted-inspection queue.
 
+The office photo-bytes read is now implemented as `getInspectionPhotoMedia`
+(`GET /reviews/inspections/{inspectionId}/photos/{photoId}/file`). It is
+enforced for Administrator and Office reviewer roles, resolves the photo
+through its anchor inspection and one submitted inspection revision owned by
+the caller's company, and serves the private object bytes through the
+authenticated office session boundary with no public or pre-signed URL. The
+read only serves photos whose recorded upload state is `uploaded`, verifies
+the private bytes against the stored SHA-256 checksum and byte size, serves
+the recorded content type from the frozen object reference as a download
+attachment, and fails closed when integrity does not match. The PostgreSQL
+reader is read-only, and the upload transport, thumbnail policy and any web
+call-site change remain separate work; there is still no
+submitted-inspection queue.
+
 D-051 records the synthetic-only retention baseline: no automatic deletion of
 server evidence/reports/audit history, audited synthetic-tenant reset after a
 verified tenant export, and a 30-day cap for persistent synthetic development
@@ -469,10 +483,11 @@ The `3D-03` API/worker implementation and generated API contract pass the root
 gate against disposable PostgreSQL, including migration `006` tenant isolation
 and reserved-revision constraints. The office web now connects approval to
 draft generation, status refresh and authenticated PDF download. The
-company-scoped read-only submitted-inspection evidence read is implemented;
-next, add the company-scoped submitted-inspection queue and the office
-photo-bytes read so reviewers can locate submitted records and view their
-photographs before acting. Keep this work synthetic/local. The local report
+company-scoped read-only submitted-inspection evidence read and the office
+photo-bytes read are implemented; next, add the company-scoped
+submitted-inspection queue so reviewers can locate submitted records and
+reach the evidence and photo reads before acting. Keep this work
+synthetic/local. The local report
 object store is
 development/test-only. Production Cloud SQL, private Cloud Storage, Cloud Tasks,
 worker concurrency configuration and Administrator recovery verification
@@ -715,6 +730,19 @@ with Kotlin/TypeScript clients. The API suite passed 94 tests (no skips)
 against disposable PostgreSQL 17, including the live tenant-isolation check;
 contract regeneration was byte-stable and openapi-diff stayed compatible, and
 web, Android JVM/lint and the remaining root-gate checks passed.
+
+On 2026-11-09, the API also gained the company-scoped office photo-bytes read
+(issue #82): `getInspectionPhotoMedia`
+(`GET /reviews/inspections/{inspectionId}/photos/{photoId}/file`) resolves a
+photo through its anchor inspection and one submitted inspection revision,
+enforces Administrator/Office reviewer roles and the caller's company, serves
+only uploaded photos, and verifies the private bytes against the stored
+checksum, byte size and recorded content type from the frozen object
+reference before serving them as a download attachment. The API suite passed
+100 tests (no skips) against disposable PostgreSQL 18, including the live
+tenant-isolation migration check; contract regeneration was byte-stable and
+openapi-diff stayed compatible with the Kotlin/TypeScript clients
+regenerated.
 
 ## Relevant files
 
