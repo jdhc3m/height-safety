@@ -40,6 +40,9 @@ docs/SessionResponseDto.md
 docs/SessionRevokedResponseDto.md
 docs/SiteRegisterApi.md
 docs/SiteResponseDto.md
+docs/SubmittedEvidenceAnchorDto.md
+docs/SubmittedEvidencePhotoDto.md
+docs/SubmittedInspectionEvidenceResponseDto.md
 docs/SyncAnchorInspectionPayloadDto.md
 docs/SyncInspectionPhotoPayloadDto.md
 docs/SyncInspectionSubmissionPayloadDto.md
@@ -94,6 +97,9 @@ src/models/ReviewIssueResponseDto.ts
 src/models/SessionResponseDto.ts
 src/models/SessionRevokedResponseDto.ts
 src/models/SiteResponseDto.ts
+src/models/SubmittedEvidenceAnchorDto.ts
+src/models/SubmittedEvidencePhotoDto.ts
+src/models/SubmittedInspectionEvidenceResponseDto.ts
 src/models/SyncAnchorInspectionPayloadDto.ts
 src/models/SyncInspectionPhotoPayloadDto.ts
 src/models/SyncInspectionSubmissionPayloadDto.ts

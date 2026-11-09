@@ -157,7 +157,14 @@ There are data gaps; the sections above name them per row. Consolidated:
 
 - #81 — office read of a submitted inspection revision and its anchor
   evidence (blocks dashboard flags/counters, review panes 1–2, gate display,
-  register last-outcome columns).
+  register last-outcome columns). Landed after this map was written: the
+  company-scoped read `getSubmittedInspectionEvidence`
+  (`GET /reviews/inspections/{inspectionId}/evidence`) returns the revision
+  header with its evidence synchronisation state, per-anchor recorded
+  evidence and photo metadata, and recorded counts for expected/accounted
+  anchors, open review issues and pending/failed photo uploads. Photo bytes
+  remain #82; the submitted-inspection queue remains open; the per-row
+  statuses above record the map-time state.
 - #82 — office read of inspection photo media (blocks review pane 2 and the
   proposal slide-over photo).
 - #83 — list draft report generations per company and job (blocks the Reports

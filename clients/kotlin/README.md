@@ -64,6 +64,7 @@ All URIs are relative to */api/v1*
 | *ReportsApi* | [**getDraftReportGeneration**](docs/ReportsApi.md#getdraftreportgeneration) | **GET** reports/generations/{generationId} | Read status for a tenant-scoped draft report generation |
 | *ReportsApi* | [**requestDraftReportGeneration**](docs/ReportsApi.md#requestdraftreportgeneration) | **POST** reports/generations | Queue one deterministic draft report revision from an approved snapshot |
 | *ReviewApi* | [**createReviewIssue**](docs/ReviewApi.md#createreviewissue) | **POST** reviews/issues | Record an append-only office review issue or change request |
+| *ReviewApi* | [**getSubmittedInspectionEvidence**](docs/ReviewApi.md#getsubmittedinspectionevidence) | **GET** reviews/inspections/{inspectionId}/evidence | Read one submitted inspection revision, its anchor evidence and photo metadata |
 | *ReviewApi* | [**listReviewActions**](docs/ReviewApi.md#listreviewactions) | **GET** reviews/issues/{reviewIssueId}/actions | List append-only actions for one review issue |
 | *ReviewApi* | [**listReviewIssues**](docs/ReviewApi.md#listreviewissues) | **GET** reviews/inspections/{inspectionId}/issues | List review issues for one submitted inspection revision |
 | *ReviewApi* | [**resolveReviewIssue**](docs/ReviewApi.md#resolvereviewissue) | **POST** reviews/issues/{reviewIssueId}/resolve | Record a reasoned resolution without changing inspector evidence |
@@ -120,6 +121,9 @@ All URIs are relative to */api/v1*
  - [au.com.heightsafety.api.models.SessionResponseDto](docs/SessionResponseDto.md)
  - [au.com.heightsafety.api.models.SessionRevokedResponseDto](docs/SessionRevokedResponseDto.md)
  - [au.com.heightsafety.api.models.SiteResponseDto](docs/SiteResponseDto.md)
+ - [au.com.heightsafety.api.models.SubmittedEvidenceAnchorDto](docs/SubmittedEvidenceAnchorDto.md)
+ - [au.com.heightsafety.api.models.SubmittedEvidencePhotoDto](docs/SubmittedEvidencePhotoDto.md)
+ - [au.com.heightsafety.api.models.SubmittedInspectionEvidenceResponseDto](docs/SubmittedInspectionEvidenceResponseDto.md)
  - [au.com.heightsafety.api.models.SyncAnchorInspectionPayloadDto](docs/SyncAnchorInspectionPayloadDto.md)
  - [au.com.heightsafety.api.models.SyncInspectionPhotoPayloadDto](docs/SyncInspectionPhotoPayloadDto.md)
  - [au.com.heightsafety.api.models.SyncInspectionSubmissionPayloadDto](docs/SyncInspectionSubmissionPayloadDto.md)

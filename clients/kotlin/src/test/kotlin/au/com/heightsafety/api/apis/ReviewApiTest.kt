@@ -32,6 +32,7 @@ import au.com.heightsafety.api.models.ResolveReviewIssueDto
 import au.com.heightsafety.api.models.ReviewActionResponseDto
 import au.com.heightsafety.api.models.ReviewIssueResolutionResponseDto
 import au.com.heightsafety.api.models.ReviewIssueResponseDto
+import au.com.heightsafety.api.models.SubmittedInspectionEvidenceResponseDto
 
 class ReviewApiTest : ShouldSpec() {
     init {
@@ -44,6 +45,15 @@ class ReviewApiTest : ShouldSpec() {
             //val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
             //val createReviewIssueDto : CreateReviewIssueDto =  // CreateReviewIssueDto | 
             //val result : ReviewIssueResponseDto = apiInstance.createReviewIssue(xCompanyId, createReviewIssueDto)
+            //result shouldBe ("TODO")
+        }
+
+        // to test getSubmittedInspectionEvidence
+        should("test getSubmittedInspectionEvidence") {
+            // uncomment below to test getSubmittedInspectionEvidence
+            //val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
+            //val inspectionId : kotlin.String = inspectionId_example // kotlin.String | 
+            //val result : SubmittedInspectionEvidenceResponseDto = apiInstance.getSubmittedInspectionEvidence(xCompanyId, inspectionId)
             //result shouldBe ("TODO")
         }
 
