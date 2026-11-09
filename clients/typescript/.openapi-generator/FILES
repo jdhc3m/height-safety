@@ -18,6 +18,7 @@ docs/CreateInvitationDto.md
 docs/CreateJobDto.md
 docs/CreateReviewIssueDto.md
 docs/CreateSiteDto.md
+docs/DecideReconciliationProposalDto.md
 docs/HealthResponseDto.md
 docs/IdentityApi.md
 docs/InvitationResponseDto.md
@@ -28,6 +29,10 @@ docs/JobWorkflowApi.md
 docs/PhotoUploadChunkDto.md
 docs/PhotoUploadChunkResponseDto.md
 docs/ProviderAccessTokenDto.md
+docs/ReconciliationProposalDecisionResponseDto.md
+docs/ReconciliationProposalPhotoDto.md
+docs/ReconciliationProposalResponseDto.md
+docs/RegisterReconciliationApi.md
 docs/ReportGenerationResponseDto.md
 docs/ReportsApi.md
 docs/RequestReportGenerationDto.md
@@ -58,6 +63,7 @@ package.json
 src/apis/ApprovalsApi.ts
 src/apis/IdentityApi.ts
 src/apis/JobWorkflowApi.ts
+src/apis/RegisterReconciliationApi.ts
 src/apis/ReportsApi.ts
 src/apis/ReviewApi.ts
 src/apis/SiteRegisterApi.ts
@@ -80,6 +86,7 @@ src/models/CreateInvitationDto.ts
 src/models/CreateJobDto.ts
 src/models/CreateReviewIssueDto.ts
 src/models/CreateSiteDto.ts
+src/models/DecideReconciliationProposalDto.ts
 src/models/HealthResponseDto.ts
 src/models/InvitationResponseDto.ts
 src/models/JobAssignmentResponseDto.ts
@@ -88,6 +95,9 @@ src/models/JobResponseDto.ts
 src/models/PhotoUploadChunkDto.ts
 src/models/PhotoUploadChunkResponseDto.ts
 src/models/ProviderAccessTokenDto.ts
+src/models/ReconciliationProposalDecisionResponseDto.ts
+src/models/ReconciliationProposalPhotoDto.ts
+src/models/ReconciliationProposalResponseDto.ts
 src/models/ReportGenerationResponseDto.ts
 src/models/RequestReportGenerationDto.ts
 src/models/ResolveReviewIssueDto.ts

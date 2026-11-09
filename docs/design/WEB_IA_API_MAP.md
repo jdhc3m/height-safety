@@ -126,15 +126,15 @@ built yet.
 | Edit site | `updateSite` (`PATCH /sites/{siteId}`) | client gap | Manager roles |
 | Tab: anchor register table (label, location, type, register status) | `listAnchors` (`GET /sites/{siteId}/anchors`) | client gap | Manager roles; contract enum is `active` / `inactive` / `archived` |
 | Table: last recorded outcome + last inspected | No per-anchor outcome read | fixture-only — #85 | These derive from submitted inspections, not register CRUD |
-| Table: "Proposed" rows | Proposals are not in the register table until accepted; no proposal read | fixture-only — #84 | "Proposed" is proposal state, not a `registerStatus` value |
+| Table: "Proposed" rows | Proposals are not in the register table until accepted; `listReconciliationProposals` (`GET /sites/{siteId}/reconciliation-proposals`) — landed as #84 | ready | Proposals come from submitted inspections through sync; "Proposed" is proposal state, not a `registerStatus` value |
 | Table: "Removed from service" presentation | `registerStatus` has no such value; inspections carry a `removed_from_service` disposition | partial | Mapping is a T11 display decision over existing fields; no new contract value is filed |
 | Tab: jobs | `listJobs` filtered by `siteId` client-side | ready | Same role split as dashboard |
 | Tab: roof plan (optional per §6.2) | No storage, upload or read anywhere | fixture-only — #89 (owner-approval; §6.2 marks it optional) | Needs an owner decision before any contract work |
 | Tab: history | No register history read | fixture-only — #86 | Audit events exist but are not exposed |
-| Proposal banner + slide-over list | No proposal read | fixture-only — #84 | Proposals are recorded through sync today |
-| Slide-over: photo + inspector note | Photo read missing (#82); note is part of the proposal context (#84) | fixture-only — #82, #84 | Bytes stay private |
-| Action: accept into register / reject with reason | No decision endpoint | fixture-only — #84 | Accept/reject must be audited and tenant-scoped |
-| Action: assign label / location on a proposal | `updateAnchor` (`PATCH /sites/{siteId}/anchors/{anchorId}`) | client gap | Usable once #84 acceptance creates the register anchor |
+| Proposal banner + slide-over list | `listReconciliationProposals` (`GET /sites/{siteId}/reconciliation-proposals`) — landed as #84 | client gap (wire in T11) | Administrator/office reviewer only; open proposals only |
+| Slide-over: photo + inspector note | Inspector note and photo metadata are on each proposal read; photo bytes stay private (#82) | partial — complete with #82 | The note is the recorded inspector note; byte access is a separate office session route |
+| Action: accept into register / reject with reason | `decideReconciliationProposal` (`POST /sites/{siteId}/reconciliation-proposals/{proposalId}/decision`) — landed as #84 | client gap (wire in T11) | One decision per proposal; accept writes the register anchor change and reject records a reason, both append-only audit events |
+| Action: assign label / location on a proposal | The decision action carries `assignedLabel` / `location`; later edits use `updateAnchor` (`PATCH /sites/{siteId}/anchors/{anchorId}`) | client gap (wire in T11) | Accept of a newly discovered proposal creates the anchor; accept of a replacement or duplicate updates the referenced anchor |
 | Anchor history drawer | No per-anchor outcome history read | fixture-only — #85 | Same gap as the history columns |
 | Action: new job from register | `createJob` | client gap | Manager roles |
 
@@ -174,8 +174,18 @@ There are data gaps; the sections above name them per row. Consolidated:
   `ReportGenerationResponseDto` shape per revision, newest first; the
   generated Kotlin/TypeScript clients include the method, and the Reports
   screen itself remains T11 UI work.
-- #84 — read reconciliation proposals and record accept/reject decisions
-  (blocks the register proposal banner and slide-over actions).
+- #84 — read reconciliation proposals and record accept/reject decisions.
+  Landed after this map was written: the company-scoped read
+  `listReconciliationProposals`
+  (`GET /sites/{siteId}/reconciliation-proposals`) returns open proposals
+  per site with the submitted anchor inspection context (provisional anchor,
+  inspector note, photo metadata, submitted by/at), and
+  `decideReconciliationProposal`
+  (`POST /sites/{siteId}/reconciliation-proposals/{proposalId}/decision`)
+  records one accept or reject decision per proposal as append-only audit.
+  Accept creates or updates the referenced register anchor with the
+  assigned label/location; reject records a recorded reason. Photo bytes
+  remain #82 and the register history columns remain #85.
 - #85 — read per-anchor recorded-outcome history and the previous inspection
   revision (blocks register history, drawer and the review previous-inspection
   card).

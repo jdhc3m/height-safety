@@ -60,6 +60,8 @@ All URIs are relative to */api/v1*
 | *JobWorkflowApi* | [**getJob**](docs/JobWorkflowApi.md#getjob) | **GET** jobs/{jobId} | Read an authorised job |
 | *JobWorkflowApi* | [**listJobs**](docs/JobWorkflowApi.md#listjobs) | **GET** jobs | List authorised jobs |
 | *JobWorkflowApi* | [**releaseJob**](docs/JobWorkflowApi.md#releasejob) | **POST** jobs/{jobId}/release | Release a draft job |
+| *RegisterReconciliationApi* | [**decideReconciliationProposal**](docs/RegisterReconciliationApi.md#decidereconciliationproposal) | **POST** sites/{siteId}/reconciliation-proposals/{proposalId}/decision | Record one accept or reject decision for a submitted reconciliation proposal |
+| *RegisterReconciliationApi* | [**listReconciliationProposals**](docs/RegisterReconciliationApi.md#listreconciliationproposals) | **GET** sites/{siteId}/reconciliation-proposals | List open reconciliation proposals submitted for one site, newest first |
 | *ReportsApi* | [**downloadDraftReport**](docs/ReportsApi.md#downloaddraftreport) | **GET** reports/generations/{generationId}/file | Download one completed private draft report revision |
 | *ReportsApi* | [**getDraftReportGeneration**](docs/ReportsApi.md#getdraftreportgeneration) | **GET** reports/generations/{generationId} | Read status for a tenant-scoped draft report generation |
 | *ReportsApi* | [**listDraftReportGenerations**](docs/ReportsApi.md#listdraftreportgenerations) | **GET** reports/generations | List tenant-scoped draft report generations, newest first, optionally for one job |
@@ -105,6 +107,7 @@ All URIs are relative to */api/v1*
  - [au.com.heightsafety.api.models.CreateJobDto](docs/CreateJobDto.md)
  - [au.com.heightsafety.api.models.CreateReviewIssueDto](docs/CreateReviewIssueDto.md)
  - [au.com.heightsafety.api.models.CreateSiteDto](docs/CreateSiteDto.md)
+ - [au.com.heightsafety.api.models.DecideReconciliationProposalDto](docs/DecideReconciliationProposalDto.md)
  - [au.com.heightsafety.api.models.HealthResponseDto](docs/HealthResponseDto.md)
  - [au.com.heightsafety.api.models.InvitationResponseDto](docs/InvitationResponseDto.md)
  - [au.com.heightsafety.api.models.JobAssignmentResponseDto](docs/JobAssignmentResponseDto.md)
@@ -113,6 +116,9 @@ All URIs are relative to */api/v1*
  - [au.com.heightsafety.api.models.PhotoUploadChunkDto](docs/PhotoUploadChunkDto.md)
  - [au.com.heightsafety.api.models.PhotoUploadChunkResponseDto](docs/PhotoUploadChunkResponseDto.md)
  - [au.com.heightsafety.api.models.ProviderAccessTokenDto](docs/ProviderAccessTokenDto.md)
+ - [au.com.heightsafety.api.models.ReconciliationProposalDecisionResponseDto](docs/ReconciliationProposalDecisionResponseDto.md)
+ - [au.com.heightsafety.api.models.ReconciliationProposalPhotoDto](docs/ReconciliationProposalPhotoDto.md)
+ - [au.com.heightsafety.api.models.ReconciliationProposalResponseDto](docs/ReconciliationProposalResponseDto.md)
  - [au.com.heightsafety.api.models.ReportGenerationResponseDto](docs/ReportGenerationResponseDto.md)
  - [au.com.heightsafety.api.models.RequestReportGenerationDto](docs/RequestReportGenerationDto.md)
  - [au.com.heightsafety.api.models.ResolveReviewIssueDto](docs/ResolveReviewIssueDto.md)

@@ -71,6 +71,8 @@ All URIs are relative to */api/v1*
 *JobWorkflowApi* | [**getJob**](docs/JobWorkflowApi.md#getjob) | **GET** /jobs/{jobId} | Read an authorised job
 *JobWorkflowApi* | [**listJobs**](docs/JobWorkflowApi.md#listjobs) | **GET** /jobs | List authorised jobs
 *JobWorkflowApi* | [**releaseJob**](docs/JobWorkflowApi.md#releasejob) | **POST** /jobs/{jobId}/release | Release a draft job
+*RegisterReconciliationApi* | [**decideReconciliationProposal**](docs/RegisterReconciliationApi.md#decidereconciliationproposal) | **POST** /sites/{siteId}/reconciliation-proposals/{proposalId}/decision | Record one accept or reject decision for a submitted reconciliation proposal
+*RegisterReconciliationApi* | [**listReconciliationProposals**](docs/RegisterReconciliationApi.md#listreconciliationproposals) | **GET** /sites/{siteId}/reconciliation-proposals | List open reconciliation proposals submitted for one site, newest first
 *ReportsApi* | [**downloadDraftReport**](docs/ReportsApi.md#downloaddraftreport) | **GET** /reports/generations/{generationId}/file | Download one completed private draft report revision
 *ReportsApi* | [**getDraftReportGeneration**](docs/ReportsApi.md#getdraftreportgeneration) | **GET** /reports/generations/{generationId} | Read status for a tenant-scoped draft report generation
 *ReportsApi* | [**listDraftReportGenerations**](docs/ReportsApi.md#listdraftreportgenerations) | **GET** /reports/generations | List tenant-scoped draft report generations, newest first, optionally for one job
@@ -115,6 +117,7 @@ All URIs are relative to */api/v1*
 - [CreateJobDto](docs/CreateJobDto.md)
 - [CreateReviewIssueDto](docs/CreateReviewIssueDto.md)
 - [CreateSiteDto](docs/CreateSiteDto.md)
+- [DecideReconciliationProposalDto](docs/DecideReconciliationProposalDto.md)
 - [HealthResponseDto](docs/HealthResponseDto.md)
 - [InvitationResponseDto](docs/InvitationResponseDto.md)
 - [JobAssignmentResponseDto](docs/JobAssignmentResponseDto.md)
@@ -123,6 +126,9 @@ All URIs are relative to */api/v1*
 - [PhotoUploadChunkDto](docs/PhotoUploadChunkDto.md)
 - [PhotoUploadChunkResponseDto](docs/PhotoUploadChunkResponseDto.md)
 - [ProviderAccessTokenDto](docs/ProviderAccessTokenDto.md)
+- [ReconciliationProposalDecisionResponseDto](docs/ReconciliationProposalDecisionResponseDto.md)
+- [ReconciliationProposalPhotoDto](docs/ReconciliationProposalPhotoDto.md)
+- [ReconciliationProposalResponseDto](docs/ReconciliationProposalResponseDto.md)
 - [ReportGenerationResponseDto](docs/ReportGenerationResponseDto.md)
 - [RequestReportGenerationDto](docs/RequestReportGenerationDto.md)
 - [ResolveReviewIssueDto](docs/ResolveReviewIssueDto.md)

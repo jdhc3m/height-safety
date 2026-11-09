@@ -725,6 +725,31 @@ web changes. The API suite passed 102 tests (no skips) against disposable
 PostgreSQL 17, including the live tenant-isolation check; contract
 regeneration stayed byte-stable and openapi-diff stayed compatible.
 
+On 2026-11-09, the API gained the office read of open register reconciliation
+proposals and the one-decision-per-proposal record (issue #84):
+`listReconciliationProposals`
+(`GET /sites/{siteId}/reconciliation-proposals`) returns the open proposals
+submitted for one site through sync, carrying the submitted anchor inspection
+context (proposal type, provisional anchor, reconciliation reference,
+inspector note, recorded location and outcome, photo metadata, submitted
+by/at) for Administrators and Office reviewers, and
+`decideReconciliationProposal`
+(`POST /sites/{siteId}/reconciliation-proposals/{proposalId}/decision`)
+records one accept or reject decision per submitted proposal: accept creates
+a register anchor for a newly discovered proposal or updates the referenced
+register anchor for a replacement or duplicate with the assigned
+label/location, and reject records a recorded reason. The decision row is
+tenant-scoped with row-level security, the runtime role cannot update or
+delete decision rows, one decision per proposal is enforced by a unique
+constraint, and both outcomes write an append-only audit event in the same
+transaction as the decision and its register anchor change. The inspector
+submission path is unchanged. Migration `007` adds the tenant-scoped decision
+table; the API suite passed 120 tests (no skips) against disposable
+PostgreSQL 17, including the live tenant-isolation check with the new
+migration; contract regeneration stayed byte-stable and openapi-diff stayed
+compatible. Photo bytes remain #82 and the register history columns remain
+#85.
+
 ## Relevant files
 
 `AGENTS.md`; `docs/product/`; `docs/discovery/`; `docs/requirements/`;
