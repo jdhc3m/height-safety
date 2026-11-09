@@ -166,7 +166,13 @@ There are data gaps; the sections above name them per row. Consolidated:
   remain #82; the submitted-inspection queue remains open; the per-row
   statuses above record the map-time state.
 - #82 — office read of inspection photo media (blocks review pane 2 and the
-  proposal slide-over photo).
+  proposal slide-over photo). Landed after this map was written: the
+  company-scoped read `getInspectionPhotoMedia`
+  (`GET /reviews/inspections/{inspectionId}/photos/{photoId}/file`) streams
+  one uploaded evidence photo's private bytes with its recorded content type
+  for Administrator and Office reviewer roles through the office session
+  boundary; there is still no public or pre-signed URL and no web call-site
+  change, which remains a later design-system ticket.
 - #83 — list draft report generations per company and job (blocks the Reports
   screen and the dashboard reports rail).
 - #84 — read reconciliation proposals and record accept/reject decisions
