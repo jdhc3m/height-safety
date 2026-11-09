@@ -53,6 +53,15 @@ class ReportsApiTest : ShouldSpec() {
             //result shouldBe ("TODO")
         }
 
+        // to test listDraftReportGenerations
+        should("test listDraftReportGenerations") {
+            // uncomment below to test listDraftReportGenerations
+            //val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
+            //val jobId : kotlin.String = jobId_example // kotlin.String | Limit the list to generations for one job
+            //val result : kotlin.collections.List<ReportGenerationResponseDto> = apiInstance.listDraftReportGenerations(xCompanyId, jobId)
+            //result shouldBe ("TODO")
+        }
+
         // to test requestDraftReportGeneration
         should("test requestDraftReportGeneration") {
             // uncomment below to test requestDraftReportGeneration

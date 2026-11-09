@@ -62,6 +62,7 @@ All URIs are relative to */api/v1*
 | *JobWorkflowApi* | [**releaseJob**](docs/JobWorkflowApi.md#releasejob) | **POST** jobs/{jobId}/release | Release a draft job |
 | *ReportsApi* | [**downloadDraftReport**](docs/ReportsApi.md#downloaddraftreport) | **GET** reports/generations/{generationId}/file | Download one completed private draft report revision |
 | *ReportsApi* | [**getDraftReportGeneration**](docs/ReportsApi.md#getdraftreportgeneration) | **GET** reports/generations/{generationId} | Read status for a tenant-scoped draft report generation |
+| *ReportsApi* | [**listDraftReportGenerations**](docs/ReportsApi.md#listdraftreportgenerations) | **GET** reports/generations | List tenant-scoped draft report generations, newest first, optionally for one job |
 | *ReportsApi* | [**requestDraftReportGeneration**](docs/ReportsApi.md#requestdraftreportgeneration) | **POST** reports/generations | Queue one deterministic draft report revision from an approved snapshot |
 | *ReviewApi* | [**createReviewIssue**](docs/ReviewApi.md#createreviewissue) | **POST** reviews/issues | Record an append-only office review issue or change request |
 | *ReviewApi* | [**getSubmittedInspectionEvidence**](docs/ReviewApi.md#getsubmittedinspectionevidence) | **GET** reviews/inspections/{inspectionId}/evidence | Read one submitted inspection revision, its anchor evidence and photo metadata |

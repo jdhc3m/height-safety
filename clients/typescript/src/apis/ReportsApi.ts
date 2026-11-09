@@ -34,6 +34,11 @@ export interface GetDraftReportGenerationRequest {
     generationId: string;
 }
 
+export interface ListDraftReportGenerationsRequest {
+    xCompanyId: string;
+    jobId?: string;
+}
+
 export interface RequestDraftReportGenerationRequest {
     xCompanyId: string;
     requestReportGenerationDto: RequestReportGenerationDto;
@@ -169,6 +174,66 @@ export class ReportsApi extends runtime.BaseAPI {
      */
     async getDraftReportGeneration(requestParameters: GetDraftReportGenerationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReportGenerationResponseDto> {
         const response = await this.getDraftReportGenerationRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listDraftReportGenerations without sending the request
+     */
+    async listDraftReportGenerationsRequestOpts(requestParameters: ListDraftReportGenerationsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['xCompanyId'] == null) {
+            throw new runtime.RequiredError(
+                'xCompanyId',
+                'Required parameter "xCompanyId" was null or undefined when calling listDraftReportGenerations().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['jobId'] != null) {
+            queryParameters['jobId'] = requestParameters['jobId'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (requestParameters['xCompanyId'] != null) {
+            headerParameters['x-company-id'] = String(requestParameters['xCompanyId']);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("access-token", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/reports/generations`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List tenant-scoped draft report generations, newest first, optionally for one job
+     */
+    async listDraftReportGenerationsRaw(requestParameters: ListDraftReportGenerationsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<ReportGenerationResponseDto>>> {
+        const requestOptions = await this.listDraftReportGenerationsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ReportGenerationResponseDtoFromJSON));
+    }
+
+    /**
+     * List tenant-scoped draft report generations, newest first, optionally for one job
+     */
+    async listDraftReportGenerations(requestParameters: ListDraftReportGenerationsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<ReportGenerationResponseDto>> {
+        const response = await this.listDraftReportGenerationsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -12,6 +12,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   ServiceUnavailableException,
   StreamableFile,
 } from '@nestjs/common';
@@ -22,6 +23,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiProduces,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -90,6 +92,40 @@ export class ReportGenerationController {
       return toReportGenerationResponse(
         await this.reportService.request(principal, input.snapshotId),
       );
+    } catch (error) {
+      return toReportGenerationHttpException(error);
+    }
+  }
+
+  @Get('generations')
+  @ApiOperation({
+    operationId: 'listDraftReportGenerations',
+    summary:
+      'List tenant-scoped draft report generations, newest first, optionally for one job',
+  })
+  @ApiOkResponse({ type: [ReportGenerationResponseDto] })
+  @ApiQuery({
+    name: 'jobId',
+    required: false,
+    type: String,
+    description: 'Limit the list to generations for one job',
+  })
+  async listGenerations(
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-company-id') companyId: string | undefined,
+    @Query('jobId') jobId: string | undefined,
+  ): Promise<readonly ReportGenerationResponseDto[]> {
+    try {
+      const principal = await authenticateSession(
+        this.authService,
+        authorization,
+        companyId,
+      );
+      const generations = await this.reportService.listGenerations(
+        principal,
+        jobId,
+      );
+      return generations.map(toReportGenerationResponse);
     } catch (error) {
       return toReportGenerationHttpException(error);
     }
