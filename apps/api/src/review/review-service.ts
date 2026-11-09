@@ -11,6 +11,10 @@ import {
   type ReviewIssueType,
   type ReviewResolutionResult,
   type ReviewStore,
+  type SubmittedEvidenceAnchor,
+  type SubmittedEvidencePhotoMetadata,
+  type SubmittedEvidenceReader,
+  type SubmittedInspectionEvidence,
 } from './review.types';
 
 const ID_MAX_LENGTH = 128;
@@ -18,6 +22,7 @@ const REASON_MAX_LENGTH = 10_000;
 
 export interface ReviewServiceOptions {
   readonly store: ReviewStore;
+  readonly evidenceReader: SubmittedEvidenceReader;
   readonly clock: ReviewClock;
   readonly idGenerator: ReviewIdGenerator;
 }
@@ -79,6 +84,26 @@ function copyIssue(issue: ReviewIssueRecord): ReviewIssueRecord {
 
 function copyAction(action: ReviewActionRecord): ReviewActionRecord {
   return { ...action, createdAt: copyDate(action.createdAt) };
+}
+
+function copyPhoto(
+  photo: SubmittedEvidencePhotoMetadata,
+): SubmittedEvidencePhotoMetadata {
+  return { ...photo };
+}
+
+function copyAnchor(anchor: SubmittedEvidenceAnchor): SubmittedEvidenceAnchor {
+  return { ...anchor, photos: anchor.photos.map(copyPhoto) };
+}
+
+function copyEvidence(
+  evidence: SubmittedInspectionEvidence,
+): SubmittedInspectionEvidence {
+  return {
+    ...evidence,
+    submittedAt: copyDate(evidence.submittedAt),
+    anchors: evidence.anchors.map(copyAnchor),
+  };
 }
 
 export class ReviewService {
@@ -157,6 +182,36 @@ export class ReviewService {
       normalizedInspectionId,
     );
     return issues.map(copyIssue);
+  }
+
+  /**
+   * Read-only office view of one submitted inspection revision and its
+   * anchor evidence. The reader never rewrites submitted data and this
+   * method exposes no mutation path.
+   */
+  async getSubmittedEvidence(
+    principal: AuthPrincipal,
+    inspectionId: string,
+  ): Promise<SubmittedInspectionEvidence> {
+    assertCanReview(principal);
+    const normalizedInspectionId = requiredId(inspectionId, 'inspectionId');
+    const evidence = await this.options.evidenceReader.find(
+      principal.companyId,
+      normalizedInspectionId,
+    );
+    if (!evidence) {
+      throw new ReviewFailure(
+        'NOT_FOUND',
+        'submitted inspection revision was not found',
+      );
+    }
+    if (evidence.companyId !== principal.companyId) {
+      throw new ReviewFailure(
+        'NOT_FOUND',
+        'submitted inspection revision was not found',
+      );
+    }
+    return copyEvidence(evidence);
   }
 
   async listActions(

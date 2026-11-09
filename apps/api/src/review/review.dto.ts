@@ -7,7 +7,21 @@ import {
   MaxLength,
 } from 'class-validator';
 
-import { REVIEW_ISSUE_TYPES, type ReviewIssueType } from './review.types';
+import {
+  SYNC_DISPOSITIONS,
+  SYNC_EXCEPTION_REASONS,
+  SYNC_JURISDICTIONS,
+  SYNC_RECORDED_OUTCOMES,
+  SYNC_RECONCILIATION_PROPOSALS,
+} from '../sync/sync.types';
+import {
+  REVIEW_ISSUE_TYPES,
+  SUBMITTED_PHOTO_UPLOAD_STATES,
+  type SubmittedEvidenceAnchor,
+  type SubmittedEvidencePhotoMetadata,
+  type SubmittedInspectionEvidence,
+  type ReviewIssueType,
+} from './review.types';
 
 export class CreateReviewIssueDto {
   @ApiProperty({ example: 'inspection-001' })
@@ -105,4 +119,217 @@ export class ReviewIssueResolutionResponseDto {
 
   @ApiProperty({ example: false })
   replayed!: boolean;
+}
+
+export class SubmittedEvidencePhotoDto {
+  @ApiProperty({ example: 'photo-001' })
+  photoId!: string;
+
+  @ApiProperty({ example: 'photo-001' })
+  localId!: string;
+
+  @ApiProperty({ example: 'sha256-photo-001' })
+  checksum!: string;
+
+  @ApiProperty({ format: 'date-time' })
+  capturedAt!: string;
+
+  @ApiProperty({ enum: SUBMITTED_PHOTO_UPLOAD_STATES, example: 'uploaded' })
+  uploadState!: SubmittedEvidencePhotoMetadata['uploadState'];
+}
+
+export class SubmittedEvidenceAnchorDto {
+  @ApiProperty({ example: 'inspection-anchor-001' })
+  anchorInspectionId!: string;
+
+  @ApiPropertyOptional({ nullable: true, example: 'anchor-001' })
+  expectedAnchorId!: string | null;
+
+  @ApiPropertyOptional({ nullable: true, example: 'provisional-001' })
+  provisionalAnchorId!: string | null;
+
+  @ApiProperty({ example: true })
+  identityConfirmed!: boolean;
+
+  @ApiProperty({ example: true })
+  locationConfirmed!: boolean;
+
+  @ApiPropertyOptional({ nullable: true, example: 'North roof' })
+  location!: string | null;
+
+  @ApiProperty({
+    enum: SYNC_RECORDED_OUTCOMES,
+    nullable: true,
+    example: 'serviceable',
+  })
+  recordedOutcome!: SubmittedEvidenceAnchor['recordedOutcome'];
+
+  @ApiProperty({
+    enum: SYNC_EXCEPTION_REASONS,
+    nullable: true,
+    example: 'inaccessible',
+  })
+  exceptionReason!: SubmittedEvidenceAnchor['exceptionReason'];
+
+  @ApiProperty({
+    enum: SYNC_RECONCILIATION_PROPOSALS,
+    nullable: true,
+    example: 'newly_discovered',
+  })
+  reconciliationProposal!: SubmittedEvidenceAnchor['reconciliationProposal'];
+
+  @ApiPropertyOptional({ nullable: true, example: 'anchor-002' })
+  reconciliationReferenceId!: string | null;
+
+  @ApiProperty({
+    enum: SYNC_DISPOSITIONS,
+    nullable: true,
+    example: 'removed_from_service',
+  })
+  disposition!: SubmittedEvidenceAnchor['disposition'];
+
+  @ApiPropertyOptional({ nullable: true })
+  notes!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  observations!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  defectDescription!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  recommendation!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  proofTestLoad!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  proofTestHold!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  proofTestResult!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  proofTestEquipmentReference!: string | null;
+
+  @ApiProperty({ type: () => [SubmittedEvidencePhotoDto] })
+  photos!: SubmittedEvidencePhotoDto[];
+}
+
+export class SubmittedInspectionEvidenceResponseDto {
+  @ApiProperty()
+  companyId!: string;
+
+  @ApiProperty({ example: 'inspection-001' })
+  inspectionId!: string;
+
+  @ApiProperty({ minimum: 1, example: 2 })
+  revisionNumber!: number;
+
+  @ApiProperty({ minimum: 1, example: 2 })
+  latestRevisionNumber!: number;
+
+  @ApiProperty({ enum: ['submitted'], example: 'submitted' })
+  workflowStatus!: 'submitted';
+
+  @ApiProperty({ example: 'job-001' })
+  jobId!: string;
+
+  @ApiProperty({ example: 'site-001' })
+  siteId!: string;
+
+  @ApiProperty({ enum: SYNC_JURISDICTIONS, example: 'NSW' })
+  jurisdiction!: SubmittedInspectionEvidence['jurisdiction'];
+
+  @ApiProperty({ minimum: 1, example: 1 })
+  jobPackVersion!: number;
+
+  @ApiProperty({ example: 'inspector-001' })
+  inspectorUserId!: string;
+
+  @ApiProperty({ format: 'date-time' })
+  submittedAt!: string;
+
+  @ApiProperty({ minimum: 1, example: 1 })
+  evidenceVersion!: number;
+
+  @ApiProperty({ example: true })
+  evidenceSynchronised!: boolean;
+
+  @ApiProperty({ minimum: 0, example: 0 })
+  pendingPhotoCount!: number;
+
+  @ApiProperty({ minimum: 0, example: 0 })
+  failedPhotoCount!: number;
+
+  @ApiProperty({ minimum: 0, example: 32 })
+  expectedAnchorCount!: number;
+
+  @ApiProperty({ minimum: 0, example: 13 })
+  accountedAnchorCount!: number;
+
+  @ApiProperty({ minimum: 0, example: 0 })
+  openBlockerCount!: number;
+
+  @ApiProperty({ minimum: 0, example: 1 })
+  openWarningCount!: number;
+
+  @ApiProperty({ minimum: 0, example: 0 })
+  openConflictCount!: number;
+
+  @ApiProperty({ minimum: 0, example: 0 })
+  openChangeRequestCount!: number;
+
+  @ApiProperty({ type: () => [SubmittedEvidenceAnchorDto] })
+  anchors!: SubmittedEvidenceAnchorDto[];
+}
+
+export function toSubmittedInspectionEvidenceResponse(
+  evidence: SubmittedInspectionEvidence,
+): SubmittedInspectionEvidenceResponseDto {
+  return {
+    companyId: evidence.companyId,
+    inspectionId: evidence.inspectionId,
+    revisionNumber: evidence.revisionNumber,
+    latestRevisionNumber: evidence.latestRevisionNumber,
+    workflowStatus: evidence.workflowStatus,
+    jobId: evidence.jobId,
+    siteId: evidence.siteId,
+    jurisdiction: evidence.jurisdiction,
+    jobPackVersion: evidence.jobPackVersion,
+    inspectorUserId: evidence.inspectorUserId,
+    submittedAt: evidence.submittedAt.toISOString(),
+    evidenceVersion: evidence.evidenceVersion,
+    evidenceSynchronised: evidence.evidenceSynchronised,
+    pendingPhotoCount: evidence.pendingPhotoCount,
+    failedPhotoCount: evidence.failedPhotoCount,
+    expectedAnchorCount: evidence.expectedAnchorCount,
+    accountedAnchorCount: evidence.accountedAnchorCount,
+    openBlockerCount: evidence.openBlockerCount,
+    openWarningCount: evidence.openWarningCount,
+    openConflictCount: evidence.openConflictCount,
+    openChangeRequestCount: evidence.openChangeRequestCount,
+    anchors: evidence.anchors.map((anchor) => ({
+      anchorInspectionId: anchor.anchorInspectionId,
+      expectedAnchorId: anchor.expectedAnchorId,
+      provisionalAnchorId: anchor.provisionalAnchorId,
+      identityConfirmed: anchor.identityConfirmed,
+      locationConfirmed: anchor.locationConfirmed,
+      location: anchor.location,
+      recordedOutcome: anchor.recordedOutcome,
+      exceptionReason: anchor.exceptionReason,
+      reconciliationProposal: anchor.reconciliationProposal,
+      reconciliationReferenceId: anchor.reconciliationReferenceId,
+      disposition: anchor.disposition,
+      notes: anchor.notes,
+      observations: anchor.observations,
+      defectDescription: anchor.defectDescription,
+      recommendation: anchor.recommendation,
+      proofTestLoad: anchor.proofTestLoad,
+      proofTestHold: anchor.proofTestHold,
+      proofTestResult: anchor.proofTestResult,
+      proofTestEquipmentReference: anchor.proofTestEquipmentReference,
+      photos: anchor.photos.map((photo) => ({ ...photo })),
+    })),
+  };
 }

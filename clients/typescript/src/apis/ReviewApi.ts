@@ -38,10 +38,20 @@ import {
     ReviewIssueResponseDtoFromJSON,
     ReviewIssueResponseDtoToJSON,
 } from '../models/ReviewIssueResponseDto';
+import {
+    type SubmittedInspectionEvidenceResponseDto,
+    SubmittedInspectionEvidenceResponseDtoFromJSON,
+    SubmittedInspectionEvidenceResponseDtoToJSON,
+} from '../models/SubmittedInspectionEvidenceResponseDto';
 
 export interface CreateReviewIssueRequest {
     xCompanyId: string;
     createReviewIssueDto: CreateReviewIssueDto;
+}
+
+export interface GetSubmittedInspectionEvidenceRequest {
+    xCompanyId: string;
+    inspectionId: string;
 }
 
 export interface ListReviewActionsRequest {
@@ -128,6 +138,70 @@ export class ReviewApi extends runtime.BaseAPI {
      */
     async createReviewIssue(requestParameters: CreateReviewIssueRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReviewIssueResponseDto> {
         const response = await this.createReviewIssueRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getSubmittedInspectionEvidence without sending the request
+     */
+    async getSubmittedInspectionEvidenceRequestOpts(requestParameters: GetSubmittedInspectionEvidenceRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['xCompanyId'] == null) {
+            throw new runtime.RequiredError(
+                'xCompanyId',
+                'Required parameter "xCompanyId" was null or undefined when calling getSubmittedInspectionEvidence().'
+            );
+        }
+
+        if (requestParameters['inspectionId'] == null) {
+            throw new runtime.RequiredError(
+                'inspectionId',
+                'Required parameter "inspectionId" was null or undefined when calling getSubmittedInspectionEvidence().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (requestParameters['xCompanyId'] != null) {
+            headerParameters['x-company-id'] = String(requestParameters['xCompanyId']);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("access-token", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/reviews/inspections/{inspectionId}/evidence`;
+        urlPath = urlPath.replace('{inspectionId}', encodeURIComponent(String(requestParameters['inspectionId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Read one submitted inspection revision, its anchor evidence and photo metadata
+     */
+    async getSubmittedInspectionEvidenceRaw(requestParameters: GetSubmittedInspectionEvidenceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SubmittedInspectionEvidenceResponseDto>> {
+        const requestOptions = await this.getSubmittedInspectionEvidenceRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SubmittedInspectionEvidenceResponseDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Read one submitted inspection revision, its anchor evidence and photo metadata
+     */
+    async getSubmittedInspectionEvidence(requestParameters: GetSubmittedInspectionEvidenceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SubmittedInspectionEvidenceResponseDto> {
+        const response = await this.getSubmittedInspectionEvidenceRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

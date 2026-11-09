@@ -5,6 +5,7 @@ All URIs are relative to */api/v1*
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
 | [**createReviewIssue**](ReviewApi.md#createreviewissue) | **POST** /reviews/issues | Record an append-only office review issue or change request |
+| [**getSubmittedInspectionEvidence**](ReviewApi.md#getsubmittedinspectionevidence) | **GET** /reviews/inspections/{inspectionId}/evidence | Read one submitted inspection revision, its anchor evidence and photo metadata |
 | [**listReviewActions**](ReviewApi.md#listreviewactions) | **GET** /reviews/issues/{reviewIssueId}/actions | List append-only actions for one review issue |
 | [**listReviewIssues**](ReviewApi.md#listreviewissues) | **GET** /reviews/inspections/{inspectionId}/issues | List review issues for one submitted inspection revision |
 | [**resolveReviewIssue**](ReviewApi.md#resolvereviewissue) | **POST** /reviews/issues/{reviewIssueId}/resolve | Record a reasoned resolution without changing inspector evidence |
@@ -79,6 +80,78 @@ example().catch(console.error);
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getSubmittedInspectionEvidence
+
+> SubmittedInspectionEvidenceResponseDto getSubmittedInspectionEvidence(xCompanyId, inspectionId)
+
+Read one submitted inspection revision, its anchor evidence and photo metadata
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ReviewApi,
+} from '@height-safety/api-client';
+import type { GetSubmittedInspectionEvidenceRequest } from '@height-safety/api-client';
+
+async function example() {
+  console.log("🚀 Testing @height-safety/api-client SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: access-token
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new ReviewApi(config);
+
+  const body = {
+    // string
+    xCompanyId: xCompanyId_example,
+    // string
+    inspectionId: inspectionId_example,
+  } satisfies GetSubmittedInspectionEvidenceRequest;
+
+  try {
+    const data = await api.getSubmittedInspectionEvidence(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **xCompanyId** | `string` |  | [Defaults to `undefined`] |
+| **inspectionId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**SubmittedInspectionEvidenceResponseDto**](SubmittedInspectionEvidenceResponseDto.md)
+
+### Authorization
+
+[access-token](../README.md#access-token)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

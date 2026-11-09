@@ -1111,6 +1111,303 @@
         ],
         "type": "object"
       },
+      "SubmittedEvidenceAnchorDto": {
+        "properties": {
+          "anchorInspectionId": {
+            "example": "inspection-anchor-001",
+            "type": "string"
+          },
+          "defectDescription": {
+            "nullable": true,
+            "type": "string"
+          },
+          "disposition": {
+            "enum": [
+              "removed_from_service"
+            ],
+            "example": "removed_from_service",
+            "nullable": true,
+            "type": "string"
+          },
+          "exceptionReason": {
+            "enum": [
+              "inaccessible",
+              "unable_to_locate"
+            ],
+            "example": "inaccessible",
+            "nullable": true,
+            "type": "string"
+          },
+          "expectedAnchorId": {
+            "example": "anchor-001",
+            "nullable": true,
+            "type": "string"
+          },
+          "identityConfirmed": {
+            "example": true,
+            "type": "boolean"
+          },
+          "location": {
+            "example": "North roof",
+            "nullable": true,
+            "type": "string"
+          },
+          "locationConfirmed": {
+            "example": true,
+            "type": "boolean"
+          },
+          "notes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "observations": {
+            "nullable": true,
+            "type": "string"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/SubmittedEvidencePhotoDto"
+            },
+            "type": "array"
+          },
+          "proofTestEquipmentReference": {
+            "nullable": true,
+            "type": "string"
+          },
+          "proofTestHold": {
+            "nullable": true,
+            "type": "string"
+          },
+          "proofTestLoad": {
+            "nullable": true,
+            "type": "string"
+          },
+          "proofTestResult": {
+            "nullable": true,
+            "type": "string"
+          },
+          "provisionalAnchorId": {
+            "example": "provisional-001",
+            "nullable": true,
+            "type": "string"
+          },
+          "recommendation": {
+            "nullable": true,
+            "type": "string"
+          },
+          "reconciliationProposal": {
+            "enum": [
+              "newly_discovered",
+              "replacement",
+              "duplicate"
+            ],
+            "example": "newly_discovered",
+            "nullable": true,
+            "type": "string"
+          },
+          "reconciliationReferenceId": {
+            "example": "anchor-002",
+            "nullable": true,
+            "type": "string"
+          },
+          "recordedOutcome": {
+            "enum": [
+              "serviceable",
+              "defective",
+              "not_inspected",
+              "further_assessment_required"
+            ],
+            "example": "serviceable",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "anchorInspectionId",
+          "identityConfirmed",
+          "locationConfirmed",
+          "recordedOutcome",
+          "exceptionReason",
+          "reconciliationProposal",
+          "disposition",
+          "photos"
+        ],
+        "type": "object"
+      },
+      "SubmittedEvidencePhotoDto": {
+        "properties": {
+          "capturedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "checksum": {
+            "example": "sha256-photo-001",
+            "type": "string"
+          },
+          "localId": {
+            "example": "photo-001",
+            "type": "string"
+          },
+          "photoId": {
+            "example": "photo-001",
+            "type": "string"
+          },
+          "uploadState": {
+            "enum": [
+              "pending_upload",
+              "uploaded",
+              "failed"
+            ],
+            "example": "uploaded",
+            "type": "string"
+          }
+        },
+        "required": [
+          "photoId",
+          "localId",
+          "checksum",
+          "capturedAt",
+          "uploadState"
+        ],
+        "type": "object"
+      },
+      "SubmittedInspectionEvidenceResponseDto": {
+        "properties": {
+          "accountedAnchorCount": {
+            "example": 13,
+            "minimum": 0,
+            "type": "number"
+          },
+          "anchors": {
+            "items": {
+              "$ref": "#/components/schemas/SubmittedEvidenceAnchorDto"
+            },
+            "type": "array"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "evidenceSynchronised": {
+            "example": true,
+            "type": "boolean"
+          },
+          "evidenceVersion": {
+            "example": 1,
+            "minimum": 1,
+            "type": "number"
+          },
+          "expectedAnchorCount": {
+            "example": 32,
+            "minimum": 0,
+            "type": "number"
+          },
+          "failedPhotoCount": {
+            "example": 0,
+            "minimum": 0,
+            "type": "number"
+          },
+          "inspectionId": {
+            "example": "inspection-001",
+            "type": "string"
+          },
+          "inspectorUserId": {
+            "example": "inspector-001",
+            "type": "string"
+          },
+          "jobId": {
+            "example": "job-001",
+            "type": "string"
+          },
+          "jobPackVersion": {
+            "example": 1,
+            "minimum": 1,
+            "type": "number"
+          },
+          "jurisdiction": {
+            "enum": [
+              "NSW",
+              "QLD"
+            ],
+            "example": "NSW",
+            "type": "string"
+          },
+          "latestRevisionNumber": {
+            "example": 2,
+            "minimum": 1,
+            "type": "number"
+          },
+          "openBlockerCount": {
+            "example": 0,
+            "minimum": 0,
+            "type": "number"
+          },
+          "openChangeRequestCount": {
+            "example": 0,
+            "minimum": 0,
+            "type": "number"
+          },
+          "openConflictCount": {
+            "example": 0,
+            "minimum": 0,
+            "type": "number"
+          },
+          "openWarningCount": {
+            "example": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "pendingPhotoCount": {
+            "example": 0,
+            "minimum": 0,
+            "type": "number"
+          },
+          "revisionNumber": {
+            "example": 2,
+            "minimum": 1,
+            "type": "number"
+          },
+          "siteId": {
+            "example": "site-001",
+            "type": "string"
+          },
+          "submittedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "workflowStatus": {
+            "enum": [
+              "submitted"
+            ],
+            "example": "submitted",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "inspectionId",
+          "revisionNumber",
+          "latestRevisionNumber",
+          "workflowStatus",
+          "jobId",
+          "siteId",
+          "jurisdiction",
+          "jobPackVersion",
+          "inspectorUserId",
+          "submittedAt",
+          "evidenceVersion",
+          "evidenceSynchronised",
+          "pendingPhotoCount",
+          "failedPhotoCount",
+          "expectedAnchorCount",
+          "accountedAnchorCount",
+          "openBlockerCount",
+          "openWarningCount",
+          "openConflictCount",
+          "openChangeRequestCount",
+          "anchors"
+        ],
+        "type": "object"
+      },
       "SyncAnchorInspectionPayloadDto": {
         "properties": {
           "defectDescription": {
@@ -2600,6 +2897,50 @@
         "summary": "Download one completed private draft report revision",
         "tags": [
           "reports"
+        ]
+      }
+    },
+    "/reviews/inspections/{inspectionId}/evidence": {
+      "get": {
+        "operationId": "getSubmittedInspectionEvidence",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "inspectionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmittedInspectionEvidenceResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Read one submitted inspection revision, its anchor evidence and photo metadata",
+        "tags": [
+          "review"
         ]
       }
     },

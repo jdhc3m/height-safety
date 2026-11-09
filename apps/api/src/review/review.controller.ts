@@ -32,6 +32,8 @@ import {
   ReviewActionResponseDto,
   ReviewIssueResolutionResponseDto,
   ReviewIssueResponseDto,
+  SubmittedInspectionEvidenceResponseDto,
+  toSubmittedInspectionEvidenceResponse,
 } from './review.dto';
 import { ReviewFailure } from './review.types';
 import { ReviewService } from './review-service';
@@ -142,6 +144,32 @@ export class ReviewController {
       );
       return (await this.reviewService.listIssues(principal, inspectionId)).map(
         toIssueResponse,
+      );
+    } catch (error) {
+      return toReviewHttpException(error);
+    }
+  }
+
+  @Get('inspections/:inspectionId/evidence')
+  @ApiOperation({
+    operationId: 'getSubmittedInspectionEvidence',
+    summary:
+      'Read one submitted inspection revision, its anchor evidence and photo metadata',
+  })
+  @ApiOkResponse({ type: SubmittedInspectionEvidenceResponseDto })
+  async getEvidence(
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-company-id') companyId: string | undefined,
+    @Param('inspectionId') inspectionId: string,
+  ): Promise<SubmittedInspectionEvidenceResponseDto> {
+    try {
+      const principal = await authenticateSession(
+        this.authService,
+        authorization,
+        companyId,
+      );
+      return toSubmittedInspectionEvidenceResponse(
+        await this.reviewService.getSubmittedEvidence(principal, inspectionId),
       );
     } catch (error) {
       return toReviewHttpException(error);

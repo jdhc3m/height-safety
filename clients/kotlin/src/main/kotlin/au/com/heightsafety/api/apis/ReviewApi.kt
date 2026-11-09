@@ -12,6 +12,7 @@ import au.com.heightsafety.api.models.ResolveReviewIssueDto
 import au.com.heightsafety.api.models.ReviewActionResponseDto
 import au.com.heightsafety.api.models.ReviewIssueResolutionResponseDto
 import au.com.heightsafety.api.models.ReviewIssueResponseDto
+import au.com.heightsafety.api.models.SubmittedInspectionEvidenceResponseDto
 
 interface ReviewApi {
     /**
@@ -27,6 +28,20 @@ interface ReviewApi {
      */
     @POST("reviews/issues")
     suspend fun createReviewIssue(@Header("x-company-id") xCompanyId: kotlin.String, @Body createReviewIssueDto: CreateReviewIssueDto): Response<ReviewIssueResponseDto>
+
+    /**
+     * GET reviews/inspections/{inspectionId}/evidence
+     * Read one submitted inspection revision, its anchor evidence and photo metadata
+     * 
+     * Responses:
+     *  - 200: 
+     *
+     * @param xCompanyId 
+     * @param inspectionId 
+     * @return [SubmittedInspectionEvidenceResponseDto]
+     */
+    @GET("reviews/inspections/{inspectionId}/evidence")
+    suspend fun getSubmittedInspectionEvidence(@Header("x-company-id") xCompanyId: kotlin.String, @Path("inspectionId") inspectionId: kotlin.String): Response<SubmittedInspectionEvidenceResponseDto>
 
     /**
      * GET reviews/issues/{reviewIssueId}/actions

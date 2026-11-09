@@ -11,13 +11,17 @@ import {
   type ReviewClock,
   type ReviewIdGenerator,
   type ReviewStore,
+  type SubmittedEvidenceReader,
   UnconfiguredReviewStore,
+  UnconfiguredSubmittedEvidenceReader,
 } from './review.types';
 import { PostgresReviewStore } from './postgres-review-store';
+import { PostgresSubmittedEvidenceReader } from './postgres-submitted-evidence-reader';
 
 export const REVIEW_STORE = Symbol('REVIEW_STORE');
 export const REVIEW_CLOCK = Symbol('REVIEW_CLOCK');
 export const REVIEW_ID_GENERATOR = Symbol('REVIEW_ID_GENERATOR');
+export const SUBMITTED_EVIDENCE_READER = Symbol('SUBMITTED_EVIDENCE_READER');
 
 @Module({
   imports: [AuthModule, DatabaseModule],
@@ -31,16 +35,32 @@ export const REVIEW_ID_GENERATOR = Symbol('REVIEW_ID_GENERATOR');
           : new UnconfiguredReviewStore(),
       inject: [POSTGRES_DATABASE],
     },
+    {
+      provide: SUBMITTED_EVIDENCE_READER,
+      useFactory: (
+        database: SqlDatabase | undefined,
+      ): SubmittedEvidenceReader =>
+        database
+          ? new PostgresSubmittedEvidenceReader(database)
+          : new UnconfiguredSubmittedEvidenceReader(),
+      inject: [POSTGRES_DATABASE],
+    },
     { provide: REVIEW_CLOCK, useValue: systemReviewClock },
     { provide: REVIEW_ID_GENERATOR, useValue: secureReviewIdGenerator },
     {
       provide: ReviewService,
       useFactory: (
         store: ReviewStore,
+        evidenceReader: SubmittedEvidenceReader,
         clock: ReviewClock,
         idGenerator: ReviewIdGenerator,
-      ) => new ReviewService({ store, clock, idGenerator }),
-      inject: [REVIEW_STORE, REVIEW_CLOCK, REVIEW_ID_GENERATOR],
+      ) => new ReviewService({ store, evidenceReader, clock, idGenerator }),
+      inject: [
+        REVIEW_STORE,
+        SUBMITTED_EVIDENCE_READER,
+        REVIEW_CLOCK,
+        REVIEW_ID_GENERATOR,
+      ],
     },
   ],
   exports: [ReviewService],

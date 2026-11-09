@@ -1,6 +1,13 @@
 import { randomBytes } from 'node:crypto';
 
 import type { AuthPrincipal, ProductRole } from '../identity/auth.types';
+import type {
+  SyncDisposition,
+  SyncExceptionReason,
+  SyncReconciliationProposal,
+  SyncRecordedOutcome,
+  SyncJurisdiction,
+} from '../sync/sync.types';
 
 export const REVIEW_ISSUE_TYPES = [
   'blocker',
@@ -12,6 +19,81 @@ export type ReviewIssueType = (typeof REVIEW_ISSUE_TYPES)[number];
 
 export const REVIEW_ISSUE_STATUSES = ['open', 'resolved'] as const;
 export type ReviewIssueStatus = (typeof REVIEW_ISSUE_STATUSES)[number];
+
+export const SUBMITTED_PHOTO_UPLOAD_STATES = [
+  'pending_upload',
+  'uploaded',
+  'failed',
+] as const;
+export type SubmittedPhotoUploadState =
+  (typeof SUBMITTED_PHOTO_UPLOAD_STATES)[number];
+
+export interface SubmittedEvidencePhotoMetadata {
+  readonly photoId: string;
+  readonly localId: string;
+  readonly checksum: string;
+  readonly capturedAt: string;
+  readonly uploadState: SubmittedPhotoUploadState;
+}
+
+/**
+ * One submitted per-anchor inspection as the office can read it. Values are
+ * recorded outcomes copied from the synchronised submission payload; this
+ * boundary derives no jurisdiction rule and offers no write path.
+ */
+export interface SubmittedEvidenceAnchor {
+  readonly anchorInspectionId: string;
+  readonly expectedAnchorId: string | null;
+  readonly provisionalAnchorId: string | null;
+  readonly identityConfirmed: boolean;
+  readonly locationConfirmed: boolean;
+  readonly location: string | null;
+  readonly recordedOutcome: SyncRecordedOutcome | null;
+  readonly exceptionReason: SyncExceptionReason | null;
+  readonly reconciliationProposal: SyncReconciliationProposal | null;
+  readonly reconciliationReferenceId: string | null;
+  readonly disposition: SyncDisposition | null;
+  readonly notes: string | null;
+  readonly observations: string | null;
+  readonly defectDescription: string | null;
+  readonly recommendation: string | null;
+  readonly proofTestLoad: string | null;
+  readonly proofTestHold: string | null;
+  readonly proofTestResult: string | null;
+  readonly proofTestEquipmentReference: string | null;
+  readonly photos: readonly SubmittedEvidencePhotoMetadata[];
+}
+
+/**
+ * Office read model for one submitted inspection revision. Counts are
+ * recorded outcomes of stored rows so the office web can derive
+ * accounted/expected anchor totals, conflict visibility and photo-pending
+ * flags without guessing; they are never a pass/fail verdict.
+ */
+export interface SubmittedInspectionEvidence {
+  readonly companyId: string;
+  readonly inspectionId: string;
+  readonly revisionNumber: number;
+  readonly latestRevisionNumber: number;
+  readonly workflowStatus: 'submitted';
+  readonly jobId: string;
+  readonly siteId: string;
+  readonly jurisdiction: SyncJurisdiction;
+  readonly jobPackVersion: number;
+  readonly inspectorUserId: string;
+  readonly submittedAt: Date;
+  readonly evidenceVersion: number;
+  readonly evidenceSynchronised: boolean;
+  readonly pendingPhotoCount: number;
+  readonly failedPhotoCount: number;
+  readonly expectedAnchorCount: number;
+  readonly accountedAnchorCount: number;
+  readonly openBlockerCount: number;
+  readonly openWarningCount: number;
+  readonly openConflictCount: number;
+  readonly openChangeRequestCount: number;
+  readonly anchors: readonly SubmittedEvidenceAnchor[];
+}
 
 export type ReviewFailureCode =
   | 'INVALID_INPUT'
@@ -108,6 +190,20 @@ export interface ReviewIdGenerator {
   createId(): string;
 }
 
+/**
+ * Read-only port for one submitted inspection revision and its anchor
+ * evidence. Implementations must never mutate submitted data.
+ */
+export interface SubmittedEvidenceReader {
+  find(
+    companyId: string,
+    inspectionId: string,
+  ):
+    | SubmittedInspectionEvidence
+    | undefined
+    | Promise<SubmittedInspectionEvidence | undefined>;
+}
+
 export interface CreateReviewIssueInput {
   readonly inspectionId: string;
   readonly anchorInspectionId?: string | null;
@@ -184,5 +280,19 @@ export class UnconfiguredReviewStore implements ReviewStore {
     _auditEvent: ReviewAuditEvent,
   ): boolean {
     return this.unavailable();
+  }
+}
+
+export class UnconfiguredSubmittedEvidenceReader
+  implements SubmittedEvidenceReader
+{
+  find(
+    _companyId: string,
+    _inspectionId: string,
+  ): Promise<SubmittedInspectionEvidence | undefined> {
+    throw new ReviewFailure(
+      'PERSISTENCE_UNAVAILABLE',
+      'submitted-inspection evidence reader adapter is not configured',
+    );
   }
 }

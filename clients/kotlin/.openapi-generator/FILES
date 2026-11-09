@@ -38,6 +38,9 @@ docs/SessionResponseDto.md
 docs/SessionRevokedResponseDto.md
 docs/SiteRegisterApi.md
 docs/SiteResponseDto.md
+docs/SubmittedEvidenceAnchorDto.md
+docs/SubmittedEvidencePhotoDto.md
+docs/SubmittedInspectionEvidenceResponseDto.md
 docs/SyncAnchorInspectionPayloadDto.md
 docs/SyncInspectionPhotoPayloadDto.md
 docs/SyncInspectionSubmissionPayloadDto.md
@@ -108,6 +111,9 @@ src/main/kotlin/au/com/heightsafety/api/models/ReviewIssueResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/SessionResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/SessionRevokedResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/SiteResponseDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/SubmittedEvidenceAnchorDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/SubmittedEvidencePhotoDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/SubmittedInspectionEvidenceResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/SyncAnchorInspectionPayloadDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/SyncInspectionPhotoPayloadDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/SyncInspectionSubmissionPayloadDto.kt
@@ -157,6 +163,9 @@ src/test/kotlin/au/com/heightsafety/api/models/ReviewIssueResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/SessionResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/SessionRevokedResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/SiteResponseDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/SubmittedEvidenceAnchorDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/SubmittedEvidencePhotoDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/SubmittedInspectionEvidenceResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/SyncAnchorInspectionPayloadDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/SyncInspectionPhotoPayloadDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/SyncInspectionSubmissionPayloadDtoTest.kt

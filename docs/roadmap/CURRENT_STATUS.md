@@ -1,6 +1,6 @@
 # Current Status
 
-Last update: 2026-10-09
+Last update: 2026-11-09
 
 ## Active stage
 
@@ -93,6 +93,24 @@ draft-generation request, reads generation status and serves the completed PDF
 through an authenticated, server-side download route. This continuation is
 local/synthetic only. Cloud Tasks, Cloud Storage and production deployment
 remain open operational work.
+
+A company-scoped, read-only office read of one submitted inspection revision
+and its anchor evidence is implemented as
+`getSubmittedInspectionEvidence` (`GET /reviews/inspections/{inspectionId}/evidence`).
+It is enforced for Administrator and Office reviewer roles, leaves the
+inspector sync path unchanged and runs no write statement. It returns the
+revision header (job, site, submitted at, revision number, latest revision,
+evidence synchronisation state), per-anchor recorded evidence (recorded
+outcome, exception reason, defect description, recommendation, proof-test
+fields, observations, notes, identity/location confirmation, disposition,
+reconciliation proposal) and photo metadata (ids, checksums, captured at,
+upload state), plus recorded counts for expected/accounted anchors, open
+blocker/warning/conflict/change issues and pending/failed photo uploads so
+the office can derive dashboard flags and gate context without guessing.
+The evidence comes from the acknowledged synchronised submission payload
+cross-checked against the submitted inspection row and the immutable released
+job-pack snapshot. Photo bytes remain a separate follow-up; there is still no
+submitted-inspection queue.
 
 D-051 records the synthetic-only retention baseline: no automatic deletion of
 server evidence/reports/audit history, audited synthetic-tenant reset after a
@@ -450,10 +468,12 @@ is inferred or approved.
 The `3D-03` API/worker implementation and generated API contract pass the root
 gate against disposable PostgreSQL, including migration `006` tenant isolation
 and reserved-revision constraints. The office web now connects approval to
-draft generation, status refresh and authenticated PDF download. Next, add the
-company-scoped submitted-inspection queue and read-only evidence/photo detail
-surface so reviewers can locate and inspect submitted records before acting.
-Keep this work synthetic/local. The local report object store is
+draft generation, status refresh and authenticated PDF download. The
+company-scoped read-only submitted-inspection evidence read is implemented;
+next, add the company-scoped submitted-inspection queue and the office
+photo-bytes read so reviewers can locate submitted records and view their
+photographs before acting. Keep this work synthetic/local. The local report
+object store is
 development/test-only. Production Cloud SQL, private Cloud Storage, Cloud Tasks,
 worker concurrency configuration and Administrator recovery verification
 remain operational gates. The local `3C` runtime integration is implemented
@@ -686,6 +706,15 @@ production build passed, and `tools/verify.sh` passed again against a fresh
 disposable PostgreSQL 17 database (89 API tests, no skips), including provider
 portability, PDF, offline-lease and Android storage/job-pack checks. D-051 records
 the synthetic-only retention/reset baseline; G-06 remains open for real data.
+
+On 2026-11-09, the API gained the company-scoped office read of one submitted
+inspection revision and its anchor evidence (issue #81): a read-only
+PostgreSQL evidence reader, an Administrator/Office reviewer-enforced service
+method and the generated `getSubmittedInspectionEvidence` contract operation
+with Kotlin/TypeScript clients. The API suite passed 94 tests (no skips)
+against disposable PostgreSQL 17, including the live tenant-isolation check;
+contract regeneration was byte-stable and openapi-diff stayed compatible, and
+web, Android JVM/lint and the remaining root-gate checks passed.
 
 ## Relevant files
 
