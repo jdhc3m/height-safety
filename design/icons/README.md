@@ -1,4 +1,4 @@
-# Icon source set (T2a, issue #35)
+# Icon source set (T2a, issue #35; platform generation T2b, issue #66)
 
 Authored SVG glyph sources for the Height Safety icon system. `design/DESIGN.md`
 §9 is the source of truth for the icon list, colour meanings and rendering
@@ -6,14 +6,29 @@ rules; hue hexes come from `design/tokens.json` (single source, read at
 generation time).
 
 Each icon has one **authored source** file in this directory. The **tile** and
-**free-glyph** variants under `tile/` and `free/`, and the owner-review contact
-sheet `contact-sheet.html`, are derived from the sources by
-`tools/design-icons/generate.mjs` and gated by `tools/design-icons.sh --check`.
+**free-glyph** variants under `tile/` and `free/`, the owner-review contact
+sheet `contact-sheet.html`, and the platform artifacts below are all derived
+from the sources by `tools/design-icons/generate.mjs` and gated by
+`tools/design-icons.sh --check`.
 
-This ticket deliberately stops at SVG sources, variants and the contact sheet.
-Generating Android `ImageVector`s or the web SVG sprite is T2b (issue #66) and
-must not start until the owner has reviewed and approved this source set.
-Android screen call sites are unchanged by this ticket.
+## Generated platform artifacts (T2b, issue #66)
+
+- **Android** `apps/android/app/src/main/kotlin/au/com/heightsafety/app/icons/HeightSafetyIcons.kt`:
+  an `ImageVector` per variant (`<Name>Tile` / `<Name>Free`), one baked tile
+  colour per icon (`<Name>TileColor`), and a generated `all` entry list. The
+  vectors bake the fixed token hues so tile and free variants render the
+  shared token colours without runtime theming.
+- **Web** `apps/web/public/icons.svg`: an SVG sprite with one `<symbol>` per
+  variant (`hs-<slug>-free` / `hs-<slug>-tile`). Free-glyph symbols tint with
+  `currentColor` (bold/detail tones use the generated `tokens.css` custom
+  properties); tile symbols paint their rounded square from a
+  `--hs-color-*` custom property with the token hex as fallback. Screen
+  call-site migration stays with the screen tickets.
+- Regenerate everything from the sources with
+  `tools/design-icons.sh --generate`; never edit generated outputs by hand.
+  `tools/design-icons.sh --check` (part of `tools/verify.sh`) fails when any
+  generated output is missing or stale, on rule violations, and on forbidden
+  vocabulary in sources and generated outputs.
 
 ## Source convention
 
@@ -125,6 +140,9 @@ Notes:
   variants for every glyph, light and dark themes, plus the source inventory).
 - After editing any source, regenerate the derived outputs with
   `tools/design-icons.sh --generate` and commit them together with the source
-  change. `tools/design-icons.sh --check` (part of `tools/verify.sh`) fails on
-  drift, on missing or extra sources, on rule violations, and on forbidden
-  vocabulary under `design/icons/`.
+  change.
+- `tools/design-icons.sh --check` (part of `tools/verify.sh`) also fails when
+  the derived Android/web artifacts drift; the Android side is additionally
+  covered by JVM tests, a committed Roborazzi icon grid baseline (run with
+  `tools/android-theme.sh --check`) and instrumented render tests for an
+  emulator.

@@ -1,13 +1,15 @@
 #!/usr/bin/env node
-// Derives the tile and free-glyph SVG variants and the owner-review contact
-// sheet from the authored glyph sources in design/icons/ (see
-// design/icons/README.md for the source convention and design/DESIGN.md §9
-// for the icon system rules). Palette values are read from design/tokens.json
-// so hue changes flow through a single regeneration.
+// Derives the platform icon artifacts from the authored glyph sources in
+// design/icons/ (see design/icons/README.md for the source convention and
+// design/DESIGN.md §9 for the icon system rules). Palette values are read from
+// design/tokens.json so hue changes flow through a single regeneration.
 //
-// This ticket (T2a, issue #35) stops at SVG sources, variants and the contact
-// sheet. Generating Android ImageVectors or the web SVG sprite is T2b
-// (issue #66) and must not start until the owner approves this source set.
+// Outputs (T2b, issue #66; the SVG source set is T2a, issue #35):
+//   - design/icons/tile/ and design/icons/free/ SVG variants
+//   - design/icons/contact-sheet.html owner-review contact sheet
+//   - apps/android/.../icons/HeightSafetyIcons.kt Android ImageVectors
+//   - apps/web/public/icons.svg web SVG sprite (currentColor glyph + CSS
+//     variable tile colours referencing the generated tokens.css properties)
 import { mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +20,22 @@ const TOKENS_PATH = join(ROOT, "design", "tokens.json");
 const FREE_DIR = join(ICONS_DIR, "free");
 const TILE_DIR = join(ICONS_DIR, "tile");
 const SHEET_PATH = join(ICONS_DIR, "contact-sheet.html");
+const ANDROID_OUT = join(
+  ROOT,
+  "apps",
+  "android",
+  "app",
+  "src",
+  "main",
+  "kotlin",
+  "au",
+  "com",
+  "heightsafety",
+  "app",
+  "icons",
+  "HeightSafetyIcons.kt",
+);
+const SPRITE_OUT = join(ROOT, "apps", "web", "public", "icons.svg");
 
 // Icon inventory from design/DESIGN.md §9, in display order. The generator
 // fails unless every entry has an authored source and no extra sources exist.
@@ -73,24 +91,47 @@ const ROLES = new Set(["base", "detail", "mark", "accent", "accent-mark"]);
 // Vocabulary the product never claims (AGENTS.md language rule).
 const FORBIDDEN = [/certified/i, /compliant/i, /passed inspection/i, /approved by engineer/i];
 
+// Hue -> tokens.json colour keys (DESIGN.md §9 palette). Base/bold pairs are
+// fixed across light and dark; the same keys back the generated DesignTokens
+// and the tokens.css custom properties the sprite references.
+const HUE_TOKEN_KEYS = {
+  blue: ["brandPrimary", "brandPrimaryPressed"],
+  teal: ["teal", "tealBold"],
+  purple: ["purple", "purpleBold"],
+  green: ["green", "greenBold"],
+  orange: ["orange", "orangeBold"],
+  red: ["red", "redBold"],
+  yellow: ["yellow", "yellowBold"],
+  slate: ["slate", "slateBold"],
+};
+
+const kebab = (value) =>
+  value
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
+    .toLowerCase();
+
+const pascal = (slug) =>
+  slug
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
+
+const argb = (hex) => `0xFF${hex.replace("#", "").toUpperCase()}`;
+
+// CSS variable (and fallback) for a tokens.json colour key, matching the
+// properties generated into apps/web/src/app/tokens.css.
+const cssVar = (tokens, key) =>
+  `var(--hs-color-${kebab(key)}, ${tokens.color.light[key].toLowerCase()})`;
+
 const fail = (message) => {
   throw new Error(`design-icons: ${message}`);
 };
 
 const readTokens = () => {
   const tokens = JSON.parse(readFileSync(TOKENS_PATH, "utf8"));
-  const keyPairs = {
-    blue: ["brandPrimary", "brandPrimaryPressed"],
-    teal: ["teal", "tealBold"],
-    purple: ["purple", "purpleBold"],
-    green: ["green", "greenBold"],
-    orange: ["orange", "orangeBold"],
-    red: ["red", "redBold"],
-    yellow: ["yellow", "yellowBold"],
-    slate: ["slate", "slateBold"],
-  };
   const hues = {};
-  for (const [hue, [baseKey, boldKey]] of Object.entries(keyPairs)) {
+  for (const [hue, [baseKey, boldKey]] of Object.entries(HUE_TOKEN_KEYS)) {
     const base = tokens.color.light[baseKey];
     const bold = tokens.color.light[boldKey];
     if (!base || !bold) fail(`tokens.json is missing ${baseKey}/${boldKey} for hue "${hue}"`);
@@ -99,7 +140,7 @@ const readTokens = () => {
     }
     hues[hue] = [base, bold];
   }
-  return hues;
+  return { tokens, hues };
 };
 
 const parseAttrs = (tag) =>
@@ -178,8 +219,7 @@ const renderSvg = (source, variant, hues) => {
     }
     if (p.role === "base" || p.role === "detail") return "#FFFFFF";
     return base;
-  };
-  const glyph = source.paths.map((p) => {
+  };  const glyph = source.paths.map((p) => {
     const colour = glyphColour(p);
     const kept = ["d", "stroke-width", "stroke-linecap", "stroke-linejoin"]
       .filter((key) => p.attrs[key] !== undefined)
@@ -197,6 +237,196 @@ const renderSvg = (source, variant, hues) => {
     return header + tileRect + glyph.join("\n") + "\n</svg>\n";
   }
   return header + glyph.join("\n") + "\n</svg>\n";
+};
+
+// Full-bleed rounded tile square as a single SVG path (radius 6 = 25% of 24),
+// so the sprite and the generated ImageVector need paths only.
+const TILE_RECT_PATH =
+  "M6,0 L18,0 A6,6 0 0 1 24,6 L24,18 A6,6 0 0 1 18,24 L6,24 A6,6 0 0 1 0,18 L0,6 A6,6 0 0 1 6,0 Z";
+
+const STROKE_CAPS = { butt: "StrokeCap.Butt", round: "StrokeCap.Round", square: "StrokeCap.Square" };
+const STROKE_JOINS = { miter: "StrokeJoin.Miter", round: "StrokeJoin.Round", bevel: "StrokeJoin.Bevel" };
+
+const kotlinCap = (attrs) => STROKE_CAPS[attrs["stroke-linecap"]] ?? STROKE_CAPS.butt;
+const kotlinJoin = (attrs) => STROKE_JOINS[attrs["stroke-linejoin"]] ?? STROKE_JOINS.miter;
+
+// Colour rules mirror renderSvg: the Android vectors bake the fixed token hues
+// from design/tokens.json (identical in light and dark, DESIGN.md §9).
+const kotlinColour = (source, variant, p, hues) => {
+  const [base, bold] = hues[source.colour];
+  if (p.role === "accent") return p.attrs.fill;
+  if (p.role === "accent-mark") return "#FFFFFF";
+  if (variant === "free") {
+    if (p.role === "base") return base;
+    if (p.role === "detail") return bold;
+    return "#FFFFFF";
+  }
+  if (p.role === "base" || p.role === "detail") return "#FFFFFF";
+  return base;
+};
+
+const kotlinPath = (source, variant, p, hues) => {
+  const colour = kotlinColour(source, variant, p, hues);
+  if (p.stroked) {
+    return (
+      `        svgPath(\n` +
+      `            "${p.attrs.d}",\n` +
+      `            stroke = Color(${argb(colour)}),\n` +
+      `            strokeWidth = ${p.attrs["stroke-width"]}f,\n` +
+      `            strokeLineCap = ${kotlinCap(p.attrs)},\n` +
+      `            strokeLineJoin = ${kotlinJoin(p.attrs)},\n` +
+      `        )`
+    );
+  }
+  return (
+    `        svgPath(\n` +
+    `            "${p.attrs.d}",\n` +
+    `            fill = Color(${argb(colour)}),\n` +
+    `        )`
+  );
+};
+
+const renderKotlinIcons = (sources, hues) => {
+  const lines = [];
+  lines.push("package au.com.heightsafety.app.icons");
+  lines.push("");
+  lines.push("import androidx.compose.ui.graphics.Color");
+  lines.push("import androidx.compose.ui.graphics.StrokeCap");
+  lines.push("import androidx.compose.ui.graphics.StrokeJoin");
+  lines.push("import androidx.compose.ui.graphics.PathFillType");
+  lines.push("import androidx.compose.ui.graphics.SolidColor");
+  lines.push("import androidx.compose.ui.graphics.vector.ImageVector");
+  lines.push("import androidx.compose.ui.graphics.vector.addPathNodes");
+  lines.push("import androidx.compose.ui.unit.dp");
+  lines.push("");
+  lines.push("// Generated from design/icons/ by tools/design-icons/generate.mjs. Do not edit.");
+  lines.push("// Tile and free-glyph ImageVectors for the DESIGN.md §9 icon set.");
+  lines.push("// Tile colours are the fixed hue tokens shared with DesignTokens.");
+  lines.push("object HeightSafetyIcons {");
+  for (const source of sources) {
+    const name = pascal(source.slug);
+    lines.push("");
+    for (const variant of ["Tile", "Free"]) {
+      const kind = variant.toLowerCase();
+      lines.push(`    val ${name}${variant}: ImageVector by lazy {`);
+      lines.push(`        imageVector("${name}${variant}") {`);
+      if (variant === "Tile") {
+        lines.push(`        svgPath(`);
+        lines.push(`            "${TILE_RECT_PATH}",`);
+        lines.push(`            fill = Color(${argb(hues[source.colour][0])}),`);
+        lines.push(`        )`);
+      }
+      for (const p of source.paths) {
+        lines.push(kotlinPath(source, kind, p, hues));
+      }
+      lines.push(`        }`);
+      lines.push(`    }`);
+    }
+    lines.push(`    val ${name}TileColor: Color = Color(${argb(hues[source.colour][0])})`);
+  }
+  lines.push("");
+  lines.push("    data class Entry(");
+  lines.push("        val slug: String,");
+  lines.push("        val name: String,");
+  lines.push("        val hue: String,");
+  lines.push("        val tile: ImageVector,");
+  lines.push("        val free: ImageVector,");
+  lines.push("        val tileColor: Color,");
+  lines.push("    )");
+  lines.push("");
+  lines.push("    val all: List<Entry> = listOf(");
+  for (const source of sources) {
+    const name = pascal(source.slug);
+    lines.push(
+      `        Entry("${source.slug}", "${source.name}", "${source.colour}", ${name}Tile, ${name}Free, ${name}TileColor),`,
+    );
+  }
+  lines.push("    )");
+  lines.push("");
+  lines.push("    private inline fun imageVector(name: String, block: ImageVector.Builder.() -> Unit): ImageVector =");
+  lines.push("        ImageVector.Builder(");
+  lines.push("            name = name,");
+  lines.push("            defaultWidth = 24.dp,");
+  lines.push("            defaultHeight = 24.dp,");
+  lines.push("            viewportWidth = 24f,");
+  lines.push("            viewportHeight = 24f,");
+  lines.push("        )");
+  lines.push("            .apply(block)");
+  lines.push("            .build()");
+  lines.push("");
+  lines.push("    private fun ImageVector.Builder.svgPath(");
+  lines.push("        data: String,");
+  lines.push("        fill: Color? = null,");
+  lines.push("        stroke: Color? = null,");
+  lines.push("        strokeWidth: Float = 0f,");
+  lines.push("        strokeLineCap: StrokeCap = StrokeCap.Butt,");
+  lines.push("        strokeLineJoin: StrokeJoin = StrokeJoin.Miter,");
+  lines.push("    ) = addPath(");
+  lines.push("        pathData = addPathNodes(data),");
+  lines.push("        pathFillType = PathFillType.EvenOdd,");
+  lines.push("        fill = fill?.let(::SolidColor),");
+  lines.push("        stroke = stroke?.let(::SolidColor),");
+  lines.push("        strokeLineWidth = strokeWidth,");
+  lines.push("        strokeLineCap = strokeLineCap,");
+  lines.push("        strokeLineJoin = strokeLineJoin,");
+  lines.push("    )");
+  lines.push("}");
+  lines.push("");
+  return lines.join("\n");
+};
+
+// Free-glyph symbols tint with `currentColor`; tile symbols paint the rounded
+// tile square from the generated tokens.css custom properties (with the token
+// hex as fallback so the sprite still renders standalone).
+const spriteColour = (tokens, source, variant, p, hues) => {
+  const [baseKey, boldKey] = HUE_TOKEN_KEYS[source.colour];
+  const [base] = hues[source.colour];
+  if (p.role === "accent") return p.attrs.fill;
+  if (p.role === "accent-mark") return "#FFFFFF";
+  if (variant === "free") {
+    if (p.role === "base") return "currentColor";
+    if (p.role === "detail") return cssVar(tokens, boldKey);
+    return "#FFFFFF";
+  }
+  if (p.role === "base" || p.role === "detail") return "#FFFFFF";
+  return cssVar(tokens, baseKey);
+};
+
+const spritePath = (tokens, source, variant, p, hues) => {
+  const colour = spriteColour(tokens, source, variant, p, hues);
+  const kept = ["d", "stroke-width", "stroke-linecap", "stroke-linejoin"]
+    .filter((key) => p.attrs[key] !== undefined)
+    .map((key) => `${key}="${p.attrs[key]}"`);
+  const paint = p.stroked
+    ? `fill="none" stroke="${colour}"`
+    : `fill="${colour}" fill-rule="evenodd"`;
+  return `      <path data-role="${p.role}" ${paint} ${kept.join(" ")}/>`;
+};
+
+const renderSprite = (tokens, sources, hues) => {
+  const symbols = [];
+  for (const source of sources) {
+    for (const variant of ["free", "tile"]) {
+      const paths = [];
+      if (variant === "tile") {
+        paths.push(
+          `      <path data-role="tile" fill="${cssVar(tokens, HUE_TOKEN_KEYS[source.colour][0])}" d="${TILE_RECT_PATH}"/>`,
+        );
+      }
+      for (const p of source.paths) {
+        paths.push(spritePath(tokens, source, variant, p, hues));
+      }
+      symbols.push(
+        `    <symbol id="hs-${source.slug}-${variant}" viewBox="0 0 24 24">\n${paths.join("\n")}\n    </symbol>`,
+      );
+    }
+  }
+  return (
+    `<!-- Generated from design/icons/ by tools/design-icons/generate.mjs. Do not edit. -->\n` +
+    `<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">\n` +
+    `  <defs>\n${symbols.join("\n")}\n  </defs>\n` +
+    `</svg>\n`
+  );
 };
 
 const buildSources = () => {
@@ -250,7 +480,7 @@ ${["navigation", "action", "status"].map(section).join("\n")}
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Height Safety icon set — T2a owner review contact sheet</title>
+<title>Height Safety icon set — contact sheet</title>
 <style>
   body { margin: 0; font: 14px/1.5 Inter, system-ui, sans-serif; color: #172B4D; }
   .theme { padding: 28px 32px 36px; }
@@ -274,7 +504,7 @@ ${["navigation", "action", "status"].map(section).join("\n")}
 </style>
 </head>
 <body>
-${theme("light", "light", "Draft for owner review (T2a, issue #35). The authored files under design/icons/ are the source of truth; the tile and free-glyph variants shown here are derived from them by tools/design-icons/generate.mjs. Tile colours and glyph hues are fixed tokens from design/tokens.json and do not change between themes. This ticket stops at SVG: Android ImageVector and web sprite generation is T2b (issue #66) and starts only after this set is approved and merged.")}
+${theme("light", "light", "The authored files under design/icons/ are the source of truth; the tile and free-glyph variants shown here are derived from them by tools/design-icons/generate.mjs. Tile colours and glyph hues are fixed tokens from design/tokens.json and do not change between themes. The same sources also generate the Android HeightSafetyIcons ImageVectors and the web SVG sprite (T2b, issue #66); regenerate everything with tools/design-icons.sh --generate.")}
 ${theme("dark", "dark", "Dark theme: tile colours are unchanged and free glyphs keep the same fixed hues; only surfaces change (design/DESIGN.md §9).")}
 <section class="footer">
   <h2>Source inventory (${sources.length} glyphs)</h2>
@@ -305,7 +535,7 @@ const walkSvgTree = (dir) =>
     return [path];
   });
 
-const writeOutputs = (sources, hues) => {
+const writeOutputs = (tokens, sources, hues) => {
   const variants = renderVariants(sources, hues);
   rmSync(FREE_DIR, { recursive: true, force: true });
   rmSync(TILE_DIR, { recursive: true, force: true });
@@ -316,6 +546,10 @@ const writeOutputs = (sources, hues) => {
     writeFileSync(join(TILE_DIR, `${source.slug}.svg`), variants.tile[source.slug]);
   }
   writeFileSync(SHEET_PATH, renderSheet(sources, { free: mapInline(variants.free), tile: mapInline(variants.tile) }));
+  mkdirSync(dirname(ANDROID_OUT), { recursive: true });
+  mkdirSync(dirname(SPRITE_OUT), { recursive: true });
+  writeFileSync(ANDROID_OUT, renderKotlinIcons(sources, hues));
+  writeFileSync(SPRITE_OUT, renderSprite(tokens, sources, hues));
 };
 
 const mapInline = (map) =>
@@ -327,11 +561,14 @@ const main = () => {
     console.error("Usage: generate.mjs [--check|--generate]");
     process.exit(2);
   }
-  const hues = readTokens();
+  const { tokens, hues } = readTokens();
   const sources = buildSources();
   if (mode === "--generate") {
-    writeOutputs(sources, hues);
-    console.log(`design-icons: generated ${sources.length * 2} variant SVGs and the contact sheet`);
+    writeOutputs(tokens, sources, hues);
+    console.log(
+      `design-icons: generated ${sources.length * 2} variant SVGs, the contact sheet, ` +
+        `${sources.length * 2} Android ImageVectors and ${sources.length * 2} web sprite symbols`,
+    );
     return;
   }
   const variants = renderVariants(sources, hues);
@@ -366,15 +603,32 @@ const main = () => {
   if (sheet !== undefined && sheet !== renderSheet(sources, inline)) {
     drift("contact sheet drifted from sources");
   }
-  for (const path of walkSvgTree(ICONS_DIR)) {
-    if (path === SHEET_PATH) continue;
+  const generatedFiles = [
+    [ANDROID_OUT, renderKotlinIcons(sources, hues)],
+    [SPRITE_OUT, renderSprite(tokens, sources, hues)],
+  ];
+  for (const [target, expected] of generatedFiles) {
+    let actual;
+    try {
+      actual = readFileSync(target, "utf8");
+    } catch {
+      drift(`missing generated output ${target.replace(ROOT + "/", "")}`);
+      continue;
+    }
+    if (actual !== expected) drift(`generated output drifted from sources: ${target.replace(ROOT + "/", "")}`);
+  }
+  const generatedPaths = [SHEET_PATH, ...walkSvgTree(ICONS_DIR), ANDROID_OUT, SPRITE_OUT];
+  for (const path of generatedPaths) {
     const text = readFileSync(path, "utf8");
     for (const pattern of FORBIDDEN) {
       if (pattern.test(text)) fail(`forbidden vocabulary in ${path.replace(ROOT + "/", "")}`);
     }
   }
   if (drifted) process.exit(1);
-  console.log(`design-icons: ${sources.length} sources, ${sources.length * 2} variants and the contact sheet are in sync`);
+  console.log(
+    `design-icons: ${sources.length} sources, ${sources.length * 2} variants, the contact sheet, ` +
+      `the Android ImageVectors and the web sprite are in sync`,
+  );
 };
 
 main();
