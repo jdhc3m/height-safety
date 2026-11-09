@@ -41,6 +41,20 @@ interface ReportsApi {
     suspend fun getDraftReportGeneration(@Header("x-company-id") xCompanyId: kotlin.String, @Path("generationId") generationId: kotlin.String): Response<ReportGenerationResponseDto>
 
     /**
+     * GET reports/generations
+     * List tenant-scoped draft report generations, newest first, optionally for one job
+     * 
+     * Responses:
+     *  - 200: 
+     *
+     * @param xCompanyId 
+     * @param jobId Limit the list to generations for one job (optional)
+     * @return [kotlin.collections.List<ReportGenerationResponseDto>]
+     */
+    @GET("reports/generations")
+    suspend fun listDraftReportGenerations(@Header("x-company-id") xCompanyId: kotlin.String, @Query("jobId") jobId: kotlin.String? = null): Response<kotlin.collections.List<ReportGenerationResponseDto>>
+
+    /**
      * POST reports/generations
      * Queue one deterministic draft report revision from an approved snapshot
      * 

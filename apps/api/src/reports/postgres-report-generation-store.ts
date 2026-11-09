@@ -15,6 +15,7 @@ import type {
   EnqueueReportGenerationInput,
   ReportArtifactMetadata,
   ReportGenerationClaim,
+  ReportGenerationListFilter,
   ReportGenerationRecord,
   ReportGenerationStore,
   ReportRevisionRecord,
@@ -597,6 +598,29 @@ export class PostgresReportGenerationStore implements ReportGenerationStore {
         ),
       );
       return row ? parseGeneration(row, companyId) : undefined;
+    });
+  }
+
+  async listGenerations(
+    companyId: string,
+    filter: ReportGenerationListFilter,
+  ): Promise<readonly ReportGenerationRecord[]> {
+    return this.withTenant(companyId, async (transaction) => {
+      const result = await transaction.query<GenerationRow>(
+        `
+          SELECT ${GENERATION_SELECT_COLUMNS},
+                 inspection.revision_number AS source_inspection_revision
+          FROM report_generation_jobs generation
+          JOIN inspections inspection
+            ON inspection.company_id = generation.company_id
+           AND inspection.inspection_id = generation.source_inspection_id
+          WHERE generation.company_id = $1
+            AND ($2::text IS NULL OR generation.job_id = $2)
+          ORDER BY generation.requested_at DESC, generation.generation_id DESC
+        `,
+        [companyId, filter.jobId],
+      );
+      return result.rows.map((row) => parseGeneration(row, companyId));
     });
   }
 

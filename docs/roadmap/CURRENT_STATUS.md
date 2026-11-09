@@ -716,6 +716,15 @@ against disposable PostgreSQL 17, including the live tenant-isolation check;
 contract regeneration was byte-stable and openapi-diff stayed compatible, and
 web, Android JVM/lint and the remaining root-gate checks passed.
 
+On 2026-11-09, the API also gained the company-scoped draft-report generation
+list (issue #83): `listDraftReportGenerations`
+(`GET /reports/generations`, optional `?jobId=`) returns the existing
+`ReportGenerationResponseDto` shape per revision, newest first, for
+Administrators and Office reviewers, with no renderer, snapshot-content or
+web changes. The API suite passed 102 tests (no skips) against disposable
+PostgreSQL 17, including the live tenant-isolation check; contract
+regeneration stayed byte-stable and openapi-diff stayed compatible.
+
 ## Relevant files
 
 `AGENTS.md`; `docs/product/`; `docs/discovery/`; `docs/requirements/`;

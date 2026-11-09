@@ -2766,6 +2766,52 @@
       }
     },
     "/reports/generations": {
+      "get": {
+        "operationId": "listDraftReportGenerations",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Limit the list to generations for one job",
+            "in": "query",
+            "name": "jobId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReportGenerationResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List tenant-scoped draft report generations, newest first, optionally for one job",
+        "tags": [
+          "reports"
+        ]
+      },
       "post": {
         "operationId": "requestDraftReportGeneration",
         "parameters": [

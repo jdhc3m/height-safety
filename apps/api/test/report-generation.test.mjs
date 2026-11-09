@@ -13,6 +13,7 @@ import {
   reportArtifactObjectStoreFromEnvironment,
 } from '../dist/reports/local-private-report-object-store.js';
 import { PostgresReportGenerationStore } from '../dist/reports/postgres-report-generation-store.js';
+import { UnconfiguredReportGenerationStore } from '../dist/reports/report-generation-store.js';
 import { ReportGenerationController } from '../dist/reports/report-generation.controller.js';
 import { ReportGenerationService } from '../dist/reports/report-generation-service.js';
 import { ReportGenerationWorker } from '../dist/reports/report-generation-worker.js';
@@ -515,6 +516,170 @@ test('report requests are limited to office reviewers and administrators', async
   );
 });
 
+test('report generation list is limited to office reviewers and administrators', async () => {
+  const service = new ReportGenerationService({
+    snapshots: {
+      async get() {
+        return approvedSnapshot();
+      },
+    },
+    store: {
+      async listGenerations() {
+        throw new Error('must not list generations');
+      },
+    },
+    objects: new MemoryObjectStore(),
+    clock: new FixedClock(),
+    idGenerator: new FixedIdGenerator(),
+  });
+
+  await assert.rejects(
+    service.listGenerations(principal('company-a', 'inspector')),
+    (error) =>
+      error instanceof ReportGenerationFailure &&
+      error.code === 'ROLE_FORBIDDEN',
+  );
+});
+
+test('report generation list validates the optional job filter', async () => {
+  const listCalls = [];
+  const service = new ReportGenerationService({
+    snapshots: {
+      async get() {
+        return approvedSnapshot();
+      },
+    },
+    store: {
+      async listGenerations(companyId, filter) {
+        listCalls.push({ companyId, filter });
+        return [];
+      },
+    },
+    objects: new MemoryObjectStore(),
+    clock: new FixedClock(),
+    idGenerator: new FixedIdGenerator(),
+  });
+
+  await assert.rejects(
+    service.listGenerations(principal(), '   '),
+    (error) =>
+      error instanceof ReportGenerationFailure &&
+      error.code === 'INVALID_INPUT',
+  );
+  await assert.rejects(
+    service.listGenerations(principal(), 'j'.repeat(129)),
+    (error) =>
+      error instanceof ReportGenerationFailure &&
+      error.code === 'INVALID_INPUT',
+  );
+  assert.equal(listCalls.length, 0);
+
+  await service.listGenerations(principal(), undefined);
+  await service.listGenerations(principal(), null);
+  await service.listGenerations(principal(), 'job-a');
+
+  assert.deepEqual(
+    listCalls.map(({ companyId, filter }) => ({ companyId, filter })),
+    [
+      { companyId: 'company-a', filter: { jobId: null } },
+      { companyId: 'company-a', filter: { jobId: null } },
+      { companyId: 'company-a', filter: { jobId: 'job-a' } },
+    ],
+  );
+});
+
+test('report generation list is company-scoped and copied before returning', async () => {
+  const stored = [
+    generationRecord(),
+    generationRecord({
+      generationId: 'generation-other-company',
+      companyId: 'company-b',
+      status: 'completed',
+      revisionNumber: 1,
+      completedAt: new Date(NOW.getTime()),
+    }),
+    generationRecord({
+      generationId: 'generation-completed',
+      status: 'superseded',
+      revisionNumber: 1,
+      completedAt: new Date(NOW.getTime()),
+    }),
+  ];
+  const service = new ReportGenerationService({
+    snapshots: {
+      async get() {
+        return approvedSnapshot();
+      },
+    },
+    store: {
+      async listGenerations() {
+        return stored;
+      },
+    },
+    objects: new MemoryObjectStore(),
+    clock: new FixedClock(),
+    idGenerator: new FixedIdGenerator(),
+  });
+
+  const generations = await service.listGenerations(principal(), 'job-a');
+
+  assert.deepEqual(
+    generations.map((generation) => generation.generationId),
+    ['generation-a', 'generation-completed'],
+  );
+  assert.notEqual(generations[0], stored[0]);
+  assert.notEqual(generations[0].requestedAt, stored[0].requestedAt);
+  assert.equal(
+    generations[0].requestedAt.getTime(),
+    stored[0].requestedAt.getTime(),
+  );
+});
+
+test('report controller authenticates and serializes the generation list', async () => {
+  const authenticated = [];
+  const controller = new ReportGenerationController(
+    {
+      authenticateSession(companyId, token) {
+        authenticated.push({ companyId, token });
+        return principal(companyId);
+      },
+    },
+    {
+      async listGenerations(tenantPrincipal, jobId) {
+        assert.equal(tenantPrincipal.companyId, 'company-a');
+        return [generationRecord({ jobId })];
+      },
+    },
+  );
+
+  const filtered = await controller.listGenerations(
+    'Bearer opaque-session',
+    'company-a',
+    'job-a',
+  );
+  const unfiltered = await controller.listGenerations(
+    'Bearer opaque-session',
+    'company-a',
+    undefined,
+  );
+
+  assert.deepEqual(authenticated, [
+    { companyId: 'company-a', token: 'opaque-session' },
+    { companyId: 'company-a', token: 'opaque-session' },
+  ]);
+  assert.deepEqual(
+    filtered.map((generation) => ({
+      generationId: generation.generationId,
+      jobId: generation.jobId,
+      status: generation.status,
+    })),
+    [{ generationId: 'generation-a', jobId: 'job-a', status: 'queued' }],
+  );
+  assert.equal(unfiltered.length, 1);
+  assert.equal(unfiltered[0].jobId, undefined);
+  assert.equal(unfiltered[0].requestedAt, NOW.toISOString());
+});
+
 test('report controller authenticates and serializes the queued generation', async () => {
   const authenticated = [];
   const record = generationRecord();
@@ -722,6 +887,113 @@ test('retry scheduling casts the retry timestamp so the failure update can run',
   // An untyped $3 in `$3 + interval` makes Postgres infer an interval and
   // reject the CASE, which previously wedged the job in `processing`.
   assert.match(failureUpdate.text, /\$3::timestamptz/);
+});
+
+test('PostgreSQL generation list is tenant-scoped, job-filterable and newest first', async () => {
+  const queries = [];
+  const listRow = databaseGenerationRow(enqueueInput(), {
+    status: 'completed',
+    revision_number: 2,
+    completed_at: NOW,
+  });
+  const database = {
+    async transaction(work) {
+      return work({
+        query: async (text, values) => {
+          queries.push({ text, values });
+          if (text.includes("set_config('app.company_id'")) {
+            return { rows: [], rowCount: 1 };
+          }
+          if (text.includes('FROM report_generation_jobs generation')) {
+            return { rows: [listRow], rowCount: 1 };
+          }
+          throw new Error(`unexpected SQL in list test: ${text}`);
+        },
+      });
+    },
+  };
+  const store = new PostgresReportGenerationStore(database);
+
+  const filtered = await store.listGenerations('company-a', {
+    jobId: 'job-a',
+  });
+  const unfiltered = await store.listGenerations('company-a', { jobId: null });
+
+  const listQueries = queries.filter(({ text }) =>
+    text.includes('FROM report_generation_jobs generation'),
+  );
+  assert.equal(listQueries.length, 2);
+  for (const query of listQueries) {
+    assert.match(query.text, /generation\.company_id = \$1/);
+    assert.match(
+      query.text,
+      /\(\$2::text IS NULL OR generation\.job_id = \$2\)/,
+    );
+    assert.match(
+      query.text,
+      /ORDER BY generation\.requested_at DESC, generation\.generation_id DESC/,
+    );
+  }
+  assert.deepEqual(listQueries[0].values, ['company-a', 'job-a']);
+  assert.deepEqual(listQueries[1].values, ['company-a', null]);
+  assert.equal(filtered.length, 1);
+  assert.equal(filtered[0].generationId, 'generation-new');
+  assert.equal(filtered[0].status, 'completed');
+  assert.equal(filtered[0].revisionNumber, 2);
+  assert.deepEqual(unfiltered, filtered);
+});
+
+test('PostgreSQL generation list rejects rows that cross company scope', async () => {
+  const database = {
+    async transaction(work) {
+      return work({
+        query: async (text, values) => {
+          if (text.includes("set_config('app.company_id'")) {
+            return { rows: [], rowCount: 1 };
+          }
+          if (text.includes('FROM report_generation_jobs generation')) {
+            return {
+              rows: [
+                databaseGenerationRow(enqueueInput(), {
+                  company_id: 'company-b',
+                }),
+              ],
+              rowCount: 1,
+            };
+          }
+          throw new Error(`unexpected SQL in list test: ${text}`);
+        },
+      });
+    },
+  };
+
+  await assert.rejects(
+    new PostgresReportGenerationStore(database).listGenerations('company-a', {
+      jobId: null,
+    }),
+    (error) =>
+      error instanceof ReportGenerationFailure &&
+      error.code === 'PERSISTENCE_UNAVAILABLE' &&
+      /crossed company scope/.test(error.message),
+  );
+});
+
+test('unconfigured report persistence rejects the generation list', async () => {
+  // The fail-closed adapter surfaces unavailability on the first call; the
+  // assertion accepts either a synchronous throw or a rejected promise.
+  let unavailable;
+  try {
+    await new UnconfiguredReportGenerationStore().listGenerations('company-a', {
+      jobId: null,
+    });
+  } catch (error) {
+    unavailable = error;
+  }
+
+  assert.ok(
+    unavailable instanceof ReportGenerationFailure &&
+      unavailable.code === 'PERSISTENCE_UNAVAILABLE',
+  );
 });
 
 test('report request audit failure rolls back enqueue', async () => {
@@ -1097,5 +1369,58 @@ test('generated report download contract describes binary PDF bytes', async () =
   assert.doesNotMatch(
     kotlinClient,
     /downloadDraftReport\([^\n]+Response<Unit>/,
+  );
+});
+
+test('generated contract exposes the company-scoped generation list with an optional job filter', async () => {
+  const contract = JSON.parse(
+    await readFile(
+      new URL('../../../contracts/openapi/v1/openapi.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  const operation = contract.paths['/reports/generations'].get;
+
+  assert.equal(operation.operationId, 'listDraftReportGenerations');
+  const jobParameter = operation.parameters.find(
+    (parameter) => parameter.in === 'query',
+  );
+  assert.deepEqual(jobParameter, {
+    description: 'Limit the list to generations for one job',
+    in: 'query',
+    name: 'jobId',
+    required: false,
+    schema: { type: 'string' },
+  });
+  assert.deepEqual(operation.responses['200'].content, {
+    'application/json': {
+      schema: {
+        items: { $ref: '#/components/schemas/ReportGenerationResponseDto' },
+        type: 'array',
+      },
+    },
+  });
+
+  const typescriptClient = await readFile(
+    new URL(
+      '../../../clients/typescript/src/apis/ReportsApi.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const kotlinClient = await readFile(
+    new URL(
+      '../../../clients/kotlin/src/main/kotlin/au/com/heightsafety/api/apis/ReportsApi.kt',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  assert.match(
+    typescriptClient,
+    /listDraftReportGenerations\([^\n]+Promise<Array<ReportGenerationResponseDto>>/,
+  );
+  assert.match(
+    kotlinClient,
+    /listDraftReportGenerations\(@Header\("x-company-id"\) xCompanyId: kotlin\.String, @Query\("jobId"\) jobId: kotlin\.String\? = null\): Response<kotlin\.collections\.List<ReportGenerationResponseDto>>/,
   );
 });
