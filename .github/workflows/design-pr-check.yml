@@ -180,6 +180,7 @@ jobs:
           arch: ${{ steps.abi.outputs.abi }}
           profile: pixel_2
           target: google_apis
+          disk-size: 2G
           disable-animations: true
           emulator-options: >-
             -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
@@ -198,6 +199,7 @@ jobs:
           arch: ${{ steps.abi.outputs.abi }}
           profile: pixel_2
           target: google_apis
+          disk-size: 2G
           disable-animations: true
           emulator-options: >-
             -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
