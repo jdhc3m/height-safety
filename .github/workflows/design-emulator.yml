@@ -1,0 +1,139 @@
+# Android instrumented tests for the design-system branch.
+#
+# Runs AFTER merge (push to design-system) and nightly, instead of per PR. The
+# self-hosted emulator is slow and infra-flaky, and a per-PR gate bounced whole
+# tickets back to the builder on infrastructure failures.
+#
+# Failure classification (informational only; this workflow never moves ticket
+# labels):
+#   - androidTest result XMLs exist -> real test failure, fix the app/tests.
+#   - no result XMLs at all         -> emulator/infra failure, inspect the
+#                                      self-hosted runner (disk, SDK, adb).
+#
+# Lives on both main and design-system: the design-system copy executes on
+# merge pushes, the main copy executes the nightly schedule and dispatches.
+# Runner prerequisites (one-time, by the repository owner):
+#   1. Register a self-hosted runner with the default `macOS` label.
+#   2. Keep Android command-line tools installed (ANDROID_HOME defaults to
+#      ~/Library/Android/sdk when unset).
+
+name: Design emulator
+
+on:
+  push:
+    branches: [design-system]
+    paths:
+      - "apps/android/**"
+      - "tools/android-theme.sh"
+  schedule:
+    - cron: "0 16 * * *" # 02:00 AEST; skipped if the Mac is asleep
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Ref to test (defaults to design-system)
+        required: false
+        default: design-system
+
+permissions:
+  contents: read
+
+concurrency:
+  group: design-emulator
+  cancel-in-progress: true
+
+jobs:
+  emulator:
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 60
+    steps:
+      - name: Check out design-system
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.ref || 'design-system' }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Point ANDROID_HOME at the local SDK
+        run: echo "ANDROID_HOME=${ANDROID_HOME:-$HOME/Library/Android/sdk}" >> "$GITHUB_ENV"
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+
+      - name: Resolve emulator ABI
+        id: abi
+        run: |
+          case "$(uname -m)" in
+            arm64|aarch64) echo "abi=arm64-v8a" >> "$GITHUB_OUTPUT" ;;
+            *)             echo "abi=x86_64"   >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Run Android instrumented tests (attempt 1)
+        id: emu1
+        continue-on-error: true
+        timeout-minutes: 25
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          arch: ${{ steps.abi.outputs.abi }}
+          profile: pixel_2
+          target: google_apis
+          disk-size: 2G
+          disable-animations: true
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+            -no-snapshot -no-metrics
+          script: |
+            source tools/android-env.sh
+            bash tools/gradle.sh -p apps/android :app:connectedDebugAndroidTest --no-daemon
+
+      - name: Clean stale emulators before retry
+        if: always() && steps.emu1.outcome == 'failure'
+        run: |
+          pkill -f qemu-system 2>/dev/null || true
+          sleep 5
+          "$ANDROID_HOME/platform-tools/adb" kill-server 2>/dev/null || true
+          "$ANDROID_HOME/platform-tools/adb" start-server 2>/dev/null || true
+
+      - name: Run Android instrumented tests (attempt 2, fresh emulator)
+        id: emu2
+        if: always() && steps.emu1.outcome == 'failure'
+        timeout-minutes: 25
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          arch: ${{ steps.abi.outputs.abi }}
+          profile: pixel_2
+          target: google_apis
+          disk-size: 2G
+          disable-animations: true
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+            -no-snapshot -no-metrics
+          script: |
+            source tools/android-env.sh
+            bash tools/gradle.sh -p apps/android :app:connectedDebugAndroidTest --no-daemon
+
+      - name: Classify failure (tests vs infra)
+        if: always() && steps.emu1.outcome == 'failure' && steps.emu2.outcome != 'success'
+        run: |
+          results="$(find apps/android/app/build/outputs/androidTest-results/connected -name '*.xml' 2>/dev/null | head -1)"
+          if [ -n "$results" ]; then
+            echo "::error::Android instrumented tests FAILED (test results present). Real regression: fix the app/tests and merge a follow-up PR."
+          else
+            echo "::error::EMULATOR/INFRA FAILURE: no androidTest results were produced. Do not re-open tickets; inspect the self-hosted runner (disk, SDK, adb)."
+          fi
+          exit 1
+
+      - name: Upload Android build reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: design-emulator-${{ github.run_number }}-reports
+          path: |
+            apps/android/app/build/reports/**
+            apps/android/app/build/outputs/**
+          if-no-files-found: ignore
+          retention-days: 7
