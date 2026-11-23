@@ -125,12 +125,20 @@ export interface ReportArtifactMetadata {
   readonly byteSize: number;
 }
 
+export interface ReportGenerationListFilter {
+  readonly jobId: string | null;
+}
+
 export interface ReportGenerationStore {
   enqueue(input: EnqueueReportGenerationInput): Promise<ReportGenerationRecord>;
   findGeneration(
     companyId: string,
     generationId: string,
   ): Promise<ReportGenerationRecord | undefined>;
+  listGenerations(
+    companyId: string,
+    filter: ReportGenerationListFilter,
+  ): Promise<readonly ReportGenerationRecord[]>;
   claimNext(
     companyId: string,
     now: Date,

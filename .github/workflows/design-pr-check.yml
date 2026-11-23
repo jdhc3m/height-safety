@@ -1,5 +1,20 @@
-# Tests the actual design-system PR in a disposable GitHub runner/database.
-# Only this workflow can turn a design ticket into status:done.
+# Tests the actual design-system PR. Split across two runners so the expensive,
+# flaky part (the Android emulator) runs on the owner's Mac instead of paid
+# cloud runners:
+#   - verify:    ubuntu-latest runs tools/verify.sh (docs/format/lint/contracts/
+#                tokens/icons/JVM+web tests) against a disposable Postgres service.
+#   - emulator:  self-hosted macOS runner runs :app:connectedDebugAndroidTest.
+#                Only starts when Android app/test files changed, and never for
+#                fork PRs (public repo + self-hosted runner hygiene). One fresh-
+#                emulator retry so a bad boot does not fail the run.
+#   - verdict:   joins both results. This workflow remains the only place that
+#                can turn a design ticket into status:done.
+#
+# Runner prerequisites (one-time, by the repository owner):
+#   1. Register a self-hosted runner on this repo with the default `macOS` label
+#      (config.sh adds `self-hosted`, `macOS` and `X64` automatically).
+#   2. Keep Android Studio / command-line tools installed (ANDROID_HOME defaults
+#      to ~/Library/Android/sdk when unset) and keep the Mac awake during runs.
 
 name: Design PR checks
 
@@ -21,12 +36,19 @@ permissions:
 
 concurrency:
   group: design-pr-check-${{ github.event.pull_request.number || inputs.pr_number }}
-  cancel-in-progress: false
+  # Superseded runs (builder pushed again) are killed; only the newest run
+  # reaches the verdict job, so the ticket state stays correct.
+  cancel-in-progress: true
 
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
+    outputs:
+      pr_number: ${{ steps.pr.outputs.number }}
+      head_ref: ${{ steps.pr.outputs.head_ref }}
+      issue_number: ${{ steps.pr.outputs.issue_number }}
+      android_required: ${{ steps.android_changes.outputs.required }}
     env:
       TEST_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       TEST_POSTGRES_ALLOW_MIGRATION: '1'
@@ -65,12 +87,22 @@ jobs:
             exit 1
           fi
 
-      - name: Check out PR revision
+      - name: Check out design-system
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.sha || steps.pr.outputs.head_ref }}
+          ref: design-system
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Merge PR head into design-system
+        env:
+          HEAD_REF: ${{ steps.pr.outputs.head_ref }}
+        run: |
+          git fetch origin "$HEAD_REF"
+          if ! git merge --no-ff --no-edit "FETCH_HEAD"; then
+            echo "PR does not merge cleanly into design-system" >&2
+            exit 1
+          fi
 
       - name: Detect Android UI changes
         id: android_changes
@@ -101,6 +133,7 @@ jobs:
         with:
           distribution: temurin
           java-version-file: .java-version
+          cache: gradle
 
       - name: Install PostgreSQL client
         run: |
@@ -114,66 +147,164 @@ jobs:
         timeout-minutes: 45
         run: tools/verify.sh
 
-      - name: Enable KVM for the Android emulator
-        if: steps.android_changes.outputs.required == 'true'
+  emulator:
+    needs: verify
+    if: >-
+      needs.verify.outputs.android_required == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+        github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 60
+    steps:
+      - name: Check out design-system
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: design-system
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Merge PR head into design-system
+        env:
+          HEAD_REF: ${{ needs.verify.outputs.head_ref }}
         run: |
-          if [ ! -e /dev/kvm ]; then
-            echo "GitHub runner has no /dev/kvm device; emulator tests cannot start" >&2
+          git fetch origin "$HEAD_REF"
+          if ! git merge --no-ff --no-edit "FETCH_HEAD"; then
+            echo "PR does not merge cleanly into design-system" >&2
             exit 1
           fi
-          sudo chmod 666 /dev/kvm
 
-      - name: Run Android instrumented tests on emulator
-        if: steps.android_changes.outputs.required == 'true'
+      - name: Point ANDROID_HOME at the local SDK
+        run: echo "ANDROID_HOME=${ANDROID_HOME:-$HOME/Library/Android/sdk}" >> "$GITHUB_ENV"
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+
+      - name: Resolve emulator ABI
+        id: abi
+        run: |
+          case "$(uname -m)" in
+            arm64|aarch64) echo "abi=arm64-v8a" >> "$GITHUB_OUTPUT" ;;
+            *)             echo "abi=x86_64"   >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Run Android instrumented tests (attempt 1)
+        id: emu1
+        continue-on-error: true
+        timeout-minutes: 25
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
-        timeout-minutes: 30
         with:
           api-level: 35
-          arch: x86_64
+          arch: ${{ steps.abi.outputs.abi }}
           profile: pixel_2
           target: google_apis
           disk-size: 2G
           disable-animations: true
-          disable-linux-hw-accel: false
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+            -no-snapshot -no-metrics
           script: |
             source tools/android-env.sh
             bash tools/gradle.sh -p apps/android :app:connectedDebugAndroidTest --no-daemon
 
-      - name: Mark linked ticket done
-        if: success() && steps.pr.outputs.issue_number != ''
-        env:
-          GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
-          REPOSITORY: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ steps.pr.outputs.issue_number }}
-          PR_NUMBER: ${{ steps.pr.outputs.number }}
+      - name: Clean stale emulators before retry
+        if: always() && steps.emu1.outcome == 'failure'
         run: |
-          gh issue comment "$ISSUE_NUMBER" --repo "$REPOSITORY" \
-            --body "Validator: PASS. GitHub Actions ran tools/verify.sh successfully for PR #$PR_NUMBER. The scheduled tick will merge and close this ticket."
-          gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" \
-            --remove-label status:validating --remove-label status:in-progress \
-            --remove-label status:changes-requested --add-label status:done
+          pkill -f qemu-system 2>/dev/null || true
+          sleep 5
+          "$ANDROID_HOME/platform-tools/adb" kill-server 2>/dev/null || true
+          "$ANDROID_HOME/platform-tools/adb" start-server 2>/dev/null || true
 
-      - name: Return linked ticket for fixes
-        if: failure() && steps.pr.outputs.issue_number != ''
-        env:
-          GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
-          REPOSITORY: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ steps.pr.outputs.issue_number }}
-          PR_NUMBER: ${{ steps.pr.outputs.number }}
+      - name: Run Android instrumented tests (attempt 2, fresh emulator)
+        id: emu2
+        if: always() && steps.emu1.outcome == 'failure'
+        timeout-minutes: 25
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          arch: ${{ steps.abi.outputs.abi }}
+          profile: pixel_2
+          target: google_apis
+          disk-size: 2G
+          disable-animations: true
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+            -no-snapshot -no-metrics
+          script: |
+            source tools/android-env.sh
+            bash tools/gradle.sh -p apps/android :app:connectedDebugAndroidTest --no-daemon
+
+      - name: Fail if both emulator attempts failed
+        if: always() && steps.emu1.outcome == 'failure' && steps.emu2.outcome != 'success'
         run: |
-          gh issue comment "$ISSUE_NUMBER" --repo "$REPOSITORY" \
-            --body "Validator: FAIL. The verification gate failed for PR #$PR_NUMBER; see this Design PR checks run for the failing command. Returning to the builder."
-          gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" \
-            --remove-label status:validating --add-label status:changes-requested
+          echo "Android instrumented tests failed on two fresh emulator attempts" >&2
+          exit 1
 
       - name: Upload Android build reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: design-pr-${{ steps.pr.outputs.number }}-reports
+          name: design-pr-${{ needs.verify.outputs.pr_number }}-reports
           path: |
             apps/android/app/build/reports/**
             apps/android/app/build/outputs/**
             apps/android/app/build/outputs/androidTest-results/connected/**
           if-no-files-found: ignore
           retention-days: 7
+
+  verdict:
+    needs: [verify, emulator]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Resolve PR and linked ticket
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+        run: |
+          pr_json="$(gh pr view "$PR_NUMBER" --repo "$REPOSITORY" \
+            --json headRefName,baseRefName,title,body)"
+          PR_JSON="$pr_json" node -e '
+            const fs = require("node:fs");
+            const pr = JSON.parse(process.env.PR_JSON);
+            const linkedIssue = `${pr.title}\n${pr.body ?? ""}`.match(/(?:Issue|Closes|Fixes)\s+#([0-9]+)/i)?.[1] ?? "";
+            fs.appendFileSync(process.env.GITHUB_OUTPUT,
+              `number=${process.env.PR_NUMBER}\nhead_ref=${pr.headRefName}\nissue_number=${linkedIssue}\nbase_ref=${pr.baseRefName}\n`);
+          '
+
+      - name: Mark linked ticket done
+        if: >-
+          needs.verify.result == 'success' &&
+          (needs.emulator.result == 'success' || needs.emulator.result == 'skipped')
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ steps.pr.outputs.issue_number }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$REPOSITORY" \
+            --body "Validator: PASS. tools/verify.sh${{ needs.emulator.result == 'success' && ' and the Android emulator checks' || '' }} succeeded for PR #$PR_NUMBER. The scheduled tick will merge and close this ticket."
+          gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" \
+            --remove-label status:validating --remove-label status:in-progress \
+            --remove-label status:changes-requested --add-label status:done
+
+      - name: Return linked ticket for fixes
+        if: >-
+          steps.pr.outputs.issue_number != '' &&
+          !(needs.verify.result == 'success' &&
+            (needs.emulator.result == 'success' || needs.emulator.result == 'skipped'))
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ steps.pr.outputs.issue_number }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$REPOSITORY" \
+            --body "Validator: FAIL. The verification gate failed for PR #$PR_NUMBER (verify=${{ needs.verify.result }}, emulator=${{ needs.emulator.result }}); see the Design PR checks runs for the failing command. Returning to the builder."
+          gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" \
+            --remove-label status:validating --add-label status:changes-requested

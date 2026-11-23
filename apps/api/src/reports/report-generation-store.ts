@@ -3,6 +3,7 @@ import type {
   EnqueueReportGenerationInput,
   ReportArtifactMetadata,
   ReportGenerationClaim,
+  ReportGenerationListFilter,
   ReportGenerationRecord,
   ReportGenerationStore,
   ReportRevisionRecord,
@@ -28,6 +29,13 @@ export class UnconfiguredReportGenerationStore
     _companyId: string,
     _generationId: string,
   ): Promise<ReportGenerationRecord | undefined> {
+    return Promise.reject(this.unavailable());
+  }
+
+  listGenerations(
+    _companyId: string,
+    _filter: ReportGenerationListFilter,
+  ): Promise<readonly ReportGenerationRecord[]> {
     return Promise.reject(this.unavailable());
   }
 

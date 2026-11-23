@@ -82,7 +82,7 @@ built yet.
 | Needs-you flags (defective, photo pending, further assessment, conflict, clean) | No read of anchor-level recorded outcomes; `listReviewIssues` covers raised issues per known inspection | fixture-only — #81 | Flags must derive from stored outcomes, never from a UI guess |
 | Action: Review / Resolve | Navigation into the review surface; issue reads/actions are ready (`listReviewIssues`, `createReviewIssue`, `resolveReviewIssue`) | partial | Evidence display behind the action waits on #81 |
 | Right rail: field activity (inspector, job, accounted, last sync) | No submission/sync read | fixture-only — #81 | The web shows recorded sync state only; device presence is not a server concept |
-| Right rail: reports (latest generated) | Single `getDraftReportGeneration` exists; no list | fixture-only — #83 | Report reads are administrator/office reviewer only |
+| Right rail: reports (latest generated) | `listDraftReportGenerations` (`GET /reports/generations`, newest first; optional `?jobId=`) — landed after this map was written as #83 | client gap (wire in T11) | Report reads are administrator/office reviewer only |
 | Global search: jobs, sites, clients | `listJobs`, `listSites`, `listClients` (client-side filtering) | partial | Anchor labels have no company-wide read — #88 |
 | New job | `createJob` (`POST /jobs`); site and client pickers need `listSites` / `listClients` | client gap | Job create and register reads are manager roles |
 
@@ -142,9 +142,9 @@ built yet.
 
 | Screen need | Existing endpoint and client method | Status | Tenant/role note |
 | --- | --- | --- | --- |
-| Chips: all / generated / superseded / awaiting generation | No list of generations | fixture-only — #83 | Single `getDraftReportGeneration` exists only |
-| Table: job, site | `jobId` on the generation record; names need `listJobs` / `listSites` joins | client gap once #83 lands | Manager roles |
-| Table: revision, status, generated | `revisionNumber`, `status`, `requestedAt` on `ReportGenerationResponseDto` | ready (single-record reads) | Statuses include `superseded`; superseded files stay unchanged |
+| Chips: all / generated / superseded / awaiting generation | `listDraftReportGenerations` (`GET /reports/generations`, optional `?jobId=`) — landed after this map was written as #83 | ready (chips filter client-side over `status`) | Administrator/office reviewer only; single `getDraftReportGeneration` also exists |
+| Table: job, site | `jobId` on each `ReportGenerationResponseDto`; names need `listJobs` / `listSites` joins | client gap | Manager roles |
+| Table: revision, status, generated | `revisionNumber`, `status`, `requestedAt` on `ReportGenerationResponseDto` | ready | Statuses include `superseded`; superseded files stay unchanged |
 | Table: "Approved by" | `getApprovedSnapshot` (`GET /approvals/{snapshotId}`) carries `approvedByUserId`; display name needs #87 | partial | This is the reviewer who recorded the approval freeze — not an engineering sign-off |
 | Action: download PDF | `downloadDraftReport` + the server-side web route | ready | Bytes stream through the office session boundary; no public URLs |
 | Action: view snapshot | `getApprovedSnapshot` returns freeze metadata (ids, checksums, source revision) | partial | Full frozen-evidence display would ride on #81 scoped to the frozen revision |
@@ -168,7 +168,12 @@ There are data gaps; the sections above name them per row. Consolidated:
 - #82 — office read of inspection photo media (blocks review pane 2 and the
   proposal slide-over photo).
 - #83 — list draft report generations per company and job (blocks the Reports
-  screen and the dashboard reports rail).
+  screen and the dashboard reports rail). Landed after this map was written:
+  the company-scoped read `listDraftReportGenerations`
+  (`GET /reports/generations`, optional `?jobId=`) returns the existing
+  `ReportGenerationResponseDto` shape per revision, newest first; the
+  generated Kotlin/TypeScript clients include the method, and the Reports
+  screen itself remains T11 UI work.
 - #84 — read reconciliation proposals and record accept/reject decisions
   (blocks the register proposal banner and slide-over actions).
 - #85 — read per-anchor recorded-outcome history and the previous inspection
@@ -193,7 +198,7 @@ Stated explicitly so later tickets do not re-litigate it:
 - Review issue creation, resolution and action history are fully covered by
   the existing review endpoints and current client methods.
 - The approval action and its server-side gate enforcement, plus draft report
-  request, status, supersede and PDF download, are fully covered.
+  request, list, status, supersede and PDF download, are fully covered.
 - Job workflow mutations the office needs (create, release, assign) exist; the
   web only lacks client methods for them.
 - Register CRUD (clients, sites, anchors) exists for every §6.2 mutation the

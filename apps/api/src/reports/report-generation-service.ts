@@ -16,6 +16,8 @@ import {
   type ReportRevisionRecord,
 } from './report-generation.types';
 
+const ID_MAX_LENGTH = 128;
+
 export interface ReportGenerationServiceOptions {
   readonly snapshots: ApprovedSnapshotService;
   readonly store: ReportGenerationStore;
@@ -32,6 +34,26 @@ export interface ReportFile {
 
 export class ReportGenerationService {
   constructor(private readonly options: ReportGenerationServiceOptions) {}
+
+  /**
+   * Company-scoped read of draft report generation revisions, optionally
+   * filtered to one job. Newest revisions are returned first so the office
+   * reports table and dashboard rail can show the latest revision directly.
+   */
+  async listGenerations(
+    principal: AuthPrincipal,
+    jobId?: string | null,
+  ): Promise<readonly ReportGenerationRecord[]> {
+    assertCanGenerateReports(principal);
+    const filter = { jobId: optionalId(jobId, 'jobId') };
+    const generations = await this.options.store.listGenerations(
+      principal.companyId,
+      filter,
+    );
+    return generations
+      .filter((generation) => generation.companyId === principal.companyId)
+      .map(copyGeneration);
+  }
 
   async request(
     principal: AuthPrincipal,
@@ -154,11 +176,28 @@ function requiredId(value: unknown, field: string): string {
     throw new ReportGenerationFailure('INVALID_INPUT', `${field} is required`);
   }
   const normalized = value.trim();
-  if (normalized.length === 0 || normalized.length > 128) {
+  if (normalized.length === 0 || normalized.length > ID_MAX_LENGTH) {
     throw new ReportGenerationFailure(
       'INVALID_INPUT',
-      `${field} must be between 1 and 128 characters`,
+      `${field} must be between 1 and ${ID_MAX_LENGTH} characters`,
     );
   }
   return normalized;
+}
+
+function optionalId(value: unknown, field: string): string | null {
+  if (value === undefined || value === null) return null;
+  return requiredId(value, field);
+}
+
+function copyGeneration(
+  generation: ReportGenerationRecord,
+): ReportGenerationRecord {
+  return {
+    ...generation,
+    requestedAt: new Date(generation.requestedAt.getTime()),
+    completedAt: generation.completedAt
+      ? new Date(generation.completedAt.getTime())
+      : null,
+  };
 }
