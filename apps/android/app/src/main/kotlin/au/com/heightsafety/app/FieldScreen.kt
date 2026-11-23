@@ -49,6 +49,9 @@ fun FieldScreen(
     onCloseJobPack: () -> Unit = {},
     onOpenAnchor: (JobPackAnchor) -> Unit = {},
     onOpenEvidence: (AnchorInspectionDraft) -> Unit = {},
+    onMarkAnchorNotInspected: (JobPackAnchor) -> Unit = {},
+    onProposeAnchorReplacement: (JobPackAnchor) -> Unit = {},
+    onProposeAnchorDuplicate: (JobPackAnchor) -> Unit = {},
     onAddDiscoveredAnchor: () -> Unit = {},
     onCloseAnchor: () -> Unit = {},
     onUpdateAnchorDraft: (AnchorInspectionDraft) -> Unit = {},
@@ -156,7 +159,7 @@ fun FieldScreen(
                     route = FieldDestination.JOBS_GRAPH,
                 ) {
                     composable(FieldDestination.Jobs.route) {
-                        JobsContent(
+                        JobsHomeContent(
                             state = state,
                             onRetry = onRetry,
                             onRefresh = onRefresh,
@@ -166,11 +169,14 @@ fun FieldScreen(
                     }
                     composable(FieldDestination.JobPack.route) {
                         (state as? FieldUiState.JobPackOpened)?.let { opened ->
-                            JobPackContent(
+                            JobChecklistContent(
                                 state = opened,
                                 onClose = onCloseJobPack,
                                 onOpenAnchor = onOpenAnchor,
                                 onOpenEvidence = onOpenEvidence,
+                                onMarkAnchorNotInspected = onMarkAnchorNotInspected,
+                                onProposeAnchorReplacement = onProposeAnchorReplacement,
+                                onProposeAnchorDuplicate = onProposeAnchorDuplicate,
                                 onAddDiscoveredAnchor = onAddDiscoveredAnchor,
                                 onOpenSubmissionReview = onOpenSubmissionReview,
                             )

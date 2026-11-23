@@ -18,6 +18,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -62,6 +63,25 @@ internal fun SignalCard(
             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
         ),
         content = content,
+    )
+}
+
+/**
+ * Renders a generated T2 tile icon with its baked fixed-meaning colours.
+ * The default [Icon] tint would repaint the tile, so tiles are always
+ * untinted; free glyphs keep their semantic tint.
+ */
+@Composable
+internal fun HeightSafetyTileIcon(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+) {
+    Icon(
+        imageVector = icon,
+        contentDescription = contentDescription,
+        tint = Color.Unspecified,
+        modifier = modifier,
     )
 }
 

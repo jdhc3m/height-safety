@@ -80,7 +80,7 @@ class FieldNavShellTest {
             }
         }
 
-        composeRule.onNodeWithText("Job pack").assertIsDisplayed()
+        composeRule.onNodeWithText("Site A").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Unsent records: 1", useUnmergedTree = true)
             .assertIsDisplayed()
     }
@@ -101,7 +101,7 @@ class FieldNavShellTest {
             }
         }
 
-        composeRule.onNodeWithText("Job pack").assertIsDisplayed()
+        composeRule.onNodeWithText("Site A").assertIsDisplayed()
         composeRule.activity.onBackPressedDispatcher.onBackPressed()
 
         assertTrue(packClosed)

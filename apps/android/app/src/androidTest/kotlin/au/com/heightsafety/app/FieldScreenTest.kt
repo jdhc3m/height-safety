@@ -4,16 +4,13 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import au.com.heightsafety.domain.AnchorInspectionDraft
 import au.com.heightsafety.domain.AnchorEvidencePhoto
@@ -44,7 +41,7 @@ class FieldScreenTest {
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun jobCardPreservesJurisdictionStatusAssignmentAndPackVersion() {
+    fun assignedRowPreservesJurisdictionAssignmentAndPackVersion() {
         setContent(
             FieldUiState.JobsLoaded(
                 account = account(),
@@ -53,10 +50,9 @@ class FieldScreenTest {
         )
 
         composeTestRule.onNodeWithText("JOB-001").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Jurisdiction: QLD").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Status: In Progress").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Job pack version: 7").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Assignment: Claimed").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Claimed").assertIsDisplayed()
+        composeTestRule.onNodeWithText("QLD").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Pack v7").assertIsDisplayed()
     }
 
     @Test
@@ -76,8 +72,8 @@ class FieldScreenTest {
 
         screenState.value = FieldUiState.EmptyJobs(account())
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("No eligible jobs").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Jobs updated").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No jobs assigned yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("All synced").assertIsDisplayed()
 
         screenState.value =
             FieldUiState.Error(
@@ -86,7 +82,7 @@ class FieldScreenTest {
                 account = account(),
             )
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Job sync failed").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sync failed").assertIsDisplayed()
         composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
 
         screenState.value = FieldUiState.SessionExpired()
@@ -176,7 +172,7 @@ class FieldScreenTest {
             )
         }
 
-        composeTestRule.onNodeWithText("Open job pack").performClick()
+        composeTestRule.onNodeWithText("Continue").performClick()
 
         assertEquals("job-001", openedJob?.jobId)
     }
@@ -196,7 +192,7 @@ class FieldScreenTest {
             )
         }
 
-        composeTestRule.onNodeWithText("Claim and open job pack").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Claim").assertIsDisplayed()
     }
 
     @Test
@@ -256,14 +252,13 @@ class FieldScreenTest {
             )
         }
 
-        composeTestRule.onNodeWithText("Job pack").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Jurisdiction: QLD").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Job pack version: 7").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Site: Site A").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Downloaded and stored securely").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Expected anchors: 1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Site A").assertIsDisplayed()
+        composeTestRule.onNodeWithText("JOB-001 · QLD · Pack v7").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Downloaded").assertIsDisplayed()
+        composeTestRule.onNodeWithText("0 / 1 anchors accounted for").assertIsDisplayed()
         composeTestRule.onNodeWithText("A-001").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Location: North roof").assertIsDisplayed()
+        composeTestRule.onNodeWithText("North roof").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Not recorded").assertIsDisplayed()
     }
 
     @Test
@@ -319,21 +314,19 @@ class FieldScreenTest {
                         JobPackOpenSource.CACHED,
                     ),
                 ),
-                onSignIn = {},
-                onRetry = {},
-                onRefresh = {},
-                onSignOut = {},
-                onAddDiscoveredAnchor = { addClicked = true },
-            )
-        }
+                 onSignIn = {},
+                 onRetry = {},
+                 onRefresh = {},
+                 onSignOut = {},
+                 onAddDiscoveredAnchor = { addClicked = true },
+             )
+         }
 
-        composeTestRule.onNode(hasScrollAction())
-            .performScrollToNode(hasText("Record newly discovered anchor"))
-        composeTestRule.onNodeWithText("Record newly discovered anchor")
-            .performClick()
+         composeTestRule.onNodeWithText("Found an anchor not listed")
+             .performClick()
 
-        assertTrue(addClicked)
-    }
+         assertTrue(addClicked)
+     }
 
     @Test
     fun anchorCaptureUsesNeutralOutcomeAndLocalSaveAction() {
@@ -703,9 +696,9 @@ class FieldScreenTest {
             )
         }
 
-        composeTestRule.onNodeWithText("Job pack").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Jobs").assertIsDisplayed()
-        composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
+         composeTestRule.onNodeWithText("Site A").assertIsDisplayed()
+         composeTestRule.onNodeWithText("Jobs").assertIsDisplayed()
+         composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
 
         assertTrue(packClosed)
     }
