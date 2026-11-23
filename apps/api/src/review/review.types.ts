@@ -251,6 +251,52 @@ export interface AnchorHistoryReader {
     | Promise<AnchorRecordedOutcome | undefined>;
 }
 
+/**
+ * Stored location and frozen integrity metadata of one evidence photo
+ * attached to a submitted inspection revision. Values come from the private
+ * object reference and photo rows; they are never caller-controlled.
+ */
+export interface SubmittedPhotoMediaRecord {
+  readonly companyId: string;
+  readonly inspectionId: string;
+  readonly photoId: string;
+  readonly anchorInspectionId: string;
+  readonly objectKey: string;
+  readonly contentType: string;
+  readonly byteSize: number;
+  readonly sha256: string;
+  readonly uploadState: SubmittedPhotoUploadState;
+}
+
+/**
+ * Read-only port that resolves one submitted photo's private object
+ * metadata. Implementations must never mutate stored photos or objects.
+ */
+export interface SubmittedPhotoMediaReader {
+  find(
+    companyId: string,
+    inspectionId: string,
+    photoId: string,
+  ):
+    | SubmittedPhotoMediaRecord
+    | undefined
+    | Promise<SubmittedPhotoMediaRecord | undefined>;
+}
+
+/**
+ * Read-only port over the private photo object store. Implementations
+ * expose no write path and return undefined when an object is absent.
+ */
+export interface PrivatePhotoObjectReader {
+  read(objectKey: string): Promise<Uint8Array | undefined>;
+}
+
+export interface ReviewPhotoMedia {
+  readonly photoId: string;
+  readonly bytes: Uint8Array;
+  readonly contentType: string;
+}
+
 export interface CreateReviewIssueInput {
   readonly inspectionId: string;
   readonly anchorInspectionId?: string | null;
@@ -362,6 +408,32 @@ export class UnconfiguredAnchorHistoryReader implements AnchorHistoryReader {
     throw new ReviewFailure(
       'PERSISTENCE_UNAVAILABLE',
       'anchor history reader adapter is not configured',
+    );
+  }
+}
+
+export class UnconfiguredSubmittedPhotoMediaReader
+  implements SubmittedPhotoMediaReader
+{
+  find(
+    _companyId: string,
+    _inspectionId: string,
+    _photoId: string,
+  ): Promise<SubmittedPhotoMediaRecord | undefined> {
+    throw new ReviewFailure(
+      'PERSISTENCE_UNAVAILABLE',
+      'submitted-photo media reader adapter is not configured',
+    );
+  }
+}
+
+export class UnconfiguredPrivatePhotoObjectReader
+  implements PrivatePhotoObjectReader
+{
+  async read(_objectKey: string): Promise<Uint8Array | undefined> {
+    throw new ReviewFailure(
+      'PERSISTENCE_UNAVAILABLE',
+      'private photo object storage is not configured',
     );
   }
 }
