@@ -610,6 +610,71 @@ class FieldViewModelTest {
     }
 
     @Test
+    fun jobsHomeProgressIsDerivedFromStoredPacksAndSavedEvidence() = runTest {
+        val job = job(
+            "assigned",
+            jobId = "job-001",
+            assignment = assignment("company-a", "job-001", "inspector-a"),
+        )
+        val gateway = FakeGateway(jobs = listOf(job))
+        val packStore = FakeJobPackStore()
+        val evidenceStore = FakeEvidenceStore()
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            jobPackService = JobPackService(
+                gateway = gateway,
+                store = packStore,
+                nowEpochMillis = { 1_000L },
+                elapsedRealtimeMillis = { 500L },
+            ),
+            anchorEvidenceService = AnchorEvidenceService(
+                store = evidenceStore,
+                nowEpochMillis = { 2_000L },
+                elapsedRealtimeMillis = { 2_000L },
+            ),
+            jobPackStore = packStore,
+            inspectionIdGenerator = { "inspection-001" },
+        )
+
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+        viewModel.openJobPack(job)
+        advanceUntilIdle()
+        val opened = viewModel.uiState.value as FieldUiState.JobPackOpened
+        viewModel.openAnchor(opened.opened.stored.pack.anchors.single())
+        val capture = viewModel.uiState.value as FieldUiState.AnchorCapture
+        viewModel.updateAnchorDraft(
+            capture.draft.copy(
+                recordedOutcome = RecordedOutcome.SERVICEABLE,
+                identityConfirmed = true,
+                locationConfirmed = true,
+                observations = "Recorded observation.",
+            ),
+        )
+        viewModel.saveAnchorDraft()
+        advanceUntilIdle()
+        viewModel.closeJobPack()
+        advanceUntilIdle()
+
+        val loaded = viewModel.uiState.value as FieldUiState.JobsLoaded
+        assertEquals(1, loaded.progress["job-001"]?.expectedAnchors)
+        assertEquals(1, loaded.progress["job-001"]?.accountedAnchors)
+    }
+
+    @Test
+    fun jobsHomeProgressStaysBlankWhenNoPackIsStoredLocally() = runTest {
+        val gateway = FakeGateway(jobs = listOf(job("released")))
+        val viewModel = viewModel(gateway, scope = this)
+
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+
+        val loaded = viewModel.uiState.value as FieldUiState.JobsLoaded
+        assertTrue(loaded.progress.isEmpty())
+    }
+
+    @Test
     fun newlyDiscoveredAnchorDraftCanBeSavedAndReopened() = runTest {
         val job = job(
             "assigned",
@@ -678,6 +743,71 @@ class FieldViewModelTest {
             "Anchor observed onsite.",
             reopened.draft.observations,
         )
+    }
+
+    @Test
+    fun checklistRowOverflowPresetsLandOnCaptureWithoutOverwritingRecordedDecisions() = runTest {
+        val job = job(
+            "assigned",
+            jobId = "job-001",
+            assignment = assignment("company-a", "job-001", "inspector-a"),
+        )
+        val gateway = FakeGateway(jobs = listOf(job))
+        val viewModel = viewModel(
+            gateway = gateway,
+            scope = this,
+            jobPackService = JobPackService(
+                gateway = gateway,
+                store = FakeJobPackStore(),
+                nowEpochMillis = { 1_000L },
+                elapsedRealtimeMillis = { 500L },
+            ),
+            anchorEvidenceService = AnchorEvidenceService(
+                store = FakeEvidenceStore(),
+                nowEpochMillis = { 2_000L },
+                elapsedRealtimeMillis = { 2_000L },
+            ),
+        )
+        viewModel.signIn("company-a")
+        advanceUntilIdle()
+        viewModel.openJobPack(job)
+        advanceUntilIdle()
+        val anchor = (viewModel.uiState.value as FieldUiState.JobPackOpened)
+            .opened.stored.pack.anchors.single()
+
+        viewModel.openAnchorNotInspected(anchor)
+        var capture = viewModel.uiState.value as FieldUiState.AnchorCapture
+        assertEquals(RecordedOutcome.NOT_INSPECTED, capture.draft.recordedOutcome)
+
+        // Record and save a Serviceable outcome, then reopen from the
+        // checklist overflow: the recorded outcome is never overwritten.
+        viewModel.updateAnchorDraft(
+            capture.draft.copy(
+                recordedOutcome = RecordedOutcome.SERVICEABLE,
+                exceptionReason = null,
+                identityConfirmed = true,
+                locationConfirmed = true,
+                observations = "Recorded observation.",
+            ),
+        )
+        viewModel.saveAnchorDraft()
+        advanceUntilIdle()
+        viewModel.closeAnchor()
+        viewModel.openAnchorNotInspected(anchor)
+        capture = viewModel.uiState.value as FieldUiState.AnchorCapture
+        assertEquals(RecordedOutcome.SERVICEABLE, capture.draft.recordedOutcome)
+        viewModel.closeAnchor()
+
+        viewModel.openAnchorReplacement(anchor)
+        capture = viewModel.uiState.value as FieldUiState.AnchorCapture
+        assertEquals(ReconciliationProposal.REPLACEMENT, capture.draft.reconciliationProposal)
+        assertEquals(anchor.anchorId, capture.draft.expectedAnchorId)
+        viewModel.closeAnchor()
+
+        viewModel.openAnchorDuplicate(anchor)
+        capture = viewModel.uiState.value as FieldUiState.AnchorCapture
+        assertEquals(ReconciliationProposal.DUPLICATE, capture.draft.reconciliationProposal)
+        assertEquals(anchor.anchorId, capture.draft.expectedAnchorId)
     }
 
     @Test

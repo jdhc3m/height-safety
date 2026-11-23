@@ -54,8 +54,8 @@ val HeightSafetyLightColors: ColorScheme = lightColorScheme(
     surface = DesignTokens.LightColors.surface,
     onSurface = DesignTokens.LightColors.textPrimary,
     surfaceVariant = blend(
-        DesignTokens.LightColors.textSecondary,
         DesignTokens.LightColors.surface,
+        DesignTokens.LightColors.textSecondary,
         0.10f,
     ),
     onSurfaceVariant = DesignTokens.LightColors.textSecondary,
@@ -89,8 +89,8 @@ val HeightSafetyDarkColors: ColorScheme = darkColorScheme(
     surface = DesignTokens.DarkColors.surface,
     onSurface = DesignTokens.DarkColors.textPrimary,
     surfaceVariant = blend(
-        DesignTokens.DarkColors.textPrimary,
         DesignTokens.DarkColors.surface,
+        DesignTokens.DarkColors.textSecondary,
         0.10f,
     ),
     onSurfaceVariant = DesignTokens.DarkColors.textSecondary,
