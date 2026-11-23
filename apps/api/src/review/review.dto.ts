@@ -17,6 +17,7 @@ import {
 import {
   REVIEW_ISSUE_TYPES,
   SUBMITTED_PHOTO_UPLOAD_STATES,
+  type AnchorRecordedOutcome,
   type SubmittedEvidenceAnchor,
   type SubmittedEvidencePhotoMetadata,
   type SubmittedInspectionEvidence,
@@ -282,6 +283,71 @@ export class SubmittedInspectionEvidenceResponseDto {
 
   @ApiProperty({ type: () => [SubmittedEvidenceAnchorDto] })
   anchors!: SubmittedEvidenceAnchorDto[];
+}
+
+export class AnchorRecordedOutcomeDto {
+  @ApiProperty()
+  companyId!: string;
+
+  @ApiProperty({ example: 'anchor-inspection-001' })
+  anchorInspectionId!: string;
+
+  @ApiProperty({ example: 'inspection-001' })
+  inspectionId!: string;
+
+  @ApiProperty({ minimum: 1, example: 2 })
+  revisionNumber!: number;
+
+  @ApiProperty({ example: 'job-001' })
+  jobId!: string;
+
+  @ApiProperty({ example: 'JOB-2026-004' })
+  jobReference!: string;
+
+  @ApiProperty({ format: 'date-time' })
+  submittedAt!: string;
+
+  @ApiProperty({
+    enum: SYNC_RECORDED_OUTCOMES,
+    nullable: true,
+    example: 'serviceable',
+  })
+  recordedOutcome!: AnchorRecordedOutcome['recordedOutcome'];
+
+  @ApiProperty({
+    enum: SYNC_EXCEPTION_REASONS,
+    nullable: true,
+    example: 'inaccessible',
+  })
+  exceptionReason!: AnchorRecordedOutcome['exceptionReason'];
+
+  @ApiProperty({
+    enum: SYNC_DISPOSITIONS,
+    nullable: true,
+    example: 'removed_from_service',
+  })
+  disposition!: AnchorRecordedOutcome['disposition'];
+
+  @ApiProperty({ type: () => [SubmittedEvidencePhotoDto] })
+  photos!: SubmittedEvidencePhotoDto[];
+}
+
+export function toAnchorRecordedOutcomeResponse(
+  outcome: AnchorRecordedOutcome,
+): AnchorRecordedOutcomeDto {
+  return {
+    companyId: outcome.companyId,
+    anchorInspectionId: outcome.anchorInspectionId,
+    inspectionId: outcome.inspectionId,
+    revisionNumber: outcome.revisionNumber,
+    jobId: outcome.jobId,
+    jobReference: outcome.jobReference,
+    submittedAt: outcome.submittedAt.toISOString(),
+    recordedOutcome: outcome.recordedOutcome,
+    exceptionReason: outcome.exceptionReason,
+    disposition: outcome.disposition,
+    photos: outcome.photos.map((photo) => ({ ...photo })),
+  };
 }
 
 export function toSubmittedInspectionEvidenceResponse(

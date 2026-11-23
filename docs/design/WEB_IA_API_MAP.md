@@ -114,7 +114,7 @@ built yet.
 | Pane 1: anchor rows, outcome tiles, sub-badges, chips | No anchor-level evidence read | fixture-only — #81 | Keyboard J/K/F is UI-only |
 | Pane 2: large photo + thumbnail strip | No office photo read | fixture-only — #82 | Photo bytes stay private; served through the office session boundary |
 | Pane 2: fact sheet (recorded outcome, label match, identity/location confirmation, defect, recommendation, proof test, observations, captured, sync) | No evidence read | fixture-only — #81 | Fields exist in the sync submission payload; nothing reads them back for the office |
-| Pane 2: previous-inspection card | No prior-revision read | fixture-only — #85 | Needs per-anchor revision history |
+| Pane 2: previous-inspection card | `getPreviousAnchorInspectionRevision` (`GET /reviews/anchor-inspections/{anchorInspectionId}/previous-revision`) — landed as #85 | ready | Office reviewer/Administrator; 404 when the anchor inspection is unknown or no earlier submitted revision exists |
 | Pane 3: comments on `ANC-xxxx` + request-change toggle | `listReviewIssues` + `createReviewIssue` + `resolveReviewIssue` | ready | Append-only; issues never rewrite submitted evidence |
 | Pane 3: review log | `listReviewActions` (`GET /reviews/issues/{reviewIssueId}/actions`) | client gap (add in T10) | Manager roles only |
 
@@ -125,7 +125,7 @@ built yet.
 | Site header + recorded-jurisdiction chip | `getSite` (`GET /sites/{siteId}`) carries `jurisdiction` | client gap (add `getSite` in T11) | Chip is display context only; it drives nothing |
 | Edit site | `updateSite` (`PATCH /sites/{siteId}`) | client gap | Manager roles |
 | Tab: anchor register table (label, location, type, register status) | `listAnchors` (`GET /sites/{siteId}/anchors`) | client gap | Manager roles; contract enum is `active` / `inactive` / `archived` |
-| Table: last recorded outcome + last inspected | No per-anchor outcome read | fixture-only — #85 | These derive from submitted inspections, not register CRUD |
+| Table: last recorded outcome + last inspected | `listAnchorRecordedOutcomes` (`GET /reviews/anchors/{anchorId}/recorded-outcomes`) — landed as #85 | ready | Office reviewer/Administrator; the newest returned entry supplies both columns client-side |
 | Table: "Proposed" rows | Proposals are not in the register table until accepted; `listReconciliationProposals` (`GET /sites/{siteId}/reconciliation-proposals`) — landed as #84 | ready | Proposals come from submitted inspections through sync; "Proposed" is proposal state, not a `registerStatus` value |
 | Table: "Removed from service" presentation | `registerStatus` has no such value; inspections carry a `removed_from_service` disposition | partial | Mapping is a T11 display decision over existing fields; no new contract value is filed |
 | Tab: jobs | `listJobs` filtered by `siteId` client-side | ready | Same role split as dashboard |
@@ -135,7 +135,7 @@ built yet.
 | Slide-over: photo + inspector note | Inspector note and photo metadata are on each proposal read; photo bytes stay private (#82) | partial — complete with #82 | The note is the recorded inspector note; byte access is a separate office session route |
 | Action: accept into register / reject with reason | `decideReconciliationProposal` (`POST /sites/{siteId}/reconciliation-proposals/{proposalId}/decision`) — landed as #84 | client gap (wire in T11) | One decision per proposal; accept writes the register anchor change and reject records a reason, both append-only audit events |
 | Action: assign label / location on a proposal | The decision action carries `assignedLabel` / `location`; later edits use `updateAnchor` (`PATCH /sites/{siteId}/anchors/{anchorId}`) | client gap (wire in T11) | Accept of a newly discovered proposal creates the anchor; accept of a replacement or duplicate updates the referenced anchor |
-| Anchor history drawer | No per-anchor outcome history read | fixture-only — #85 | Same gap as the history columns |
+| Anchor history drawer | `listAnchorRecordedOutcomes` (`GET /reviews/anchors/{anchorId}/recorded-outcomes`) — landed as #85 | ready | Office reviewer/Administrator; photo metadata only, bytes stay private (#82) |
 | Action: new job from register | `createJob` | client gap | Manager roles |
 
 ## Reports (§6.2)
@@ -187,8 +187,16 @@ There are data gaps; the sections above name them per row. Consolidated:
   assigned label/location; reject records a recorded reason. Photo bytes
   remain #82 and the register history columns remain #85.
 - #85 — read per-anchor recorded-outcome history and the previous inspection
-  revision (blocks register history, drawer and the review previous-inspection
-  card).
+  revision. Landed after this map was written: `listAnchorRecordedOutcomes`
+  (`GET /reviews/anchors/{anchorId}/recorded-outcomes`) returns one register
+  anchor's recorded outcomes across its submitted inspection revisions
+  (recorded outcome, exception reason, disposition, submitted at, job id and
+  reference, photo metadata), newest first, and
+  `getPreviousAnchorInspectionRevision`
+  (`GET /reviews/anchor-inspections/{anchorInspectionId}/previous-revision`)
+  returns the submitted revision recorded immediately before one anchor
+  inspection for the same register anchor. Both reads are read-only,
+  company-scoped and enforced for Administrators and Office reviewers.
 - #86 — read job timeline, job pack versions and site register history
   (blocks job detail Timeline/Pack versions tabs and the site History tab).
 - #87 — read company users for display names and eligible inspectors (blocks

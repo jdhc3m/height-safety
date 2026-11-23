@@ -20,6 +20,86 @@
         ],
         "type": "object"
       },
+      "AnchorRecordedOutcomeDto": {
+        "properties": {
+          "anchorInspectionId": {
+            "example": "anchor-inspection-001",
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "disposition": {
+            "enum": [
+              "removed_from_service"
+            ],
+            "example": "removed_from_service",
+            "nullable": true,
+            "type": "string"
+          },
+          "exceptionReason": {
+            "enum": [
+              "inaccessible",
+              "unable_to_locate"
+            ],
+            "example": "inaccessible",
+            "nullable": true,
+            "type": "string"
+          },
+          "inspectionId": {
+            "example": "inspection-001",
+            "type": "string"
+          },
+          "jobId": {
+            "example": "job-001",
+            "type": "string"
+          },
+          "jobReference": {
+            "example": "JOB-2026-004",
+            "type": "string"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/SubmittedEvidencePhotoDto"
+            },
+            "type": "array"
+          },
+          "recordedOutcome": {
+            "enum": [
+              "serviceable",
+              "defective",
+              "not_inspected",
+              "further_assessment_required"
+            ],
+            "example": "serviceable",
+            "nullable": true,
+            "type": "string"
+          },
+          "revisionNumber": {
+            "example": 2,
+            "minimum": 1,
+            "type": "number"
+          },
+          "submittedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "anchorInspectionId",
+          "inspectionId",
+          "revisionNumber",
+          "jobId",
+          "jobReference",
+          "submittedAt",
+          "recordedOutcome",
+          "exceptionReason",
+          "disposition",
+          "photos"
+        ],
+        "type": "object"
+      },
       "AnchorResponseDto": {
         "properties": {
           "anchorId": {
@@ -3198,6 +3278,97 @@
         "summary": "Download one completed private draft report revision",
         "tags": [
           "reports"
+        ]
+      }
+    },
+    "/reviews/anchor-inspections/{anchorInspectionId}/previous-revision": {
+      "get": {
+        "operationId": "getPreviousAnchorInspectionRevision",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "anchorInspectionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnchorRecordedOutcomeDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Read the submitted inspection revision recorded immediately before one anchor inspection",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/reviews/anchors/{anchorId}/recorded-outcomes": {
+      "get": {
+        "operationId": "listAnchorRecordedOutcomes",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "anchorId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AnchorRecordedOutcomeDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List recorded outcomes for one register anchor across its submitted inspection revisions, newest first",
+        "tags": [
+          "review"
         ]
       }
     },

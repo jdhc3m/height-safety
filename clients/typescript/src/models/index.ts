@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from './AcceptInvitationDto';
+export * from './AnchorRecordedOutcomeDto';
 export * from './AnchorResponseDto';
 export * from './ApproveInspectionDto';
 export * from './ApproveInspectionResponseDto';

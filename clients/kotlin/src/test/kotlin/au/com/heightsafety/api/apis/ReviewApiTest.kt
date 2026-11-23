@@ -27,6 +27,7 @@ import io.kotlintest.shouldBe
 import io.kotlintest.specs.ShouldSpec
 
 import au.com.heightsafety.api.apis.ReviewApi
+import au.com.heightsafety.api.models.AnchorRecordedOutcomeDto
 import au.com.heightsafety.api.models.CreateReviewIssueDto
 import au.com.heightsafety.api.models.ResolveReviewIssueDto
 import au.com.heightsafety.api.models.ReviewActionResponseDto
@@ -48,12 +49,30 @@ class ReviewApiTest : ShouldSpec() {
             //result shouldBe ("TODO")
         }
 
+        // to test getPreviousAnchorInspectionRevision
+        should("test getPreviousAnchorInspectionRevision") {
+            // uncomment below to test getPreviousAnchorInspectionRevision
+            //val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
+            //val anchorInspectionId : kotlin.String = anchorInspectionId_example // kotlin.String | 
+            //val result : AnchorRecordedOutcomeDto = apiInstance.getPreviousAnchorInspectionRevision(xCompanyId, anchorInspectionId)
+            //result shouldBe ("TODO")
+        }
+
         // to test getSubmittedInspectionEvidence
         should("test getSubmittedInspectionEvidence") {
             // uncomment below to test getSubmittedInspectionEvidence
             //val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
             //val inspectionId : kotlin.String = inspectionId_example // kotlin.String | 
             //val result : SubmittedInspectionEvidenceResponseDto = apiInstance.getSubmittedInspectionEvidence(xCompanyId, inspectionId)
+            //result shouldBe ("TODO")
+        }
+
+        // to test listAnchorRecordedOutcomes
+        should("test listAnchorRecordedOutcomes") {
+            // uncomment below to test listAnchorRecordedOutcomes
+            //val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
+            //val anchorId : kotlin.String = anchorId_example // kotlin.String | 
+            //val result : kotlin.collections.List<AnchorRecordedOutcomeDto> = apiInstance.listAnchorRecordedOutcomes(xCompanyId, anchorId)
             //result shouldBe ("TODO")
         }
 

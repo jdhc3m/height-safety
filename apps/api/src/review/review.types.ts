@@ -95,6 +95,25 @@ export interface SubmittedInspectionEvidence {
   readonly anchors: readonly SubmittedEvidenceAnchor[];
 }
 
+/**
+ * One recorded outcome for a register anchor inside one submitted inspection
+ * revision. Values are recorded outcomes copied from stored submitted rows;
+ * this boundary derives no jurisdiction rule and offers no write path.
+ */
+export interface AnchorRecordedOutcome {
+  readonly companyId: string;
+  readonly anchorInspectionId: string;
+  readonly inspectionId: string;
+  readonly revisionNumber: number;
+  readonly jobId: string;
+  readonly jobReference: string;
+  readonly submittedAt: Date;
+  readonly recordedOutcome: SyncRecordedOutcome | null;
+  readonly exceptionReason: SyncExceptionReason | null;
+  readonly disposition: SyncDisposition | null;
+  readonly photos: readonly SubmittedEvidencePhotoMetadata[];
+}
+
 export type ReviewFailureCode =
   | 'INVALID_INPUT'
   | 'NOT_FOUND'
@@ -204,6 +223,34 @@ export interface SubmittedEvidenceReader {
     | Promise<SubmittedInspectionEvidence | undefined>;
 }
 
+/**
+ * Read-only port for one register anchor's recorded outcomes across its
+ * submitted inspection revisions. `listRecordedOutcomes` returns undefined
+ * when the register anchor does not exist and an empty list when it has no
+ * submitted inspection revision yet. `findPreviousRevision` returns the
+ * recorded outcome submitted immediately before the referenced anchor
+ * inspection, or undefined when the anchor inspection does not exist, names
+ * no register anchor, or has no earlier submitted revision. Implementations
+ * must never mutate submitted data.
+ */
+export interface AnchorHistoryReader {
+  listRecordedOutcomes(
+    companyId: string,
+    anchorId: string,
+  ):
+    | readonly AnchorRecordedOutcome[]
+    | undefined
+    | Promise<readonly AnchorRecordedOutcome[] | undefined>;
+
+  findPreviousRevision(
+    companyId: string,
+    anchorInspectionId: string,
+  ):
+    | AnchorRecordedOutcome
+    | undefined
+    | Promise<AnchorRecordedOutcome | undefined>;
+}
+
 export interface CreateReviewIssueInput {
   readonly inspectionId: string;
   readonly anchorInspectionId?: string | null;
@@ -293,6 +340,28 @@ export class UnconfiguredSubmittedEvidenceReader
     throw new ReviewFailure(
       'PERSISTENCE_UNAVAILABLE',
       'submitted-inspection evidence reader adapter is not configured',
+    );
+  }
+}
+
+export class UnconfiguredAnchorHistoryReader implements AnchorHistoryReader {
+  listRecordedOutcomes(
+    _companyId: string,
+    _anchorId: string,
+  ): Promise<readonly AnchorRecordedOutcome[] | undefined> {
+    throw new ReviewFailure(
+      'PERSISTENCE_UNAVAILABLE',
+      'anchor history reader adapter is not configured',
+    );
+  }
+
+  findPreviousRevision(
+    _companyId: string,
+    _anchorInspectionId: string,
+  ): Promise<AnchorRecordedOutcome | undefined> {
+    throw new ReviewFailure(
+      'PERSISTENCE_UNAVAILABLE',
+      'anchor history reader adapter is not configured',
     );
   }
 }

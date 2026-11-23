@@ -27,12 +27,14 @@ import {
 } from '../identity/auth-http';
 import { AuthService } from '../identity/auth-service';
 import {
+  AnchorRecordedOutcomeDto,
   CreateReviewIssueDto,
   ResolveReviewIssueDto,
   ReviewActionResponseDto,
   ReviewIssueResolutionResponseDto,
   ReviewIssueResponseDto,
   SubmittedInspectionEvidenceResponseDto,
+  toAnchorRecordedOutcomeResponse,
   toSubmittedInspectionEvidenceResponse,
 } from './review.dto';
 import { ReviewFailure } from './review.types';
@@ -170,6 +172,61 @@ export class ReviewController {
       );
       return toSubmittedInspectionEvidenceResponse(
         await this.reviewService.getSubmittedEvidence(principal, inspectionId),
+      );
+    } catch (error) {
+      return toReviewHttpException(error);
+    }
+  }
+
+  @Get('anchors/:anchorId/recorded-outcomes')
+  @ApiOperation({
+    operationId: 'listAnchorRecordedOutcomes',
+    summary:
+      'List recorded outcomes for one register anchor across its submitted inspection revisions, newest first',
+  })
+  @ApiOkResponse({ type: [AnchorRecordedOutcomeDto] })
+  async listAnchorRecordedOutcomes(
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-company-id') companyId: string | undefined,
+    @Param('anchorId') anchorId: string,
+  ): Promise<readonly AnchorRecordedOutcomeDto[]> {
+    try {
+      const principal = await authenticateSession(
+        this.authService,
+        authorization,
+        companyId,
+      );
+      return (
+        await this.reviewService.listAnchorRecordedOutcomes(principal, anchorId)
+      ).map(toAnchorRecordedOutcomeResponse);
+    } catch (error) {
+      return toReviewHttpException(error);
+    }
+  }
+
+  @Get('anchor-inspections/:anchorInspectionId/previous-revision')
+  @ApiOperation({
+    operationId: 'getPreviousAnchorInspectionRevision',
+    summary:
+      'Read the submitted inspection revision recorded immediately before one anchor inspection',
+  })
+  @ApiOkResponse({ type: AnchorRecordedOutcomeDto })
+  async getPreviousAnchorRevision(
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-company-id') companyId: string | undefined,
+    @Param('anchorInspectionId') anchorInspectionId: string,
+  ): Promise<AnchorRecordedOutcomeDto> {
+    try {
+      const principal = await authenticateSession(
+        this.authService,
+        authorization,
+        companyId,
+      );
+      return toAnchorRecordedOutcomeResponse(
+        await this.reviewService.getPreviousAnchorRevision(
+          principal,
+          anchorInspectionId,
+        ),
       );
     } catch (error) {
       return toReviewHttpException(error);

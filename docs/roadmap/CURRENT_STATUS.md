@@ -1,6 +1,6 @@
 # Current Status
 
-Last update: 2026-11-09
+Last update: 2026-11-23
 
 ## Active stage
 
@@ -761,6 +761,29 @@ PostgreSQL 17, including the live tenant-isolation check with the new
 migration; contract regeneration stayed byte-stable and openapi-diff stayed
 compatible. Photo bytes remain #82 and the register history columns remain
 #85.
+
+On 2026-11-23, the API gained the company-scoped read-only per-anchor history
+reads (issue #85): `listAnchorRecordedOutcomes`
+(`GET /reviews/anchors/{anchorId}/recorded-outcomes`) returns one register
+anchor's recorded outcomes across its submitted inspection revisions —
+recorded outcome, exception reason, disposition, submitted at, job id and
+reference and photo metadata — newest first, and
+`getPreviousAnchorInspectionRevision`
+(`GET /reviews/anchor-inspections/{anchorInspectionId}/previous-revision`)
+returns the submitted revision recorded immediately before one anchor
+inspection for the same register anchor, powering the review workspace's
+previous-inspection card. Both reads are enforced for Administrators and
+Office reviewers, run no write statement, read stored submitted
+`anchor_inspections` rows with their job reference and photo upload state,
+and return 404 for unknown anchors, unknown anchor inspections, provisional
+records with no register anchor and missing earlier revisions. The
+inspector sync path is unchanged and no mutation, retention or web-UI work
+is included. The API suite passed 129 tests (no skips) against disposable
+PostgreSQL 17, including the live tenant-isolation check; contract
+regeneration stayed byte-stable, openapi-diff stayed compatible, and the
+complete `tools/verify.sh` gate passed after it stopped referencing the
+`tools/agent-loop/unblock.mjs` self-test that the design-system branch had
+deleted. Photo bytes remain #82.
 
 ## Relevant files
 

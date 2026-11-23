@@ -67,7 +67,9 @@ All URIs are relative to */api/v1*
 | *ReportsApi* | [**listDraftReportGenerations**](docs/ReportsApi.md#listdraftreportgenerations) | **GET** reports/generations | List tenant-scoped draft report generations, newest first, optionally for one job |
 | *ReportsApi* | [**requestDraftReportGeneration**](docs/ReportsApi.md#requestdraftreportgeneration) | **POST** reports/generations | Queue one deterministic draft report revision from an approved snapshot |
 | *ReviewApi* | [**createReviewIssue**](docs/ReviewApi.md#createreviewissue) | **POST** reviews/issues | Record an append-only office review issue or change request |
+| *ReviewApi* | [**getPreviousAnchorInspectionRevision**](docs/ReviewApi.md#getpreviousanchorinspectionrevision) | **GET** reviews/anchor-inspections/{anchorInspectionId}/previous-revision | Read the submitted inspection revision recorded immediately before one anchor inspection |
 | *ReviewApi* | [**getSubmittedInspectionEvidence**](docs/ReviewApi.md#getsubmittedinspectionevidence) | **GET** reviews/inspections/{inspectionId}/evidence | Read one submitted inspection revision, its anchor evidence and photo metadata |
+| *ReviewApi* | [**listAnchorRecordedOutcomes**](docs/ReviewApi.md#listanchorrecordedoutcomes) | **GET** reviews/anchors/{anchorId}/recorded-outcomes | List recorded outcomes for one register anchor across its submitted inspection revisions, newest first |
 | *ReviewApi* | [**listReviewActions**](docs/ReviewApi.md#listreviewactions) | **GET** reviews/issues/{reviewIssueId}/actions | List append-only actions for one review issue |
 | *ReviewApi* | [**listReviewIssues**](docs/ReviewApi.md#listreviewissues) | **GET** reviews/inspections/{inspectionId}/issues | List review issues for one submitted inspection revision |
 | *ReviewApi* | [**resolveReviewIssue**](docs/ReviewApi.md#resolvereviewissue) | **POST** reviews/issues/{reviewIssueId}/resolve | Record a reasoned resolution without changing inspector evidence |
@@ -93,6 +95,7 @@ All URIs are relative to */api/v1*
 ## Documentation for Models
 
  - [au.com.heightsafety.api.models.AcceptInvitationDto](docs/AcceptInvitationDto.md)
+ - [au.com.heightsafety.api.models.AnchorRecordedOutcomeDto](docs/AnchorRecordedOutcomeDto.md)
  - [au.com.heightsafety.api.models.AnchorResponseDto](docs/AnchorResponseDto.md)
  - [au.com.heightsafety.api.models.ApproveInspectionDto](docs/ApproveInspectionDto.md)
  - [au.com.heightsafety.api.models.ApproveInspectionResponseDto](docs/ApproveInspectionResponseDto.md)

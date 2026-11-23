@@ -7,6 +7,7 @@ import okhttp3.RequestBody
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+import au.com.heightsafety.api.models.AnchorRecordedOutcomeDto
 import au.com.heightsafety.api.models.CreateReviewIssueDto
 import au.com.heightsafety.api.models.ResolveReviewIssueDto
 import au.com.heightsafety.api.models.ReviewActionResponseDto
@@ -30,6 +31,20 @@ interface ReviewApi {
     suspend fun createReviewIssue(@Header("x-company-id") xCompanyId: kotlin.String, @Body createReviewIssueDto: CreateReviewIssueDto): Response<ReviewIssueResponseDto>
 
     /**
+     * GET reviews/anchor-inspections/{anchorInspectionId}/previous-revision
+     * Read the submitted inspection revision recorded immediately before one anchor inspection
+     * 
+     * Responses:
+     *  - 200: 
+     *
+     * @param xCompanyId 
+     * @param anchorInspectionId 
+     * @return [AnchorRecordedOutcomeDto]
+     */
+    @GET("reviews/anchor-inspections/{anchorInspectionId}/previous-revision")
+    suspend fun getPreviousAnchorInspectionRevision(@Header("x-company-id") xCompanyId: kotlin.String, @Path("anchorInspectionId") anchorInspectionId: kotlin.String): Response<AnchorRecordedOutcomeDto>
+
+    /**
      * GET reviews/inspections/{inspectionId}/evidence
      * Read one submitted inspection revision, its anchor evidence and photo metadata
      * 
@@ -42,6 +57,20 @@ interface ReviewApi {
      */
     @GET("reviews/inspections/{inspectionId}/evidence")
     suspend fun getSubmittedInspectionEvidence(@Header("x-company-id") xCompanyId: kotlin.String, @Path("inspectionId") inspectionId: kotlin.String): Response<SubmittedInspectionEvidenceResponseDto>
+
+    /**
+     * GET reviews/anchors/{anchorId}/recorded-outcomes
+     * List recorded outcomes for one register anchor across its submitted inspection revisions, newest first
+     * 
+     * Responses:
+     *  - 200: 
+     *
+     * @param xCompanyId 
+     * @param anchorId 
+     * @return [kotlin.collections.List<AnchorRecordedOutcomeDto>]
+     */
+    @GET("reviews/anchors/{anchorId}/recorded-outcomes")
+    suspend fun listAnchorRecordedOutcomes(@Header("x-company-id") xCompanyId: kotlin.String, @Path("anchorId") anchorId: kotlin.String): Response<kotlin.collections.List<AnchorRecordedOutcomeDto>>
 
     /**
      * GET reviews/issues/{reviewIssueId}/actions
