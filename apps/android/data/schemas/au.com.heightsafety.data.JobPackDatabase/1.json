@@ -1,0 +1,294 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "01f474b93d6fa8ea6f71e866cd518a05",
+    "entities": [
+      {
+        "tableName": "job_pack",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`companyId` TEXT NOT NULL, `jobId` TEXT NOT NULL, `siteId` TEXT NOT NULL, `jurisdiction` TEXT NOT NULL, `reference` TEXT NOT NULL, `plannedDate` TEXT, `workflowStatus` TEXT NOT NULL, `jobPackVersion` INTEGER NOT NULL, `siteName` TEXT NOT NULL, `siteAddress` TEXT, `siteReference` TEXT, `accessNotes` TEXT, `downloadedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`companyId`, `jobId`))",
+        "fields": [
+          {
+            "fieldPath": "companyId",
+            "columnName": "companyId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "jobId",
+            "columnName": "jobId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "siteId",
+            "columnName": "siteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "jurisdiction",
+            "columnName": "jurisdiction",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reference",
+            "columnName": "reference",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "plannedDate",
+            "columnName": "plannedDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "workflowStatus",
+            "columnName": "workflowStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "jobPackVersion",
+            "columnName": "jobPackVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "siteName",
+            "columnName": "siteName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "siteAddress",
+            "columnName": "siteAddress",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "siteReference",
+            "columnName": "siteReference",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "accessNotes",
+            "columnName": "accessNotes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "downloadedAtEpochMillis",
+            "columnName": "downloadedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "companyId",
+            "jobId"
+          ]
+        }
+      },
+      {
+        "tableName": "job_pack_anchor",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`jobPackId` TEXT NOT NULL, `anchorId` TEXT NOT NULL, `companyId` TEXT NOT NULL, `siteId` TEXT NOT NULL, `label` TEXT, `registerId` TEXT, `location` TEXT, `anchorType` TEXT NOT NULL, `manufacturer` TEXT, `model` TEXT, `installContext` TEXT, `registerStatus` TEXT NOT NULL, `notes` TEXT, `createdAtEpochMillis` INTEGER NOT NULL, `updatedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`companyId`, `jobPackId`, `anchorId`), FOREIGN KEY(`companyId`, `jobPackId`) REFERENCES `job_pack`(`companyId`, `jobId`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "jobPackId",
+            "columnName": "jobPackId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "anchorId",
+            "columnName": "anchorId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "companyId",
+            "columnName": "companyId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "siteId",
+            "columnName": "siteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "label",
+            "columnName": "label",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "registerId",
+            "columnName": "registerId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "location",
+            "columnName": "location",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "anchorType",
+            "columnName": "anchorType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "manufacturer",
+            "columnName": "manufacturer",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "model",
+            "columnName": "model",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "installContext",
+            "columnName": "installContext",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "registerStatus",
+            "columnName": "registerStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "createdAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updatedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "companyId",
+            "jobPackId",
+            "anchorId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_job_pack_anchor_companyId_jobPackId",
+            "unique": false,
+            "columnNames": [
+              "companyId",
+              "jobPackId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_job_pack_anchor_companyId_jobPackId` ON `${TABLE_NAME}` (`companyId`, `jobPackId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "job_pack",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "companyId",
+              "jobPackId"
+            ],
+            "referencedColumns": [
+              "companyId",
+              "jobId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "offline_authorization_lease",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`jobPackId` TEXT NOT NULL, `companyId` TEXT NOT NULL, `userId` TEXT NOT NULL, `issuedAtEpochMillis` INTEGER NOT NULL, `expiresAtEpochMillis` INTEGER NOT NULL, `issuedAtElapsedRealtimeMillis` INTEGER NOT NULL, `lastObservedEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`companyId`, `jobPackId`), FOREIGN KEY(`companyId`, `jobPackId`) REFERENCES `job_pack`(`companyId`, `jobId`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "jobPackId",
+            "columnName": "jobPackId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "companyId",
+            "columnName": "companyId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "issuedAtEpochMillis",
+            "columnName": "issuedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiresAtEpochMillis",
+            "columnName": "expiresAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "issuedAtElapsedRealtimeMillis",
+            "columnName": "issuedAtElapsedRealtimeMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastObservedEpochMillis",
+            "columnName": "lastObservedEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "companyId",
+            "jobPackId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "job_pack",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "companyId",
+              "jobPackId"
+            ],
+            "referencedColumns": [
+              "companyId",
+              "jobId"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '01f474b93d6fa8ea6f71e866cd518a05')"
+    ]
+  }
+}

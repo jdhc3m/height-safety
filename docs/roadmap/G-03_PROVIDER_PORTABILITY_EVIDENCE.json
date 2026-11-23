@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0.0",
+  "gate": "G-03",
+  "status": "owner-approved",
+  "decision": "D-027",
+  "ownerApprovedAt": "2026-08-24",
+  "research": {
+    "path": "docs/roadmap/G-03_PROVIDER_RESEARCH.md",
+    "checkedAt": "2026-08-24"
+  },
+  "scope": {
+    "fictionalFixtureOnly": true,
+    "cloudMutationPerformed": false,
+    "productionProviderSelected": false,
+    "rendererDecisionPreserved": "D-024"
+  },
+  "postgresql": {
+    "schemaPath": "infra/provider-portability/postgresql-schema.sql",
+    "runnerPath": "tools/provider-portability/postgresql-check.sh",
+    "executed": true,
+    "engine": "postgres:17-alpine",
+    "tenantKeyConstraintPassed": true,
+    "crossTenantWriteRejected": true,
+    "executedAt": "2026-08-24"
+  },
+  "objectStorage": {
+    "contractPath": "tools/provider-portability/check.mjs",
+    "adapters": ["memory-contract", "filesystem-contract"],
+    "privateScopedRead": true,
+    "checksumVerification": true,
+    "createOnlyRetry": true,
+    "crossTenantReadRejected": true,
+    "shortLivedScopedAccessShape": true
+  },
+  "backupExport": {
+    "deterministicBackupAndRestore": true,
+    "backupChecksum": "b80907f88c6da9281b93ed9cc5e14279ff274619daa5fce0bb97ecfbfc721f3c",
+    "tenantScopedExport": true,
+    "associatedObjectBytesAndChecksums": true,
+    "restoreVerification": true
+  }
+}

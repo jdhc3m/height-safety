@@ -1,0 +1,14 @@
+packages:
+  - apps/api
+  - apps/web
+  - clients/typescript
+
+allowBuilds:
+  '@nestjs/core': true
+  '@openapitools/openapi-generator-cli': true
+  '@scarf/scarf': false
+  sharp: false
+
+overrides:
+  '@nestjs/common': 11.1.28
+  '@nestjs/core': 11.1.28

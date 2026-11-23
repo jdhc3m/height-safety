@@ -1,0 +1,5 @@
+<!-- Generated from design/icons/serviceable.svg by tools/design-icons/generate.mjs. Do not edit. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-name="Serviceable" data-colour="green" data-variant="tile">
+  <rect data-role="tile" x="0" y="0" width="24" height="24" rx="6" fill="#22A06B"/>
+  <path data-role="base" fill="none" stroke="#FFFFFF" d="M4.9,12.8 L10,17.9 L19.1,7.4" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round"/>
+</svg>

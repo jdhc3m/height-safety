@@ -7,3 +7,38 @@ private-sources/*
 .idea/
 .vscode/
 
+# Android SDK location is machine-specific.
+apps/android/local.properties
+
+node_modules/
+.pnpm-store/
+dist/
+.tools/
+.contract-tmp/
+clients/kotlin/.gradle/
+clients/kotlin/.kotlin/
+clients/kotlin/build/
+clients/typescript/dist/
+apps/android/storage-spike/.gradle/
+apps/android/storage-spike/.kotlin/
+apps/android/storage-spike/build/
+apps/android/.gradle/
+apps/android/build/
+apps/android/**/.kotlin/
+apps/android/app/build/
+apps/android/data/build/
+apps/android/domain/build/
+apps/web/.next/
+apps/web/tsconfig.tsbuildinfo
+
+# Local development object bytes; production uses a private object provider.
+.height-safety-objects/
+
+# Local Obsidian vault configuration
+.obsidian/
+
+# Local agent skill packs and metadata
+.agents/skills/
+skills/
+docs/agents/
+skills-lock.json

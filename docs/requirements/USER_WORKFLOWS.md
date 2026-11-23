@@ -1,0 +1,42 @@
+# User Workflows
+
+Canonical Stage 2B details:
+`docs/requirements/STAGE_2B_WORKFLOW_SPEC.md`.
+
+## Office preparation
+
+1. Office creates the client and site, selects `NSW` or `QLD`, and creates the
+   anchor register and versioned job pack.
+2. Office creates and releases a draft job, with an eligible inspector or
+   inspector pool.
+3. An eligible inspector claims the released job, or the office assigns one
+   primary inspector. The claim/assignment is recorded.
+4. Inspector downloads the assigned pack; download state remains separate from
+   job workflow state.
+
+## Field capture and submission
+
+1. Inspector accounts for each expected anchor with a completed inspection or
+   `Not inspected` plus an exception reason.
+2. Inspector records observations, associated photos, defects,
+   recommendations, one recorded outcome and optional entered test evidence.
+3. Newly discovered, duplicate and replacement cases remain explicit register
+   reconciliation proposals. Removed from service is a separate disposition.
+4. Local saves survive restart/connectivity loss. Submission intent and all
+   queued evidence retain visible sync state.
+
+## Office review and report
+
+1. Reviewer sees submitted revisions, coverage gaps, conditional-field errors,
+   failed/pending uploads, warnings, requested changes and conflicts.
+2. Reviewer requests changes or resolves review issues without silently
+   overwriting inspector evidence.
+3. Approval requires all hard blockers to be clear and records the exact source
+   snapshot, reviewer and time.
+4. Connected generation creates a neutral, immutable prototype draft report
+   revision containing the site jurisdiction; later corrections create new
+   revisions.
+
+Jurisdiction remains visible through preparation, field capture, review,
+export and reporting. It does not automatically change required fields,
+intervals, technical outcomes or approval authority.

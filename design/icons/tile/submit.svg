@@ -1,0 +1,6 @@
+<!-- Generated from design/icons/submit.svg by tools/design-icons/generate.mjs. Do not edit. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-name="Submit" data-colour="blue" data-variant="tile">
+  <rect data-role="tile" x="0" y="0" width="24" height="24" rx="6" fill="#1D7AFC"/>
+  <path data-role="base" fill="#FFFFFF" fill-rule="evenodd" d="M20.3,4.6 L4.1,11.3 C3.45,11.55 3.5,12.35 4.15,12.5 L9.9,13.9 L20.3,4.6 Z"/>
+  <path data-role="detail" fill="#FFFFFF" fill-rule="evenodd" d="M20.3,4.6 L10.55,13.5 L13.85,19.65 C14.1,20.15 14.8,20.1 14.95,19.6 L20.3,4.6 Z"/>
+</svg>

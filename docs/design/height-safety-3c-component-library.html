@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Height Safety · Signal Field component library</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --canvas: #f4f8fd;
+      --surface: #ffffff;
+      --raised: #e9f1f8;
+      --raised-2: #b8c9d8;
+      --text: #142235;
+      --muted: #4d6175;
+      --faint: #5b6e81;
+      --brand: #1558b0;
+      --brand-soft: #e5efff;
+      --info: #006e70;
+      --info-soft: #d5f3f0;
+      --warning: #7a4e00;
+      --warning-soft: #fff1c7;
+      --danger: #b3261e;
+      --danger-soft: #f9dedc;
+      --discovery: #65429a;
+      --discovery-soft: #eee5fb;
+      --success: #176b49;
+      --success-soft: #d7f2e3;
+      --outline: #567087;
+      --line: #c1cfdb;
+      --inverse-surface: #172c42;
+      --brand-hover: #0f3f85;
+      /* Legacy class hooks map to the semantic families above. */
+      --orange: var(--brand);
+      --orange-soft: var(--brand-soft);
+      --cyan: var(--info);
+      --cyan-soft: var(--info-soft);
+      --yellow: var(--warning);
+      --yellow-soft: var(--warning-soft);
+      --coral: var(--danger);
+      --coral-soft: var(--danger-soft);
+      --lilac: var(--discovery);
+      --lilac-soft: var(--discovery-soft);
+      --green: var(--success);
+      --green-soft: var(--success-soft);
+      --shadow: 0 12px 28px rgb(20 34 53 / .10);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(circle at 75% 0%, #ffffff 0, transparent 34rem), var(--canvas); color: var(--text); }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .icon-fill { fill: currentColor; opacity: .16; stroke: none; }
+    .icon-solid-shape { fill: currentColor; stroke: none; }
+    .icon-solid-accent { fill: var(--icon-accent, var(--info)); stroke: none; }
+    .icon-solid-cutout { fill: var(--icon-cutout, #ffffff); stroke: none; }
+    .icon-domain { stroke-width: 1.7; }
+    h1, h2, h3, p { margin: 0; }
+    .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 72px; }
+    .eyebrow { color: var(--cyan); font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin-top: 10px; font-size: clamp(32px, 6vw, 64px); line-height: .98; letter-spacing: -.06em; }
+    .intro { display: flex; gap: 24px; justify-content: space-between; align-items: end; }
+    .intro-copy { max-width: 650px; }
+    .intro-copy p { max-width: 620px; margin-top: 16px; color: var(--muted); font-size: 16px; line-height: 1.55; }
+    .source-note { max-width: 290px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--muted); font-size: 12px; line-height: 1.5; box-shadow: var(--shadow); }
+    .source-note strong { display: block; margin-bottom: 6px; color: var(--yellow); }
+    .section { margin-top: 42px; }
+    .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 18px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+    .section-heading h2 { margin-top: 6px; font-size: 24px; letter-spacing: -.03em; }
+    .section-heading p { max-width: 420px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 18px; }
+    .panel { border: 1px solid var(--line); border-radius: 20px; background: color-mix(in srgb, var(--surface) 94%, white 6%); padding: 18px; box-shadow: var(--shadow); }
+    .panel h3 { font-size: 15px; letter-spacing: -.015em; }
+    .panel > p { margin-top: 6px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .swatches { display: grid; gap: 8px; margin-top: 16px; }
+    .swatch { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 12px; }
+    .swatch-color { width: 34px; height: 34px; border: 1px solid rgb(22 37 43 / .12); border-radius: 10px; }
+    .swatch b { display: block; font-size: 12px; }
+    .swatch span { display: block; margin-top: 2px; color: var(--faint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
+    .swatch code { color: var(--muted); font-size: 10px; }
+    .type-stack { display: grid; gap: 16px; margin-top: 18px; }
+    .type-sample { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; border-bottom: 1px solid rgb(22 37 43 / .10); padding-bottom: 10px; }
+    .type-sample small { color: var(--faint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
+    .display { font-size: 30px; font-weight: 800; letter-spacing: -.06em; }
+    .screen-title { font-size: 22px; font-weight: 750; letter-spacing: -.04em; }
+    .body { color: var(--muted); font-size: 14px; line-height: 1.45; }
+    .meta { color: var(--faint); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .measure-list { display: grid; gap: 10px; margin-top: 18px; }
+    .measure { display: flex; justify-content: space-between; gap: 14px; border-bottom: 1px solid rgb(22 37 43 / .10); padding-bottom: 9px; color: var(--muted); font-size: 12px; }
+    .measure b { color: var(--text); }
+    .icons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+    .icon-spec { display: grid; gap: 8px; justify-items: center; color: var(--muted); text-align: center; font-size: 10px; }
+    .icon-tile { display: grid; width: 48px; height: 48px; place-items: center; border-radius: 14px; }
+    .icon-tile svg { width: 24px; height: 24px; }
+    .icon-spec .icon-tile { width: 52px; height: 52px; background: transparent; }
+    .icon-spec .icon-tile svg { width: 32px; height: 32px; }
+    .tile-orange { background: var(--orange-soft); color: var(--orange); }
+    .tile-cyan { background: var(--cyan-soft); color: var(--cyan); }
+    .tile-yellow { background: var(--yellow-soft); color: var(--yellow); }
+    .tile-lilac { background: var(--lilac-soft); color: var(--lilac); }
+    .tile-green { background: var(--green-soft); color: var(--green); }
+    .component-grid { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 18px; }
+    .component-card { min-width: 0; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); padding: 18px; box-shadow: var(--shadow); }
+    .component-card h3 { font-size: 14px; }
+    .component-card > p { margin-top: 6px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .component-name { display: inline-flex; margin-bottom: 12px; border-radius: 999px; background: var(--raised); padding: 6px 9px; color: var(--cyan); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
+    .specimen { margin-top: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--canvas); padding: 14px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { display: inline-flex; gap: 6px; min-height: 32px; align-items: center; border-radius: 999px; padding: 6px 10px; font-size: 11px; font-weight: 800; }
+    .chip svg { width: 15px; height: 15px; }
+    .chip-orange { background: var(--orange-soft); color: var(--orange); }
+    .chip-cyan { background: var(--cyan-soft); color: var(--cyan); }
+    .chip-yellow { background: var(--yellow-soft); color: var(--yellow); }
+    .chip-coral { background: var(--coral-soft); color: var(--coral); }
+    .chip-green { background: var(--green-soft); color: var(--green); }
+    .button-row { display: flex; flex-wrap: wrap; gap: 10px; }
+    .button { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 14px; padding: 12px 16px; font-size: 13px; font-weight: 800; }
+    .button svg { width: 18px; height: 18px; }
+    .button-primary { background: var(--brand); color: #ffffff; }
+    .button-tonal { background: var(--cyan-soft); color: var(--cyan); }
+    .button-outline { border: 1px solid var(--outline); background: transparent; color: var(--text); }
+    .job-card { display: grid; gap: 14px; }
+    .job-top, .job-meta, .anchor-top, .nav-spec { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+    .job-leading, .anchor-leading { display: flex; gap: 10px; min-width: 0; align-items: center; }
+    .job-leading strong, .anchor-leading strong { display: block; font-size: 14px; }
+    .job-leading > span, .anchor-leading > span { display: grid; margin-top: 0; }
+    .job-leading > div > span, .anchor-leading > div > span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .tile-small { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border-radius: 12px; }
+    .tile-small svg { width: 20px; height: 20px; }
+    .job-meta { justify-content: start; flex-wrap: wrap; color: var(--muted); font-size: 11px; }
+    .job-meta span { display: inline-flex; gap: 5px; align-items: center; }
+    .job-meta svg { width: 14px; height: 14px; color: var(--faint); }
+    .job-card .button { width: 100%; }
+    .anchor-row { display: grid; gap: 12px; }
+    .anchor-row .job-meta { justify-content: space-between; }
+    .evidence { display: grid; gap: 10px; }
+    .evidence-row { display: flex; gap: 10px; align-items: flex-start; border-radius: 12px; background: var(--raised); padding: 11px; }
+    .evidence-row svg { flex: 0 0 auto; color: var(--cyan); }
+    .evidence-row strong { display: block; font-size: 12px; }
+    .evidence-row span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+    .nav-spec { align-items: stretch; justify-content: start; border-radius: 18px; background: var(--raised); padding: 8px; }
+    .nav-item { display: grid; min-width: 84px; min-height: 64px; place-items: center; gap: 4px; border-radius: 14px; color: var(--muted); font-size: 10px; font-weight: 800; }
+    .nav-item.active { background: var(--brand); color: #ffffff; }
+    .nav-item svg { width: 20px; height: 20px; }
+    .footer-note { margin-top: 42px; border-top: 1px solid var(--line); padding-top: 18px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .footer-note a { color: var(--cyan); }
+    @media (max-width: 820px) { .intro, .section-heading { display: grid; align-items: start; } .grid, .component-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 520px) { .shell { width: min(100% - 24px, 1180px); padding-top: 28px; } .icons { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  </style>
+</head>
+<body>
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="i-industry" viewBox="0 0 24 24"><path class="icon-solid-shape" d="M3 20V8.5l5 2.7V8l5 2.7V7l8 4.2V20H3Z"/><path class="icon-solid-accent" d="M5 14h2v2H5zm4 0h2v2H9zm4 0h2v2h-2zm4 0h2v2h-2zM5 17h2v2H5zm4 0h2v2H9zm4 0h2v2h-2zm4 0h2v2h-2z"/></symbol>
+    <symbol id="i-location" viewBox="0 0 24 24"><path class="icon-solid-shape" d="M12 2.5a7 7 0 0 0-7 7c0 4.8 7 9.2 7 12 0-2.8 7-7.2 7-12a7 7 0 0 0-7-7Z"/><circle class="icon-solid-cutout" cx="12" cy="9.5" r="2.2"/></symbol>
+    <symbol id="i-pack" viewBox="0 0 24 24"><path class="icon-solid-shape" d="m12 2.8 8.2 4.4v9.6L12 21.2l-8.2-4.4V7.2L12 2.8Z"/><path class="icon-solid-accent" d="m12 2.8 8.2 4.4-8.2 4.5-8.2-4.5L12 2.8Z"/><rect class="icon-solid-shape" x="10.8" y="11.2" width="2.4" height="9.5" rx="1.2"/></symbol>
+    <symbol id="i-roof-anchor" viewBox="0 0 24 24"><circle class="icon-solid-shape" cx="12" cy="5" r="3"/><circle class="icon-solid-cutout" cx="12" cy="5" r="1.1"/><rect class="icon-solid-shape" x="10.5" y="7" width="3" height="10.5" rx="1.5"/><rect class="icon-solid-accent" x="6" y="10.5" width="12" height="2.5" rx="1.25"/><path class="icon-solid-shape" d="M4.5 14.2C4.5 18.5 7.9 21.5 12 21.5s7.5-3 7.5-7.3h-2.4c0 2.9-2.3 4.9-5.1 4.9s-5.1-2-5.1-4.9H4.5Z"/><rect class="icon-solid-shape" x="4" y="18" width="16" height="2.5" rx="1.25"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path class="icon-solid-shape" d="M4 7h4l1.4-2h5.2L16 7h4v12H4V7Z"/><circle class="icon-solid-cutout" cx="12" cy="13" r="3.7"/><circle class="icon-solid-accent" cx="12" cy="13" r="2.1"/></symbol>
+    <symbol id="i-cloud-check" viewBox="0 0 24 24"><path class="icon-solid-shape" d="M7 19h10a5 5 0 0 0 .4-10A6 6 0 0 0 6 10.1 4.5 4.5 0 0 0 7 19Z"/><path class="icon-solid-cutout" d="m8.3 14.2 2.5 2.4 4.7-5 1.5 1.5-6.2 6.4-4-3.8 1.5-1.5Z"/></symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24"><path class="icon-solid-shape" d="M12 3 22 20H2L12 3Z"/><rect class="icon-solid-cutout" x="11" y="8" width="2" height="6" rx="1"/><circle class="icon-solid-cutout" cx="12" cy="17" r="1"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path class="icon-solid-shape" d="m4.2 12.3 2.2-2.2 3.6 3.6 7.7-8 2.1 2-9.8 10.1-5.8-5.5Z"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path class="icon-solid-shape" d="M5 3h14v18H5V3Z"/><rect class="icon-solid-cutout" x="8" y="8" width="8" height="1.6" rx=".8"/><rect class="icon-solid-cutout" x="8" y="11.8" width="8" height="1.6" rx=".8"/><rect class="icon-solid-cutout" x="8" y="15.6" width="5.5" height="1.6" rx=".8"/></symbol>
+    <symbol id="i-person" viewBox="0 0 24 24"><circle class="icon-solid-shape" cx="12" cy="8" r="3.7"/><path class="icon-solid-shape" d="M4.5 20.5c.6-4.2 3.2-6.3 7.5-6.3s6.9 2.1 7.5 6.3h-15Z"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect class="icon-solid-shape" x="4" y="5" width="16" height="15" rx="2"/><rect class="icon-solid-cutout" x="6" y="10" width="12" height="8" rx="1"/><rect class="icon-solid-accent" x="7" y="3" width="2.5" height="5" rx="1.25"/><rect class="icon-solid-accent" x="14.5" y="3" width="2.5" height="5" rx="1.25"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect class="icon-solid-shape" x="5" y="10" width="14" height="10" rx="2"/><path class="icon-solid-shape" d="M8 10V7a4 4 0 0 1 8 0v3h-2V7a2 2 0 0 0-4 0v3H8Z"/><circle class="icon-solid-cutout" cx="12" cy="14" r="1.2"/><rect class="icon-solid-cutout" x="11.2" y="14" width="1.6" height="3" rx=".8"/></symbol>
+    <symbol id="i-queue" viewBox="0 0 24 24"><rect class="icon-solid-shape" x="4" y="4" width="16" height="4" rx="1"/><rect class="icon-solid-accent" x="4" y="10" width="16" height="4" rx="1"/><rect class="icon-solid-shape" x="4" y="16" width="11" height="4" rx="1"/></symbol>
+  </svg>
+
+  <main class="shell">
+    <header class="intro">
+      <div class="intro-copy">
+        <p class="eyebrow">Height Safety / 3C / Signal Field</p>
+        <h1>Component library for field evidence.</h1>
+        <p>Daylight surfaces, one Blue Horizon action family, and explicit semantic evidence states. Components use 360dp compact-phone measurements and vocabulary from the current Android field flow.</p>
+      </div>
+      <aside class="source-note"><strong>Source basis</strong>Current Android strings, debug gateway values, Stage 2B workflow and Material 3 guidance. Synthetic data only; owner validation remains open.</aside>
+    </header>
+
+    <section class="section" aria-labelledby="foundations-title">
+      <div class="section-heading"><div><p class="eyebrow">01 / Foundations</p><h2 id="foundations-title">Tokens before components.</h2></div><p>Keep colour semantic, state-visible and separate from recorded outcomes.</p></div>
+      <div class="grid">
+        <article class="panel"><h3>Blue Horizon palette</h3><p>Light surfaces carry the field workspace. Accents carry action, attention and evidence state.</p><div class="swatches">
+          <div class="swatch"><span class="swatch-color" style="background:var(--canvas)"></span><div><b>Daylight background</b><span>signal.background</span></div><code>#F4F8FD</code></div>
+          <div class="swatch"><span class="swatch-color" style="background:var(--surface)"></span><div><b>Surface</b><span>signal.surface</span></div><code>#FFFFFF</code></div>
+          <div class="swatch"><span class="swatch-color" style="background:var(--brand)"></span><div><b>Primary action</b><span>signal.primary</span></div><code>#1558B0</code></div>
+          <div class="swatch"><span class="swatch-color" style="background:var(--info)"></span><div><b>Information / evidence</b><span>signal.secondary</span></div><code>#006E70</code></div>
+          <div class="swatch"><span class="swatch-color" style="background:var(--warning)"></span><div><b>Review attention</b><span>signal.warning</span></div><code>#7A4E00</code></div>
+          <div class="swatch"><span class="swatch-color" style="background:var(--danger)"></span><div><b>Failure/blocker</b><span>signal.danger</span></div><code>#B3261E</code></div>
+          <div class="swatch"><span class="swatch-color" style="background:var(--discovery)"></span><div><b>Job-pack context</b><span>signal.tertiary</span></div><code>#65429A</code></div>
+          <div class="swatch"><span class="swatch-color" style="background:var(--success)"></span><div><b>Saved / synchronised</b><span>signal.success</span></div><code>#176B49</code></div>
+        </div></article>
+        <article class="panel"><h3>Type scale</h3><p>One clear task headline, compact metadata, and readable field labels.</p><div class="type-stack"><div class="type-sample"><span class="display">Jobs</span><small>30 / 800</small></div><div class="type-sample"><span class="screen-title">Anchor capture</span><small>22 / 750</small></div><div class="type-sample"><span class="body">Observations stay associated with A-001.</span><small>14 / 400</small></div><div class="type-sample"><span class="meta">Saved locally</span><small>12 / 700</small></div></div></article>
+        <article class="panel"><h3>Measured rhythm</h3><p>CSS pixels mirror compact Android dp for design review.</p><div class="measure-list"><div class="measure"><span>Viewport</span><b>360 × 800dp</b></div><div class="measure"><span>Touch target</span><b>≥ 48dp</b></div><div class="measure"><span>Screen padding</span><b>16dp</b></div><div class="measure"><span>Section gap</span><b>8 / 12 / 16 / 24dp</b></div><div class="measure"><span>Surface radius</span><b>12 / 16 / 24dp</b></div></div></article>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="icons-title">
+      <div class="section-heading"><div><p class="eyebrow">02 / Iconography</p><h2 id="icons-title">Colour helps scanning. Labels carry meaning.</h2></div><p>Use solid color icons at 20–24dp. Never make icon or colour the only state signal.</p></div>
+      <div class="panel"><div class="icons">
+        <div class="icon-spec"><span class="icon-tile tile-orange"><svg class="icon-domain"><use href="#i-industry"></use></svg></span><span>Industry</span></div>
+        <div class="icon-spec"><span class="icon-tile tile-cyan"><svg><use href="#i-location"></use></svg></span><span>Location</span></div>
+        <div class="icon-spec"><span class="icon-tile tile-lilac"><svg><use href="#i-pack"></use></svg></span><span>Pack</span></div>
+        <div class="icon-spec"><span class="icon-tile tile-orange"><svg class="icon-domain"><use href="#i-roof-anchor"></use></svg></span><span>Roof anchor</span></div>
+        <div class="icon-spec"><span class="icon-tile tile-orange"><svg><use href="#i-camera"></use></svg></span><span>Photo</span></div>
+        <div class="icon-spec"><span class="icon-tile tile-cyan"><svg><use href="#i-cloud-check"></use></svg></span><span>Sync</span></div>
+        <div class="icon-spec"><span class="icon-tile tile-yellow"><svg><use href="#i-warning"></use></svg></span><span>Attention</span></div>
+        <div class="icon-spec"><span class="icon-tile tile-green"><svg><use href="#i-check"></use></svg></span><span>Saved</span></div>
+      </div></div>
+    </section>
+
+    <section class="section" aria-labelledby="components-title">
+      <div class="section-heading"><div><p class="eyebrow">03 / Reusable components</p><h2 id="components-title">Named pieces for Android and HTML.</h2></div><p>Component names match the proposed implementation vocabulary. Content remains replaceable; field meaning does not.</p></div>
+      <div class="component-grid">
+        <article class="component-card"><span class="component-name">StatusChip</span><h3>State always has text.</h3><p>Pair semantic colour with a short label and, where useful, an icon.</p><div class="specimen"><div class="chips"><span class="chip chip-orange"><svg><use href="#i-lock"></use></svg>Available offline</span><span class="chip chip-cyan"><svg><use href="#i-cloud-check"></use></svg>Saved locally</span><span class="chip chip-yellow"><svg><use href="#i-warning"></use></svg>Review warning</span><span class="chip chip-green"><svg><use href="#i-check"></use></svg>Synchronised</span></div></div></article>
+        <article class="component-card"><span class="component-name">ActionButton</span><h3>One primary action.</h3><p>Use the solid brand family for the section's main action; use the information family for tonal evidence actions.</p><div class="specimen"><div class="button-row"><button class="button button-primary"><svg><use href="#i-camera"></use></svg>Capture photo</button><button class="button button-tonal"><svg><use href="#i-check"></use></svg>Save locally</button><button class="button button-outline">Back</button></div></div></article>
+        <article class="component-card"><span class="component-name">JobCard</span><h3>Context before capture.</h3><p>Show recorded jurisdiction, workflow status, assignment, pack version and planned date.</p><div class="specimen"><div class="job-card"><div class="job-top"><div class="job-leading"><span class="tile-small tile-orange"><svg class="icon-domain"><use href="#i-industry"></use></svg></span><div><strong>DEMO-NSW-001</strong><span>Assigned inspector job</span></div></div><span class="chip chip-orange">Assigned</span></div><div class="job-meta"><span><svg><use href="#i-location"></use></svg>NSW</span><span><svg><use href="#i-pack"></use></svg>Pack 1</span><span><svg><use href="#i-calendar"></use></svg>2026-09-03</span></div><button class="button button-primary">Open job pack</button></div></div></article>
+        <article class="component-card"><span class="component-name">AnchorRow</span><h3>Register item stays explicit.</h3><p>Keep label, location, evidence state and recorded outcome visible in one row.</p><div class="specimen"><div class="anchor-row"><div class="anchor-top"><div class="anchor-leading"><span class="tile-small tile-cyan"><svg class="icon-domain"><use href="#i-roof-anchor"></use></svg></span><div><strong>A-001</strong><span>North roof, grid A-1</span></div></div><span class="chip chip-yellow">Open</span></div><div class="job-meta"><span>Expected register anchor</span><span>Evidence: Not started</span></div><button class="button button-primary"><svg><use href="#i-camera"></use></svg>Capture evidence</button></div></div></article>
+        <article class="component-card"><span class="component-name">EvidenceSection</span><h3>Association stays visible.</h3><p>Every observation, note and photo refers back to selected anchor inspection.</p><div class="specimen"><div class="evidence"><div class="evidence-row"><svg><use href="#i-note"></use></svg><div><strong>Observations</strong><span>Enter what was observed for A-001.</span></div></div><div class="evidence-row"><svg><use href="#i-camera"></use></svg><div><strong>Photos</strong><span>Capture retains association with A-001.</span></div></div></div></div></article>
+        <article class="component-card"><span class="component-name">BottomNavigation</span><h3>Shell navigation for mobile proposal.</h3><p>Jobs, Queue and Account keep high-frequency destinations reachable with 48dp-plus targets.</p><div class="specimen"><div class="nav-spec"><div class="nav-item active"><svg class="icon-domain"><use href="#i-industry"></use></svg><span>Jobs</span></div><div class="nav-item"><svg><use href="#i-queue"></use></svg><span>Queue</span></div><div class="nav-item"><svg><use href="#i-person"></use></svg><span>Account</span></div></div></div></article>
+      </div>
+    </section>
+
+    <p class="footer-note">Design reference only. Values are synthetic debug data. NSW/QLD remains recorded site context only. This library does not define certification, compliance, standards interpretation, engineering approval or professional authority. See <a href="HEIGHT_SAFETY_3C_MOBILE_SIGNAL.md">Signal Field source notes</a>, <a href="HEIGHT_SAFETY_3C_COLOR_RESEARCH.md">colour research</a> and the <a href="height-safety-3c-mobile-signal.html">clickable mobile prototype</a>.</p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,15 @@
+.git
+.gradle
+.tools
+apps/*
+!apps/api
+apps/api/*
+!apps/api/package.json
+clients/*
+!clients/typescript
+clients/typescript/*
+!clients/typescript/package.json
+contracts
+docs
+node_modules
+*.log

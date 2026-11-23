@@ -1,0 +1,4 @@
+# Retained only as a documented, deliberately unused alternative.
+# The 2D-04 harness builds locally and pushes directly so Cloud Build cannot
+# create implicit source-staging or log buckets outside the bounded spike.
+steps: []

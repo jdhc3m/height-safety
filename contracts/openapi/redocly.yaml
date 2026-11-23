@@ -1,0 +1,14 @@
+extends:
+  - recommended
+
+apis:
+  height-safety@v1:
+    root: ./v1/openapi.json
+
+rules:
+  # The private prototype has no public licence URL; inventing one would be
+  # misleading. Revisit before publishing an SDK or public API.
+  info-license-strict: off
+  # Health has no client-controlled input, so a synthetic 4xx response would
+  # misstate its behavior. Domain operations must document relevant 4xx cases.
+  operation-4xx-response: off

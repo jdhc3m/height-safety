@@ -1,0 +1,6 @@
+<!-- Generated from design/icons/sign.svg by tools/design-icons/generate.mjs. Do not edit. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-name="Sign" data-colour="green" data-variant="tile">
+  <rect data-role="tile" x="0" y="0" width="24" height="24" rx="6" fill="#22A06B"/>
+  <path data-role="base" fill="#FFFFFF" fill-rule="evenodd" d="M17.38,9.7 A1.4,1.4 0 0 1 17.38,7.72 L16.39,6.73 A1.4,1.4 0 0 1 14.41,6.73 L8.76,12.38 A1.4,1.4 0 0 1 8.76,14.36 L9.75,15.35 A1.4,1.4 0 0 1 11.73,15.35 Z"/>
+  <path data-role="detail" fill="#FFFFFF" fill-rule="evenodd" d="M6.7,17.4 L11.37,15.69 L8.41,12.73 Z"/>
+</svg>

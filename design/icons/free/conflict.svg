@@ -1,0 +1,7 @@
+<!-- Generated from design/icons/conflict.svg by tools/design-icons/generate.mjs. Do not edit. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-name="Conflict" data-colour="orange" data-variant="free">
+  <path data-role="base" fill="#F38A3F" fill-rule="evenodd" d="M6.61,19.81 L15.31,11.11 L13.89,9.69 L5.19,18.39 Z M17,7 L12.33,11.67 L15.45,8.55 Z"/>
+  <path data-role="detail" fill="#E56910" fill-rule="evenodd" d="M18.81,18.39 L10.61,10.19 L9.19,11.61 L17.39,19.81 Z M7,7 L8.55,11.67 L11.67,8.55 Z"/>
+  <path data-role="accent" fill="#F15B50" fill-rule="evenodd" d="M13.3,17.4 A4.1,4.1 0 1 1 21.5,17.4 A4.1,4.1 0 1 1 13.3,17.4 Z"/>
+  <path data-role="accent-mark" fill="#FFFFFF" fill-rule="evenodd" d="M17.4,14.9 A0.7,0.7 0 0 1 18.1,15.6 L18.1,17.6 A0.7,0.7 0 0 1 17.4,18.3 A0.7,0.7 0 0 1 16.7,17.6 L16.7,15.6 A0.7,0.7 0 0 1 17.4,14.9 Z M16.45,19.7 A0.95,0.95 0 1 1 18.35,19.7 A0.95,0.95 0 1 1 16.45,19.7 Z"/>
+</svg>
