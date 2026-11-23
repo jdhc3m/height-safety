@@ -122,4 +122,27 @@
     <string name="recovery_evidence_note">Local evidence remains preserved. Administrator recovery is upload-only and does not restore account access.</string>
     <string name="start_administrator_recovery">Administrator recovery</string>
     <string name="authorising_recovery">Authorising recovery</string>
+    <string name="nav_jobs">Jobs</string>
+    <string name="nav_sync">Sync</string>
+    <string name="nav_account">Account</string>
+    <string name="nav_sync_badge_content_description">Unsent records: %1$d</string>
+    <string name="sync_tab_title">Sync</string>
+    <string name="sync_tab_note">Records saved on this device appear here while they send. Server acknowledgement is shown per record.</string>
+    <string name="sync_tab_queued_records">Locally queued records: %1$d</string>
+    <string name="sync_tab_photos_pending">Photos pending upload: %1$d</string>
+    <string name="sync_tab_photos_failed">Photos failed upload: %1$d</string>
+    <string name="sync_tab_all_synced">All recorded evidence is synchronised.</string>
+    <string name="account_tab_title">Account</string>
+    <string name="account_role_value">Role: %1$s</string>
+    <string name="role_label_administrator">Administrator</string>
+    <string name="role_label_office_reviewer">Office reviewer</string>
+    <string name="role_label_inspector">Inspector</string>
+    <string name="assignment_available_to_claim">Available to claim</string>
+    <string name="assignment_none_recorded">None recorded</string>
+    <string name="assignment_assigned">Assigned</string>
+    <string name="assignment_claimed">Claimed</string>
+    <string name="discard_changes_title">Discard changes?</string>
+    <string name="discard_changes_message">Unsaved edits on this anchor are not saved on the device.</string>
+    <string name="discard_changes_discard">Discard</string>
+    <string name="discard_changes_keep_editing">Keep editing</string>
 </resources>
