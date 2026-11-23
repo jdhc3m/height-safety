@@ -33,6 +33,10 @@ const REPORT_GENERATION_MIGRATION = new URL(
   '../migrations/006_report_generation_runtime.sql',
   import.meta.url,
 );
+const RECONCILIATION_DECISION_MIGRATION = new URL(
+  '../migrations/007_register_reconciliation_runtime.sql',
+  import.meta.url,
+);
 const TENANT_TABLES = [
   'companies',
   'users',
@@ -60,6 +64,7 @@ const TENANT_TABLES = [
   'user_invitations',
   'user_sessions',
   'job_pack_snapshots',
+  'register_reconciliation_decisions',
 ];
 
 const databaseUrl = process.env.TEST_POSTGRES_URL;
@@ -109,6 +114,7 @@ test('tenant migrations define the report-generation queue and its isolation bou
     syncRuntimeMigration,
     reviewHistoryMigration,
     reportGenerationMigration,
+    reconciliationDecisionMigration,
   ] = await Promise.all([
     readMigration(RUNTIME_ROLE_MIGRATION),
     readMigration(TENANT_SCHEMA_MIGRATION),
@@ -117,8 +123,9 @@ test('tenant migrations define the report-generation queue and its isolation bou
     readMigration(SYNC_RUNTIME_MIGRATION),
     readMigration(REVIEW_HISTORY_MIGRATION),
     readMigration(REPORT_GENERATION_MIGRATION),
+    readMigration(RECONCILIATION_DECISION_MIGRATION),
   ]);
-  const productSchema = `${tenantSchemaMigration}\n${authSchemaMigration}\n${jobPackSchemaMigration}\n${reportGenerationMigration}`;
+  const productSchema = `${tenantSchemaMigration}\n${authSchemaMigration}\n${jobPackSchemaMigration}\n${reportGenerationMigration}\n${reconciliationDecisionMigration}`;
 
   assert.match(runtimeRoleMigration, /height_safety_runtime/);
   assert.match(runtimeRoleMigration, /NOBYPASSRLS/);
@@ -175,6 +182,22 @@ test('tenant migrations define the report-generation queue and its isolation bou
     reportGenerationMigration,
     /status IN \('queued', 'processing'\) AND revision_number IS NOT NULL/,
   );
+  assert.match(
+    reconciliationDecisionMigration,
+    /register_reconciliation_decisions_tenant_policy/,
+  );
+  assert.match(
+    reconciliationDecisionMigration,
+    /decision IN \('accepted', 'rejected'\)/,
+  );
+  assert.match(
+    reconciliationDecisionMigration,
+    /REVOKE UPDATE, DELETE ON register_reconciliation_decisions/,
+  );
+  assert.match(
+    reconciliationDecisionMigration,
+    /register_reconciliation_decisions_one_per_proposal_unique/,
+  );
 
   for (const table of TENANT_TABLES) {
     assert.match(
@@ -197,6 +220,7 @@ test('tenant migrations define the report-generation queue and its isolation bou
     new URL('004_sync_payload_runtime.sql', MIGRATION_DIRECTORY),
     new URL('005_review_history_runtime.sql', MIGRATION_DIRECTORY),
     new URL('006_report_generation_runtime.sql', MIGRATION_DIRECTORY),
+    new URL('007_register_reconciliation_runtime.sql', MIGRATION_DIRECTORY),
   ];
   assert.deepEqual(
     migrationFiles.map((url) => url.pathname.split('/').at(-1)),
@@ -208,6 +232,7 @@ test('tenant migrations define the report-generation queue and its isolation bou
       '004_sync_payload_runtime.sql',
       '005_review_history_runtime.sql',
       '006_report_generation_runtime.sql',
+      '007_register_reconciliation_runtime.sql',
     ],
   );
 });
@@ -238,6 +263,7 @@ test(
         SYNC_RUNTIME_MIGRATION,
         REVIEW_HISTORY_MIGRATION,
         REPORT_GENERATION_MIGRATION,
+        RECONCILIATION_DECISION_MIGRATION,
       ]) {
         const migration = await readMigration(migrationUrl);
         runPsql(migration, { schema });
@@ -392,6 +418,10 @@ test(
               AND has_column_privilege('height_safety_runtime', current_schema() || '.review_issues', 'reason', 'UPDATE') = FALSE
               AND has_table_privilege('height_safety_runtime', current_schema() || '.review_actions', 'UPDATE') = FALSE
               AND has_table_privilege('height_safety_runtime', current_schema() || '.review_actions', 'DELETE') = FALSE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.register_reconciliation_decisions', 'SELECT') = TRUE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.register_reconciliation_decisions', 'INSERT') = TRUE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.register_reconciliation_decisions', 'UPDATE') = FALSE
+              AND has_table_privilege('height_safety_runtime', current_schema() || '.register_reconciliation_decisions', 'DELETE') = FALSE
             THEN 'runtime-role-attributes-passed'
             ELSE 'runtime-role-attributes-failed'
           END
@@ -502,6 +532,90 @@ test(
         { schema, asRuntimeRole: true },
       );
       assert.match(tenantWriteOutput, /tenant-write-isolation-passed/);
+
+      const decisionRuntimeOutput = runPsql(
+        `
+          BEGIN;
+          SELECT set_config('app.company_id', 'company-a', true);
+          DO $$
+          BEGIN
+            BEGIN
+              INSERT INTO register_reconciliation_decisions
+                (company_id, proposal_decision_id, anchor_inspection_id,
+                 inspection_id, site_id, proposal_type, decision,
+                 decided_by_user_id, register_anchor_id)
+              VALUES
+                ('company-b', 'decision-cross-tenant', 'anchor-inspection-b',
+                 'inspection-b', 'site-b', 'newly_discovered', 'accepted',
+                 'administrator-b', 'anchor-b');
+              RAISE EXCEPTION 'cross-tenant decision insert unexpectedly succeeded';
+            EXCEPTION WHEN insufficient_privilege THEN
+              NULL;
+            END;
+          END
+          $$;
+          INSERT INTO register_reconciliation_decisions
+            (company_id, proposal_decision_id, anchor_inspection_id,
+             inspection_id, site_id, proposal_type, decision,
+             decided_by_user_id, register_anchor_id)
+          VALUES
+            ('company-a', 'proposal-decision-a', 'anchor-inspection-a',
+             'inspection-a', 'site-a', 'newly_discovered', 'accepted',
+             'administrator-a', 'anchor-new-a');
+          INSERT INTO register_reconciliation_decisions
+            (company_id, proposal_decision_id, anchor_inspection_id,
+             inspection_id, site_id, proposal_type, decision,
+             decided_by_user_id, reason)
+          VALUES
+            ('company-a', 'proposal-decision-b', 'anchor-inspection-a-other',
+             'inspection-a-other', 'site-a-other', 'replacement', 'rejected',
+             'administrator-a', 'Not the same anchor');
+          DO $$
+          BEGIN
+            BEGIN
+              INSERT INTO register_reconciliation_decisions
+                (company_id, proposal_decision_id, anchor_inspection_id,
+                 inspection_id, site_id, proposal_type, decision,
+                 decided_by_user_id, register_anchor_id)
+              VALUES
+                ('company-a', 'proposal-decision-c',
+                 'anchor-inspection-a-other', 'inspection-a-other',
+                 'site-a-other', 'replacement', 'accepted', 'administrator-a',
+                 'anchor-new-other');
+              RAISE EXCEPTION
+                'second decision for one proposal unexpectedly succeeded';
+            EXCEPTION WHEN unique_violation THEN
+              NULL;
+            END;
+          END
+          $$;
+          DO $$
+          BEGIN
+            BEGIN
+              UPDATE register_reconciliation_decisions
+              SET reason = 'rewritten';
+              RAISE EXCEPTION 'decision update unexpectedly succeeded';
+            EXCEPTION WHEN insufficient_privilege THEN
+              NULL;
+            END;
+          END
+          $$;
+          SELECT CASE
+            WHEN (SELECT count(*) FROM register_reconciliation_decisions
+                  WHERE company_id = 'company-a'
+                    AND register_anchor_id = 'anchor-new-a') = 1
+              AND (SELECT count(*) FROM register_reconciliation_decisions
+                  WHERE company_id = 'company-a'
+                    AND decision = 'rejected'
+                    AND reason = 'Not the same anchor') = 1
+            THEN 'decision-runtime-passed'
+            ELSE 'decision-runtime-failed'
+          END;
+          ROLLBACK;
+        `,
+        { schema, asRuntimeRole: true },
+      );
+      assert.match(decisionRuntimeOutput, /decision-runtime-passed/);
 
       const relationshipOutput = runPsql(
         `

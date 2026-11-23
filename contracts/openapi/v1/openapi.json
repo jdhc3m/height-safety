@@ -514,6 +514,39 @@
         ],
         "type": "object"
       },
+      "DecideReconciliationProposalDto": {
+        "properties": {
+          "assignedLabel": {
+            "example": "A-12",
+            "maxLength": 128,
+            "nullable": true,
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "accept",
+              "reject"
+            ],
+            "example": "accept",
+            "type": "string"
+          },
+          "location": {
+            "example": "North roof, plant room access",
+            "maxLength": 2000,
+            "nullable": true,
+            "type": "string"
+          },
+          "reason": {
+            "example": "Duplicate of the existing A-05 record.",
+            "maxLength": 10000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "type": "object"
+      },
       "HealthResponseDto": {
         "properties": {
           "buildVersion": {
@@ -808,6 +841,228 @@
         },
         "required": [
           "providerAccessToken"
+        ],
+        "type": "object"
+      },
+      "ReconciliationProposalDecisionResponseDto": {
+        "properties": {
+          "assignedLabel": {
+            "example": "A-12",
+            "nullable": true,
+            "type": "string"
+          },
+          "assignedLocation": {
+            "nullable": true,
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "decidedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "decidedByUserId": {
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "accepted",
+              "rejected"
+            ],
+            "example": "accepted",
+            "type": "string"
+          },
+          "inspectionId": {
+            "example": "inspection-001",
+            "type": "string"
+          },
+          "proposalDecisionId": {
+            "type": "string"
+          },
+          "proposalId": {
+            "example": "anchor-inspection-001",
+            "type": "string"
+          },
+          "proposalType": {
+            "enum": [
+              "newly_discovered",
+              "replacement",
+              "duplicate"
+            ],
+            "example": "newly_discovered",
+            "type": "string"
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "registerAnchorId": {
+            "example": "anchor-009",
+            "nullable": true,
+            "type": "string"
+          },
+          "replayed": {
+            "example": false,
+            "type": "boolean"
+          },
+          "siteId": {
+            "example": "site-001",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "proposalDecisionId",
+          "proposalId",
+          "inspectionId",
+          "siteId",
+          "proposalType",
+          "decision",
+          "decidedByUserId",
+          "decidedAt",
+          "replayed"
+        ],
+        "type": "object"
+      },
+      "ReconciliationProposalPhotoDto": {
+        "properties": {
+          "capturedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "checksum": {
+            "example": "sha256-photo-001",
+            "nullable": true,
+            "type": "string"
+          },
+          "localId": {
+            "example": "photo-001",
+            "type": "string"
+          },
+          "photoId": {
+            "example": "photo-001",
+            "type": "string"
+          },
+          "uploadState": {
+            "enum": [
+              "pending_upload",
+              "uploaded",
+              "failed"
+            ],
+            "example": "uploaded",
+            "type": "string"
+          }
+        },
+        "required": [
+          "photoId",
+          "localId",
+          "uploadState"
+        ],
+        "type": "object"
+      },
+      "ReconciliationProposalResponseDto": {
+        "properties": {
+          "companyId": {
+            "type": "string"
+          },
+          "inspectionId": {
+            "example": "inspection-001",
+            "type": "string"
+          },
+          "inspectorNote": {
+            "nullable": true,
+            "type": "string"
+          },
+          "jobId": {
+            "example": "job-001",
+            "type": "string"
+          },
+          "jurisdiction": {
+            "enum": [
+              "NSW",
+              "QLD"
+            ],
+            "example": "NSW",
+            "type": "string"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/ReconciliationProposalPhotoDto"
+            },
+            "type": "array"
+          },
+          "proposalId": {
+            "example": "anchor-inspection-001",
+            "type": "string"
+          },
+          "proposalType": {
+            "enum": [
+              "newly_discovered",
+              "replacement",
+              "duplicate"
+            ],
+            "example": "newly_discovered",
+            "type": "string"
+          },
+          "provisionalAnchorId": {
+            "example": "provisional-001",
+            "nullable": true,
+            "type": "string"
+          },
+          "reconciliationReferenceId": {
+            "example": "anchor-002",
+            "nullable": true,
+            "type": "string"
+          },
+          "recordedLocation": {
+            "example": "North roof",
+            "nullable": true,
+            "type": "string"
+          },
+          "recordedOutcome": {
+            "enum": [
+              "serviceable",
+              "defective",
+              "not_inspected",
+              "further_assessment_required"
+            ],
+            "example": "serviceable",
+            "nullable": true,
+            "type": "string"
+          },
+          "revisionNumber": {
+            "example": 2,
+            "minimum": 1,
+            "type": "number"
+          },
+          "siteId": {
+            "example": "site-001",
+            "type": "string"
+          },
+          "submittedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "submittedByUserId": {
+            "example": "inspector-001",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "proposalId",
+          "inspectionId",
+          "revisionNumber",
+          "jobId",
+          "siteId",
+          "jurisdiction",
+          "proposalType",
+          "recordedOutcome",
+          "submittedByUserId",
+          "submittedAt",
+          "photos"
         ],
         "type": "object"
       },
@@ -3571,6 +3826,115 @@
         "summary": "Update a registered anchor",
         "tags": [
           "site-register"
+        ]
+      }
+    },
+    "/sites/{siteId}/reconciliation-proposals": {
+      "get": {
+        "operationId": "listReconciliationProposals",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReconciliationProposalResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List open reconciliation proposals submitted for one site, newest first",
+        "tags": [
+          "register-reconciliation"
+        ]
+      }
+    },
+    "/sites/{siteId}/reconciliation-proposals/{proposalId}/decision": {
+      "post": {
+        "operationId": "decideReconciliationProposal",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "proposalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideReconciliationProposalDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationProposalDecisionResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Record one accept or reject decision for a submitted reconciliation proposal",
+        "tags": [
+          "register-reconciliation"
         ]
       }
     },
