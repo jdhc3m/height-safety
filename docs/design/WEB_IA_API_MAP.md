@@ -112,7 +112,7 @@ built yet.
 | Approve for report (gate-enforced) | `approveInspectionRevision` (`POST /approvals`) | ready (method `approveInspection`) | Server re-derives gate state and refuses 409 on hard blockers, open change requests or unsynchronised evidence; caller counts are never trusted |
 | Gate display: "n blockers remaining" | `listReviewIssues` covers raised blockers/warnings/conflicts/changes; unsynchronised-evidence and photo-pending states are not readable | partial — complete with #81 | Never present the gate as a pass/fail verdict; it lists what still blocks the snapshot freeze |
 | Pane 1: anchor rows, outcome tiles, sub-badges, chips | No anchor-level evidence read | fixture-only — #81 | Keyboard J/K/F is UI-only |
-| Pane 2: large photo + thumbnail strip | No office photo read | fixture-only — #82 | Photo bytes stay private; served through the office session boundary |
+| Pane 2: large photo + thumbnail strip | `getInspectionPhotoMedia` (`GET /reviews/inspections/{inspectionId}/photos/{photoId}/file`) — landed as #82 | ready (wire in T10) | Photo bytes stay private; served through the office session boundary with the recorded content type |
 | Pane 2: fact sheet (recorded outcome, label match, identity/location confirmation, defect, recommendation, proof test, observations, captured, sync) | No evidence read | fixture-only — #81 | Fields exist in the sync submission payload; nothing reads them back for the office |
 | Pane 2: previous-inspection card | `getPreviousAnchorInspectionRevision` (`GET /reviews/anchor-inspections/{anchorInspectionId}/previous-revision`) — landed as #85 | ready | Office reviewer/Administrator; 404 when the anchor inspection is unknown or no earlier submitted revision exists |
 | Pane 3: comments on `ANC-xxxx` + request-change toggle | `listReviewIssues` + `createReviewIssue` + `resolveReviewIssue` | ready | Append-only; issues never rewrite submitted evidence |
@@ -132,10 +132,10 @@ built yet.
 | Tab: roof plan (optional per §6.2) | No storage, upload or read anywhere | fixture-only — #89 (owner-approval; §6.2 marks it optional) | Needs an owner decision before any contract work |
 | Tab: history | No register history read | fixture-only — #86 | Audit events exist but are not exposed |
 | Proposal banner + slide-over list | `listReconciliationProposals` (`GET /sites/{siteId}/reconciliation-proposals`) — landed as #84 | client gap (wire in T11) | Administrator/office reviewer only; open proposals only |
-| Slide-over: photo + inspector note | Inspector note and photo metadata are on each proposal read; photo bytes stay private (#82) | partial — complete with #82 | The note is the recorded inspector note; byte access is a separate office session route |
+| Slide-over: photo + inspector note | Inspector note and photo metadata are on each proposal read; photo bytes stream through `getInspectionPhotoMedia` (`GET /reviews/inspections/{inspectionId}/photos/{photoId}/file`) — landed as #82 | ready (wire in T11) | The note is the recorded inspector note; byte access is a separate office session route |
 | Action: accept into register / reject with reason | `decideReconciliationProposal` (`POST /sites/{siteId}/reconciliation-proposals/{proposalId}/decision`) — landed as #84 | client gap (wire in T11) | One decision per proposal; accept writes the register anchor change and reject records a reason, both append-only audit events |
 | Action: assign label / location on a proposal | The decision action carries `assignedLabel` / `location`; later edits use `updateAnchor` (`PATCH /sites/{siteId}/anchors/{anchorId}`) | client gap (wire in T11) | Accept of a newly discovered proposal creates the anchor; accept of a replacement or duplicate updates the referenced anchor |
-| Anchor history drawer | `listAnchorRecordedOutcomes` (`GET /reviews/anchors/{anchorId}/recorded-outcomes`) — landed as #85 | ready | Office reviewer/Administrator; photo metadata only, bytes stay private (#82) |
+| Anchor history drawer | `listAnchorRecordedOutcomes` (`GET /reviews/anchors/{anchorId}/recorded-outcomes`) — landed as #85 | ready | Office reviewer/Administrator; photo metadata only, photo bytes stream through the #82 photo file route |
 | Action: new job from register | `createJob` | client gap | Manager roles |
 
 ## Reports (§6.2)
@@ -163,10 +163,16 @@ There are data gaps; the sections above name them per row. Consolidated:
   header with its evidence synchronisation state, per-anchor recorded
   evidence and photo metadata, and recorded counts for expected/accounted
   anchors, open review issues and pending/failed photo uploads. Photo bytes
-  remain #82; the submitted-inspection queue remains open; the per-row
+  landed as #82; the submitted-inspection queue remains open; the per-row
   statuses above record the map-time state.
 - #82 — office read of inspection photo media (blocks review pane 2 and the
-  proposal slide-over photo).
+  proposal slide-over photo). Landed after this map was written: the
+  company-scoped read `getInspectionPhotoMedia`
+  (`GET /reviews/inspections/{inspectionId}/photos/{photoId}/file`) streams
+  one uploaded evidence photo's private bytes with its recorded content type
+  for Administrator and Office reviewer roles through the office session
+  boundary; there is still no public or pre-signed URL and no web call-site
+  change, which remains a later design-system ticket.
 - #83 — list draft report generations per company and job (blocks the Reports
   screen and the dashboard reports rail). Landed after this map was written:
   the company-scoped read `listDraftReportGenerations`
@@ -185,7 +191,7 @@ There are data gaps; the sections above name them per row. Consolidated:
   records one accept or reject decision per proposal as append-only audit.
   Accept creates or updates the referenced register anchor with the
   assigned label/location; reject records a recorded reason. Photo bytes
-  remain #82 and the register history columns remain #85.
+  landed as #82 and the register history columns landed as #85.
 - #85 — read per-anchor recorded-outcome history and the previous inspection
   revision. Landed after this map was written: `listAnchorRecordedOutcomes`
   (`GET /reviews/anchors/{anchorId}/recorded-outcomes`) returns one register
