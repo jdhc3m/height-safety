@@ -5,18 +5,19 @@
 # GITHUB_TOKEN, because label changes made with GITHUB_TOKEN do not trigger other
 # workflows, so the builder would never start.
 #
-# Each tick (hourly, on a done/closed design ticket, or manual dispatch):
+# Each tick (event-driven only — on a done/closed design ticket, an approved
+# review, or manual dispatch; the hourly cron was dropped because it produced
+# mostly skipped/cancelled churn):
 #   1. Merge the open PR and close issues that the validator marked status:done.
-#   2. Start the next eligible status:ready/status:blocked ticket (all dependencies
-#      closed) by moving it to status:in-progress, up to MAX_CONCURRENT.
+#   2. Promote status:blocked tickets whose dependencies are all closed, and start
+#      the next eligible status:ready/status:blocked ticket by moving it to
+#      status:in-progress, up to MAX_CONCURRENT.
 # This file lives on the default branch because schedule/dispatch events only run
 # workflows present on the default branch; it checks out design-system for the code.
 
 name: Design tick
 
 on:
-  schedule:
-    - cron: "0 * * * *"
   issues:
     types: [closed, labeled]
   pull_request_review:

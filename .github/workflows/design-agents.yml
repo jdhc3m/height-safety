@@ -97,6 +97,9 @@ jobs:
             gh pr edit "$pr_number" --repo "$GH_REPOSITORY" --add-reviewer jdhc3m
           fi
 
+      # Retry ladder collapsed (2026-11-23): one automatic retry by re-labelling
+      # (remove+add status:in-progress re-fires the labeled event and re-runs the
+      # builder); after that, quarantine and wait for a human.
       - name: Reset on builder failure
         if: failure()
         env:
@@ -108,17 +111,15 @@ jobs:
             --jq '[.labels[].name] | index("agent:retry-1") != null')"
           if [ "$retry_used" = "false" ]; then
             gh issue comment "$ISSUE_NUMBER" --repo "$REPOSITORY" \
-              --body "Builder failed/timed out once; automatically retrying once with the same ticket scope."
-            gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" \
-              --remove-label "status:in-progress" --remove-label "status:changes-requested" \
-              --remove-label "status:ready" --add-label "agent:retry-1"
+              --body "Builder failed; retrying once (agent:retry-1)."
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" --add-label "agent:retry-1"
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" --remove-label "status:in-progress"
             gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" --add-label "status:in-progress"
           else
             gh issue comment "$ISSUE_NUMBER" --repo "$REPOSITORY" \
-              --body "Builder failed/timed out on its one retry. Ticket is quarantined as agent:failed; inspect the run and remove that label before retrying."
-            gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" \
-              --remove-label "status:in-progress" --remove-label "status:changes-requested" \
-              --remove-label "status:ready" --add-label "status:blocked" --add-label "agent:failed"
+              --body "Builder failed on retry; quarantined as agent:failed + status:blocked. Inspect the run, then relabel status:in-progress to retry."
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" --remove-label "status:in-progress"
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" --add-label "status:blocked" --add-label "agent:failed"
           fi
 
       - name: Mark validating
