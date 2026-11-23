@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdir, open, stat } from 'node:fs/promises';
+import { mkdir, open, readFile, stat } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 
 export interface PhotoObjectStore {
@@ -10,6 +10,7 @@ export interface PhotoObjectStore {
     bytes: Uint8Array,
   ): Promise<number>;
   sha256(objectKey: string): Promise<string>;
+  read(objectKey: string): Promise<Uint8Array | undefined>;
 }
 
 /**
@@ -75,6 +76,18 @@ export class LocalPrivatePhotoObjectStore implements PhotoObjectStore {
       await handle.close();
     }
     return digest.digest('hex');
+  }
+
+  async read(objectKey: string): Promise<Uint8Array | undefined> {
+    const path = this.pathFor(objectKey);
+    try {
+      const result = await stat(path);
+      if (!result.isFile()) return undefined;
+      return new Uint8Array(await readFile(path));
+    } catch (error) {
+      if (isNotFound(error)) return undefined;
+      throw error;
+    }
   }
 
   private pathFor(objectKey: string): string {
