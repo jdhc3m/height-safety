@@ -9,6 +9,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.StateRestorationTester
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -33,6 +34,7 @@ import au.com.heightsafety.domain.StoredJobPack
 import au.com.heightsafety.domain.SubmissionReadiness
 import au.com.heightsafety.domain.SubmissionReviewResult
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -657,6 +659,195 @@ class FieldScreenTest {
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Photo uploads remain pending.")
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun bottomBarTabsReachSyncAndAccountDestinations() {
+        val screenState = mutableStateOf<FieldUiState>(
+            FieldUiState.JobsLoaded(account(), listOf(job())),
+        )
+        composeTestRule.setContent {
+            FieldScreen(
+                state = screenState.value,
+                onSignIn = {},
+                onRetry = {},
+                onRefresh = {},
+                onSignOut = {},
+            )
+        }
+
+        composeTestRule.onNodeWithText("Sync").performClick()
+        composeTestRule.onNodeWithText(
+            "Records saved on this device appear here while they send. Server acknowledgement is shown per record.",
+        ).assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("Account").performClick()
+        composeTestRule.onNodeWithText("Role: Inspector").assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("Jobs").performClick()
+        composeTestRule.onNodeWithText("JOB-001").assertIsDisplayed()
+    }
+
+    @Test
+    fun jobPackKeepsTheNavigationBarAndClosesThroughTheStateOnBack() {
+        var packClosed = false
+        val packState = referenceJobPackOpenedState()
+        composeTestRule.setContent {
+            FieldScreen(
+                state = packState,
+                onSignIn = {},
+                onRetry = {},
+                onRefresh = {},
+                onSignOut = {},
+                onCloseJobPack = { packClosed = true },
+            )
+        }
+
+        composeTestRule.onNodeWithText("Job pack").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Jobs").assertIsDisplayed()
+        composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
+
+        assertTrue(packClosed)
+    }
+
+    @Test
+    fun syncBadgeShowsUnsentCountsWhileAJobPackIsOpen() {
+        val packState = referenceJobPackOpenedState().copy(
+            evidence = listOf(
+                referenceDraft().copy(syncState = EvidenceSyncState.LOCAL),
+            ),
+        )
+        composeTestRule.setContent {
+            FieldScreen(
+                state = packState,
+                onSignIn = {},
+                onRetry = {},
+                onRefresh = {},
+                onSignOut = {},
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("Unsent records: 1", useUnmergedTree = true)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun unsavedCaptureBackShowsTheDiscardGuard() {
+        var captureClosed = false
+        composeTestRule.setContent {
+            FieldScreen(
+                state = anchorCaptureState(),
+                onSignIn = {},
+                onRetry = {},
+                onRefresh = {},
+                onSignOut = {},
+                onCloseAnchor = { captureClosed = true },
+            )
+        }
+
+        composeTestRule.onNodeWithText("Anchor capture").assertIsDisplayed()
+        composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
+
+        composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Keep editing").performClick()
+        assertFalse(captureClosed)
+
+        composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
+        composeTestRule.onNodeWithText("Discard").performClick()
+
+        assertTrue(captureClosed)
+    }
+
+    @Test
+    fun savedCaptureClosesOnBackWithoutTheDiscardGuard() {
+        var captureClosed = false
+        val capture = anchorCaptureState().copy(
+            evidence = listOf(anchorCaptureState().draft),
+            saveState = EvidenceSaveState.SAVED_LOCALLY,
+        )
+        composeTestRule.setContent {
+            FieldScreen(
+                state = capture,
+                onSignIn = {},
+                onRetry = {},
+                onRefresh = {},
+                onSignOut = {},
+                onCloseAnchor = { captureClosed = true },
+            )
+        }
+
+        composeTestRule.onNodeWithText("Anchor capture").assertIsDisplayed()
+        composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
+
+        assertTrue(captureClosed)
+    }
+
+    private fun referenceJobPackOpenedState(): FieldUiState.JobPackOpened {
+        val anchor = JobPackAnchor(
+            companyId = "company-a",
+            anchorId = "anchor-001",
+            siteId = "site-001",
+            label = "A-001",
+            registerId = "REG-001",
+            location = "North roof",
+            anchorType = "single_point",
+            manufacturer = null,
+            model = null,
+            installContext = null,
+            registerStatus = "active",
+            notes = null,
+            createdAtEpochMillis = 1L,
+            updatedAtEpochMillis = 2L,
+        )
+        val pack = FieldJobPack(
+            companyId = "company-a",
+            jobId = "job-001",
+            siteId = "site-001",
+            jurisdiction = SupportedJurisdiction.QLD,
+            reference = "JOB-001",
+            plannedDate = "2026-09-15",
+            workflowStatus = "assigned",
+            jobPackVersion = 7L,
+            siteName = "Site A",
+            siteAddress = "1 Example Street",
+            siteReference = "SITE-A",
+            accessNotes = null,
+            anchors = listOf(anchor),
+        )
+        return FieldUiState.JobPackOpened(
+            account = account(),
+            jobs = listOf(job()),
+            job = job(),
+            opened = OpenedJobPack(
+                StoredJobPack(pack, submissionLease()),
+                JobPackOpenSource.CACHED,
+            ),
+        )
+    }
+
+    private fun referenceDraft(): AnchorInspectionDraft {
+        val pack = referenceJobPackOpenedState().opened.stored.pack
+        return AnchorInspectionDraft(
+            companyId = pack.companyId,
+            jobId = pack.jobId,
+            jobPackVersion = pack.jobPackVersion,
+            inspectionId = "inspection-001",
+            expectedAnchorId = pack.anchors.single().anchorId,
+            createdAtEpochMillis = 1_000L,
+        )
+    }
+
+    private fun anchorCaptureState(): FieldUiState.AnchorCapture {
+        val packState = referenceJobPackOpenedState()
+        return FieldUiState.AnchorCapture(
+            account = packState.account,
+            jobs = packState.jobs,
+            job = packState.job,
+            opened = packState.opened,
+            anchor = packState.opened.stored.pack.anchors.single(),
+            draft = referenceDraft(),
+            evidence = emptyList(),
+        )
     }
 
     private fun setContent(state: FieldUiState) {

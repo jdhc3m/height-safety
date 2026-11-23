@@ -367,6 +367,19 @@ is inferred or approved.
 
 ## In progress
 
+- Design-system Android navigation shell (`T3`, issue #36) is implemented for
+  the field app: Navigation Compose hosts the Jobs flow (jobs, job pack,
+  submission review and anchor capture as one nested graph) plus the Sync and
+  Account tabs as their own graphs, with the Material 3 navigation bar shown on
+  the Jobs / Sync / Account roots and the job-checklist screen only. The field
+  state machine stays the single source of truth for signed-in flow position;
+  system back on pushed screens runs through the same close actions, capture
+  gained the `BackHandler` discard guard for unsaved edits, and predictive back
+  is enabled in the manifest. `FieldScreen.kt` is split into one file per
+  screen with shared components, the screen-visible strings moved to
+  `strings.xml`, and the Sync badge derives its count from the visible state
+  until the Sync-tab outbox subscription (T6) replaces it. Tab screenshots and
+  ViewModel/CameraCapture string moves stay with their screen tickets.
 - Design-system icon platform generation (`T2b`, issue #66) is implemented:
   `tools/design-icons/generate.mjs` now also derives the Android
   `HeightSafetyIcons` ImageVectors (tile and free-glyph variants with baked
