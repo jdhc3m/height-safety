@@ -90,7 +90,9 @@ jobs:
       - name: Check out PR revision
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.sha || steps.pr.outputs.head_ref }}
+          # Always validate the merge result, never the raw head branch: on
+          # workflow_dispatch the head may be based on an older design-system.
+          ref: refs/pull/${{ steps.pr.outputs.number }}/merge
           fetch-depth: 0
           persist-credentials: false
 
@@ -149,7 +151,8 @@ jobs:
       - name: Check out PR revision
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ needs.verify.outputs.head_ref }}
+          # Merge result, same as the verify job.
+          ref: refs/pull/${{ needs.verify.outputs.pr_number }}/merge
           fetch-depth: 0
           persist-credentials: false
 
