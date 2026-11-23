@@ -54,6 +54,12 @@ export interface CreateReviewIssueRequest {
     createReviewIssueDto: CreateReviewIssueDto;
 }
 
+export interface GetInspectionPhotoMediaRequest {
+    xCompanyId: string;
+    inspectionId: string;
+    photoId: string;
+}
+
 export interface GetPreviousAnchorInspectionRevisionRequest {
     xCompanyId: string;
     anchorInspectionId: string;
@@ -153,6 +159,78 @@ export class ReviewApi extends runtime.BaseAPI {
      */
     async createReviewIssue(requestParameters: CreateReviewIssueRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReviewIssueResponseDto> {
         const response = await this.createReviewIssueRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getInspectionPhotoMedia without sending the request
+     */
+    async getInspectionPhotoMediaRequestOpts(requestParameters: GetInspectionPhotoMediaRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['xCompanyId'] == null) {
+            throw new runtime.RequiredError(
+                'xCompanyId',
+                'Required parameter "xCompanyId" was null or undefined when calling getInspectionPhotoMedia().'
+            );
+        }
+
+        if (requestParameters['inspectionId'] == null) {
+            throw new runtime.RequiredError(
+                'inspectionId',
+                'Required parameter "inspectionId" was null or undefined when calling getInspectionPhotoMedia().'
+            );
+        }
+
+        if (requestParameters['photoId'] == null) {
+            throw new runtime.RequiredError(
+                'photoId',
+                'Required parameter "photoId" was null or undefined when calling getInspectionPhotoMedia().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (requestParameters['xCompanyId'] != null) {
+            headerParameters['x-company-id'] = String(requestParameters['xCompanyId']);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("access-token", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/reviews/inspections/{inspectionId}/photos/{photoId}/file`;
+        urlPath = urlPath.replace('{inspectionId}', encodeURIComponent(String(requestParameters['inspectionId'])));
+        urlPath = urlPath.replace('{photoId}', encodeURIComponent(String(requestParameters['photoId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Read one private evidence photo attached to a submitted inspection revision
+     */
+    async getInspectionPhotoMediaRaw(requestParameters: GetInspectionPhotoMediaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Blob>> {
+        const requestOptions = await this.getInspectionPhotoMediaRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.BlobApiResponse(response);
+    }
+
+    /**
+     * Read one private evidence photo attached to a submitted inspection revision
+     */
+    async getInspectionPhotoMedia(requestParameters: GetInspectionPhotoMediaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
+        const response = await this.getInspectionPhotoMediaRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

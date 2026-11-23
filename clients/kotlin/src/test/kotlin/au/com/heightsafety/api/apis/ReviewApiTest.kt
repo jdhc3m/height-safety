@@ -49,6 +49,16 @@ class ReviewApiTest : ShouldSpec() {
             //result shouldBe ("TODO")
         }
 
+        // to test getInspectionPhotoMedia
+        should("test getInspectionPhotoMedia") {
+            // uncomment below to test getInspectionPhotoMedia
+            //val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
+            //val inspectionId : kotlin.String = inspectionId_example // kotlin.String | 
+            //val photoId : kotlin.String = photoId_example // kotlin.String | 
+            //val result : java.io.File = apiInstance.getInspectionPhotoMedia(xCompanyId, inspectionId, photoId)
+            //result shouldBe ("TODO")
+        }
+
         // to test getPreviousAnchorInspectionRevision
         should("test getPreviousAnchorInspectionRevision") {
             // uncomment below to test getPreviousAnchorInspectionRevision

@@ -1,17 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+
 import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
   ServiceUnavailableException,
+  StreamableFile,
   UnauthorizedException,
 } from '@nestjs/common';
 
 import { ReviewController } from '../dist/review/review.controller.js';
 import { PostgresReviewStore } from '../dist/review/postgres-review-store.js';
 import { PostgresSubmittedEvidenceReader } from '../dist/review/postgres-submitted-evidence-reader.js';
+import { PostgresSubmittedPhotoMediaReader } from '../dist/review/postgres-submitted-photo-media-reader.js';
 import { ReviewService } from '../dist/review/review-service.js';
 import { InMemoryReviewStore } from '../dist/review/review-store.js';
 import { ReviewFailure } from '../dist/review/review.types.js';
@@ -53,6 +58,8 @@ function makeService(
     listRecordedOutcomes: () => undefined,
     findPreviousRevision: () => undefined,
   },
+  photoMediaReader = { find: () => undefined },
+  photoObjects = { read: () => undefined },
 ) {
   return {
     store,
@@ -60,6 +67,8 @@ function makeService(
       store,
       evidenceReader,
       anchorHistoryReader,
+      photoMediaReader,
+      photoObjects,
       clock: new FixedClock(),
       idGenerator: new FixedIdGenerator(),
     }),
@@ -1042,5 +1051,574 @@ test('PostgreSQL evidence reader fails closed on state it cannot reconcile', asy
         'inspection-a',
       ),
     'INVALID_INPUT',
+  );
+});
+
+function photoBytes() {
+  return Buffer.from('photo-bytes-001');
+}
+
+function photoSha256(bytes = photoBytes()) {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+function photoMediaFixture(overrides = {}) {
+  const record = {
+    companyId: 'company-a',
+    inspectionId: 'inspection-a',
+    photoId: 'photo-001',
+    anchorInspectionId: 'anchor-inspection-a',
+    objectKey: 'company-a/anchor-photos/photo-001.jpg',
+    contentType: 'image/jpeg',
+    byteSize: photoBytes().byteLength,
+    sha256: photoSha256(),
+    uploadState: 'uploaded',
+    ...overrides,
+  };
+  const reads = [];
+  const reader = {
+    find(companyId, inspectionId, photoId) {
+      if (
+        companyId !== record.companyId ||
+        inspectionId !== record.inspectionId ||
+        photoId !== record.photoId
+      ) {
+        return undefined;
+      }
+      return record;
+    },
+  };
+  const objects = {
+    async read(objectKey) {
+      reads.push(objectKey);
+      if (record.objectMissing) return undefined;
+      if (record.objectBytes) return record.objectBytes;
+      return photoBytes();
+    },
+  };
+  return { record, reader, objects, reads };
+}
+
+test('office photo media read is role- and tenant-scoped and gated on uploaded state', async () => {
+  const { record, reader, objects, reads } = photoMediaFixture();
+  const { service } = makeService(
+    new InMemoryReviewStore(),
+    { find: () => undefined },
+    {
+      listRecordedOutcomes: () => undefined,
+      findPreviousRevision: () => undefined,
+    },
+    reader,
+    objects,
+  );
+
+  const media = await service.getInspectionPhotoMedia(
+    principal('company-a'),
+    'inspection-a',
+    'photo-001',
+  );
+  assert.equal(media.photoId, 'photo-001');
+  assert.equal(media.contentType, 'image/jpeg');
+  assert.deepEqual(Buffer.from(media.bytes), photoBytes());
+
+  const administrator = await service.getInspectionPhotoMedia(
+    principal('company-a', 'administrator', 'admin-a'),
+    'inspection-a',
+    'photo-001',
+  );
+  assert.equal(administrator.photoId, 'photo-001');
+
+  await expectFailure(
+    () =>
+      service.getInspectionPhotoMedia(
+        principal('company-a', 'inspector', 'inspector-a'),
+        'inspection-a',
+        'photo-001',
+      ),
+    'ROLE_FORBIDDEN',
+  );
+  await expectFailure(
+    () =>
+      service.getInspectionPhotoMedia(
+        principal('company-b'),
+        'inspection-a',
+        'photo-001',
+      ),
+    'NOT_FOUND',
+  );
+  await expectFailure(
+    () =>
+      service.getInspectionPhotoMedia(
+        principal('company-a'),
+        'inspection-b',
+        'photo-001',
+      ),
+    'NOT_FOUND',
+  );
+  await expectFailure(
+    () =>
+      service.getInspectionPhotoMedia(
+        principal('company-a'),
+        'inspection-a',
+        'missing-photo',
+      ),
+    'NOT_FOUND',
+  );
+  await expectFailure(
+    () =>
+      service.getInspectionPhotoMedia(
+        principal('company-a'),
+        'inspection-a',
+        '   ',
+      ),
+    'INVALID_INPUT',
+  );
+  assert.deepEqual(reads, [record.objectKey, record.objectKey]);
+
+  const pending = photoMediaFixture({ uploadState: 'pending_upload' });
+  const { service: pendingService } = makeService(
+    new InMemoryReviewStore(),
+    { find: () => undefined },
+    {
+      listRecordedOutcomes: () => undefined,
+      findPreviousRevision: () => undefined,
+    },
+    pending.reader,
+    pending.objects,
+  );
+  await expectFailure(
+    () =>
+      pendingService.getInspectionPhotoMedia(
+        principal('company-a'),
+        'inspection-a',
+        'photo-001',
+      ),
+    'NOT_FOUND',
+  );
+
+  const failed = photoMediaFixture({ uploadState: 'failed' });
+  const { service: failedService } = makeService(
+    new InMemoryReviewStore(),
+    { find: () => undefined },
+    {
+      listRecordedOutcomes: () => undefined,
+      findPreviousRevision: () => undefined,
+    },
+    failed.reader,
+    failed.objects,
+  );
+  await expectFailure(
+    () =>
+      failedService.getInspectionPhotoMedia(
+        principal('company-a'),
+        'inspection-a',
+        'photo-001',
+      ),
+    'NOT_FOUND',
+  );
+  assert.deepEqual(pending.reads, []);
+  assert.deepEqual(failed.reads, []);
+
+  assert.equal(record.uploadState, 'uploaded');
+});
+
+test('office photo media read fails closed on private object integrity loss', async () => {
+  const missing = photoMediaFixture({ objectMissing: true });
+  const { service: missingService } = makeService(
+    new InMemoryReviewStore(),
+    { find: () => undefined },
+    {
+      listRecordedOutcomes: () => undefined,
+      findPreviousRevision: () => undefined,
+    },
+    missing.reader,
+    missing.objects,
+  );
+  await expectFailure(
+    () =>
+      missingService.getInspectionPhotoMedia(
+        principal('company-a'),
+        'inspection-a',
+        'photo-001',
+      ),
+    'PERSISTENCE_UNAVAILABLE',
+  );
+
+  const corrupted = photoMediaFixture({
+    objectBytes: Buffer.from('tampered-bytes'),
+  });
+  const { service: corruptedService } = makeService(
+    new InMemoryReviewStore(),
+    { find: () => undefined },
+    {
+      listRecordedOutcomes: () => undefined,
+      findPreviousRevision: () => undefined,
+    },
+    corrupted.reader,
+    corrupted.objects,
+  );
+  await expectFailure(
+    () =>
+      corruptedService.getInspectionPhotoMedia(
+        principal('company-a'),
+        'inspection-a',
+        'photo-001',
+      ),
+    'PERSISTENCE_UNAVAILABLE',
+  );
+
+  const resized = photoMediaFixture({
+    objectBytes: Buffer.concat([photoBytes(), Buffer.from('!')]),
+    sha256: photoSha256(),
+  });
+  const { service: resizedService } = makeService(
+    new InMemoryReviewStore(),
+    { find: () => undefined },
+    {
+      listRecordedOutcomes: () => undefined,
+      findPreviousRevision: () => undefined,
+    },
+    resized.reader,
+    resized.objects,
+  );
+  await expectFailure(
+    () =>
+      resizedService.getInspectionPhotoMedia(
+        principal('company-a'),
+        'inspection-a',
+        'photo-001',
+      ),
+    'PERSISTENCE_UNAVAILABLE',
+  );
+});
+
+test('controller serves the office photo media read through the session boundary', async () => {
+  const { reader, objects } = photoMediaFixture();
+  const { service } = makeService(
+    new InMemoryReviewStore(),
+    { find: () => undefined },
+    {
+      listRecordedOutcomes: () => undefined,
+      findPreviousRevision: () => undefined,
+    },
+    reader,
+    objects,
+  );
+  const authenticated = [];
+  const controller = new ReviewController(
+    {
+      authenticateSession(companyId, token) {
+        authenticated.push({ companyId, token });
+        return principal(companyId);
+      },
+    },
+    service,
+  );
+
+  const response = await controller.getPhotoMedia(
+    AUTHORIZATION,
+    'company-a',
+    'inspection-a',
+    'photo-001',
+  );
+  assert.deepEqual(authenticated, [
+    { companyId: 'company-a', token: 'access-token' },
+  ]);
+  assert.ok(response instanceof StreamableFile);
+  assert.equal(response.getHeaders().type, 'image/jpeg');
+  assert.match(response.getHeaders().disposition, /attachment/);
+  assert.doesNotMatch(
+    JSON.stringify(response.getHeaders()),
+    /presign|signed-url/i,
+  );
+
+  const inspectorController = new ReviewController(
+    {
+      authenticateSession() {
+        return principal('company-a', 'inspector', 'inspector-a');
+      },
+    },
+    service,
+  );
+  await assert.rejects(
+    () =>
+      inspectorController.getPhotoMedia(
+        AUTHORIZATION,
+        'company-a',
+        'inspection-a',
+        'photo-001',
+      ),
+    (error) => error instanceof ForbiddenException && error.getStatus() === 403,
+  );
+  await assert.rejects(
+    () =>
+      controller.getPhotoMedia(
+        AUTHORIZATION,
+        'company-a',
+        'inspection-a',
+        'missing-photo',
+      ),
+    (error) => error instanceof NotFoundException && error.getStatus() === 404,
+  );
+  await assert.rejects(
+    () =>
+      controller.getPhotoMedia(
+        undefined,
+        'company-a',
+        'inspection-a',
+        'photo-001',
+      ),
+    (error) => error instanceof UnauthorizedException,
+  );
+
+  const unavailable = new ReviewController(
+    {
+      authenticateSession() {
+        return principal('company-a');
+      },
+    },
+    new ReviewService({
+      store: new InMemoryReviewStore(),
+      evidenceReader: { find: () => undefined },
+      anchorHistoryReader: {
+        listRecordedOutcomes: () => undefined,
+        findPreviousRevision: () => undefined,
+      },
+      photoMediaReader: {
+        find() {
+          throw new ReviewFailure('PERSISTENCE_UNAVAILABLE', 'down');
+        },
+      },
+      photoObjects: { read: () => undefined },
+      clock: new FixedClock(),
+      idGenerator: new FixedIdGenerator(),
+    }),
+  );
+  await assert.rejects(
+    () =>
+      unavailable.getPhotoMedia(
+        AUTHORIZATION,
+        'company-a',
+        'inspection-a',
+        'photo-001',
+      ),
+    (error) =>
+      error instanceof ServiceUnavailableException && error.getStatus() === 503,
+  );
+});
+
+class PhotoMediaSqlDatabase {
+  constructor({ rows = [] } = {}) {
+    this.queries = [];
+    this.rows = rows;
+  }
+
+  async transaction(work) {
+    return work({
+      query: async (text, values) => {
+        this.queries.push({ text, values });
+        return { rows: this.rows, rowCount: this.rows.length };
+      },
+    });
+  }
+}
+
+function photoMediaRow(overrides = {}) {
+  return {
+    photo_id: 'photo-001',
+    anchor_inspection_id: 'anchor-inspection-a',
+    upload_state: 'uploaded',
+    object_key: 'company-a/anchor-photos/photo-001.jpg',
+    content_type: 'image/jpeg',
+    byte_size: 5,
+    sha256: 'stored-sha256',
+    inspection_workflow_status: 'submitted',
+    ...overrides,
+  };
+}
+
+test('PostgreSQL photo media reader is tenant-bound, read-only and validates stored state', async () => {
+  const database = new PhotoMediaSqlDatabase({ rows: [photoMediaRow()] });
+  const reader = new PostgresSubmittedPhotoMediaReader(database);
+
+  const record = await reader.find('company-a', 'inspection-a', 'photo-001');
+
+  assert.match(
+    database.queries[0].text,
+    /set_config\('app\.company_id', \$1, true\)/,
+  );
+  assert.deepEqual(database.queries[0].values, ['company-a']);
+  for (const query of database.queries) {
+    assert.doesNotMatch(
+      query.text,
+      /\b(INSERT|UPDATE|DELETE)\b/i,
+      'photo media reader must stay read-only',
+    );
+  }
+  assert.match(database.queries[1].text, /FROM photos p/);
+  assert.match(database.queries[1].text, /JOIN anchor_inspections ai/);
+  assert.match(database.queries[1].text, /JOIN inspections i/);
+  assert.match(database.queries[1].text, /JOIN object_references o/);
+  assert.match(
+    database.queries[1].text,
+    /i\.workflow_status AS inspection_workflow_status/,
+  );
+  assert.deepEqual(database.queries[1].values, [
+    'company-a',
+    'inspection-a',
+    'photo-001',
+  ]);
+
+  assert.equal(record.companyId, 'company-a');
+  assert.equal(record.inspectionId, 'inspection-a');
+  assert.equal(record.photoId, 'photo-001');
+  assert.equal(record.anchorInspectionId, 'anchor-inspection-a');
+  assert.equal(record.objectKey, 'company-a/anchor-photos/photo-001.jpg');
+  assert.equal(record.contentType, 'image/jpeg');
+  assert.equal(record.byteSize, 5);
+  assert.equal(record.sha256, 'stored-sha256');
+  assert.equal(record.uploadState, 'uploaded');
+});
+
+test('PostgreSQL photo media reader hides cross-company photos and fails closed', async () => {
+  const empty = new PhotoMediaSqlDatabase();
+  assert.equal(
+    await new PostgresSubmittedPhotoMediaReader(empty).find(
+      'company-a',
+      'inspection-a',
+      'photo-001',
+    ),
+    undefined,
+  );
+
+  const notSubmitted = new PhotoMediaSqlDatabase({
+    rows: [
+      photoMediaRow({
+        inspection_workflow_status: 'working',
+      }),
+    ],
+  });
+  await expectFailure(
+    () =>
+      new PostgresSubmittedPhotoMediaReader(notSubmitted).find(
+        'company-a',
+        'inspection-a',
+        'photo-001',
+      ),
+    'PERSISTENCE_UNAVAILABLE',
+  );
+
+  const escapingKey = new PhotoMediaSqlDatabase({
+    rows: [
+      photoMediaRow({
+        object_key: 'company-b/anchor-photos/photo-001.jpg',
+      }),
+    ],
+  });
+  await expectFailure(
+    () =>
+      new PostgresSubmittedPhotoMediaReader(escapingKey).find(
+        'company-a',
+        'inspection-a',
+        'photo-001',
+      ),
+    'PERSISTENCE_UNAVAILABLE',
+  );
+
+  const zeroBytes = new PhotoMediaSqlDatabase({
+    rows: [photoMediaRow({ byte_size: 0 })],
+  });
+  await expectFailure(
+    () =>
+      new PostgresSubmittedPhotoMediaReader(zeroBytes).find(
+        'company-a',
+        'inspection-a',
+        'photo-001',
+      ),
+    'PERSISTENCE_UNAVAILABLE',
+  );
+
+  const badState = new PhotoMediaSqlDatabase({
+    rows: [photoMediaRow({ upload_state: 'unknown' })],
+  });
+  await expectFailure(
+    () =>
+      new PostgresSubmittedPhotoMediaReader(badState).find(
+        'company-a',
+        'inspection-a',
+        'photo-001',
+      ),
+    'PERSISTENCE_UNAVAILABLE',
+  );
+
+  const unexpectedIdentity = new PhotoMediaSqlDatabase({
+    rows: [photoMediaRow({ photo_id: 'photo-other' })],
+  });
+  await expectFailure(
+    () =>
+      new PostgresSubmittedPhotoMediaReader(unexpectedIdentity).find(
+        'company-a',
+        'inspection-a',
+        'photo-001',
+      ),
+    'PERSISTENCE_UNAVAILABLE',
+  );
+
+  await expectFailure(
+    () =>
+      new PostgresSubmittedPhotoMediaReader(new PhotoMediaSqlDatabase()).find(
+        'bad company',
+        'inspection-a',
+        'photo-001',
+      ),
+    'INVALID_INPUT',
+  );
+});
+
+test('office photo media contract describes binary image bytes', async () => {
+  const contract = JSON.parse(
+    await readFile(
+      new URL('../../../contracts/openapi/v1/openapi.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  const response =
+    contract.paths['/reviews/inspections/{inspectionId}/photos/{photoId}/file']
+      .get.responses['200'];
+
+  assert.deepEqual(response.content['image/*'].schema, {
+    format: 'binary',
+    type: 'string',
+  });
+
+  const typescriptClient = await readFile(
+    new URL(
+      '../../../clients/typescript/src/apis/ReviewApi.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const kotlinClient = await readFile(
+    new URL(
+      '../../../clients/kotlin/src/main/kotlin/au/com/heightsafety/api/apis/ReviewApi.kt',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  assert.match(
+    typescriptClient,
+    /getInspectionPhotoMedia\([^\n]+Promise<Blob>/,
+  );
+  assert.match(
+    kotlinClient,
+    /getInspectionPhotoMedia\([^\n]+Response<ResponseBody>/,
+  );
+  assert.doesNotMatch(
+    typescriptClient,
+    /getInspectionPhotoMedia\([^\n]+Promise<void>/,
+  );
+  assert.doesNotMatch(
+    kotlinClient,
+    /getInspectionPhotoMedia\([^\n]+Response<Unit>/,
   );
 });
