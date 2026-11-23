@@ -4,12 +4,15 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import au.com.heightsafety.domain.AnchorInspectionDraft
 import au.com.heightsafety.domain.AnchorEvidencePhoto
@@ -322,8 +325,9 @@ class FieldScreenTest {
             )
         }
 
+        composeTestRule.onNode(hasScrollAction())
+            .performScrollToNode(hasText("Record newly discovered anchor"))
         composeTestRule.onNodeWithText("Record newly discovered anchor")
-            .performScrollTo()
             .performClick()
 
         assertTrue(addClicked)
