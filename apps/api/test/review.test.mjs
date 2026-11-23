@@ -49,12 +49,17 @@ function principal(companyId, role = 'office_reviewer', userId = 'reviewer-a') {
 function makeService(
   store = new InMemoryReviewStore(),
   evidenceReader = { find: () => undefined },
+  anchorHistoryReader = {
+    listRecordedOutcomes: () => undefined,
+    findPreviousRevision: () => undefined,
+  },
 ) {
   return {
     store,
     service: new ReviewService({
       store,
       evidenceReader,
+      anchorHistoryReader,
       clock: new FixedClock(),
       idGenerator: new FixedIdGenerator(),
     }),
@@ -453,6 +458,10 @@ test('controller maps review persistence and not-found failures', async () => {
         },
       },
       evidenceReader: { find: () => undefined },
+      anchorHistoryReader: {
+        listRecordedOutcomes: () => undefined,
+        findPreviousRevision: () => undefined,
+      },
       clock: new FixedClock(),
       idGenerator: new FixedIdGenerator(),
     }),
@@ -692,6 +701,10 @@ test('controller serialises the submitted evidence read and maps failures', asyn
         find() {
           throw new ReviewFailure('PERSISTENCE_UNAVAILABLE', 'down');
         },
+      },
+      anchorHistoryReader: {
+        listRecordedOutcomes: () => undefined,
+        findPreviousRevision: () => undefined,
       },
       clock: new FixedClock(),
       idGenerator: new FixedIdGenerator(),

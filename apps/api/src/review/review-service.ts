@@ -3,6 +3,8 @@ import {
   assertCanReview,
   REVIEW_ISSUE_TYPES,
   ReviewFailure,
+  type AnchorHistoryReader,
+  type AnchorRecordedOutcome,
   type CreateReviewIssueInput,
   type ReviewActionRecord,
   type ReviewClock,
@@ -23,6 +25,7 @@ const REASON_MAX_LENGTH = 10_000;
 export interface ReviewServiceOptions {
   readonly store: ReviewStore;
   readonly evidenceReader: SubmittedEvidenceReader;
+  readonly anchorHistoryReader: AnchorHistoryReader;
   readonly clock: ReviewClock;
   readonly idGenerator: ReviewIdGenerator;
 }
@@ -103,6 +106,16 @@ function copyEvidence(
     ...evidence,
     submittedAt: copyDate(evidence.submittedAt),
     anchors: evidence.anchors.map(copyAnchor),
+  };
+}
+
+function copyRecordedOutcome(
+  outcome: AnchorRecordedOutcome,
+): AnchorRecordedOutcome {
+  return {
+    ...outcome,
+    submittedAt: copyDate(outcome.submittedAt),
+    photos: outcome.photos.map(copyPhoto),
   };
 }
 
@@ -212,6 +225,68 @@ export class ReviewService {
       );
     }
     return copyEvidence(evidence);
+  }
+
+  /**
+   * Read-only office view of one register anchor's recorded outcomes across
+   * its submitted inspection revisions, newest first. The reader never
+   * rewrites submitted data and this method exposes no mutation path.
+   */
+  async listAnchorRecordedOutcomes(
+    principal: AuthPrincipal,
+    anchorId: string,
+  ): Promise<readonly AnchorRecordedOutcome[]> {
+    assertCanReview(principal);
+    const normalizedAnchorId = requiredId(anchorId, 'anchorId');
+    const outcomes =
+      await this.options.anchorHistoryReader.listRecordedOutcomes(
+        principal.companyId,
+        normalizedAnchorId,
+      );
+    if (!outcomes) {
+      throw new ReviewFailure('NOT_FOUND', 'register anchor was not found');
+    }
+    for (const outcome of outcomes) {
+      if (outcome.companyId !== principal.companyId) {
+        throw new ReviewFailure('NOT_FOUND', 'register anchor was not found');
+      }
+    }
+    return outcomes.map(copyRecordedOutcome);
+  }
+
+  /**
+   * Read-only office view of the submitted inspection revision recorded
+   * immediately before the referenced anchor inspection, for the same
+   * register anchor. The reader never rewrites submitted data and this
+   * method exposes no mutation path.
+   */
+  async getPreviousAnchorRevision(
+    principal: AuthPrincipal,
+    anchorInspectionId: string,
+  ): Promise<AnchorRecordedOutcome> {
+    assertCanReview(principal);
+    const normalizedAnchorInspectionId = requiredId(
+      anchorInspectionId,
+      'anchorInspectionId',
+    );
+    const previous =
+      await this.options.anchorHistoryReader.findPreviousRevision(
+        principal.companyId,
+        normalizedAnchorInspectionId,
+      );
+    if (!previous) {
+      throw new ReviewFailure(
+        'NOT_FOUND',
+        'previous inspection revision was not found',
+      );
+    }
+    if (previous.companyId !== principal.companyId) {
+      throw new ReviewFailure(
+        'NOT_FOUND',
+        'previous inspection revision was not found',
+      );
+    }
+    return copyRecordedOutcome(previous);
   }
 
   async listActions(

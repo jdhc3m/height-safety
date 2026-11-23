@@ -78,7 +78,9 @@ All URIs are relative to */api/v1*
 *ReportsApi* | [**listDraftReportGenerations**](docs/ReportsApi.md#listdraftreportgenerations) | **GET** /reports/generations | List tenant-scoped draft report generations, newest first, optionally for one job
 *ReportsApi* | [**requestDraftReportGeneration**](docs/ReportsApi.md#requestdraftreportgeneration) | **POST** /reports/generations | Queue one deterministic draft report revision from an approved snapshot
 *ReviewApi* | [**createReviewIssue**](docs/ReviewApi.md#createreviewissue) | **POST** /reviews/issues | Record an append-only office review issue or change request
+*ReviewApi* | [**getPreviousAnchorInspectionRevision**](docs/ReviewApi.md#getpreviousanchorinspectionrevision) | **GET** /reviews/anchor-inspections/{anchorInspectionId}/previous-revision | Read the submitted inspection revision recorded immediately before one anchor inspection
 *ReviewApi* | [**getSubmittedInspectionEvidence**](docs/ReviewApi.md#getsubmittedinspectionevidence) | **GET** /reviews/inspections/{inspectionId}/evidence | Read one submitted inspection revision, its anchor evidence and photo metadata
+*ReviewApi* | [**listAnchorRecordedOutcomes**](docs/ReviewApi.md#listanchorrecordedoutcomes) | **GET** /reviews/anchors/{anchorId}/recorded-outcomes | List recorded outcomes for one register anchor across its submitted inspection revisions, newest first
 *ReviewApi* | [**listReviewActions**](docs/ReviewApi.md#listreviewactions) | **GET** /reviews/issues/{reviewIssueId}/actions | List append-only actions for one review issue
 *ReviewApi* | [**listReviewIssues**](docs/ReviewApi.md#listreviewissues) | **GET** /reviews/inspections/{inspectionId}/issues | List review issues for one submitted inspection revision
 *ReviewApi* | [**resolveReviewIssue**](docs/ReviewApi.md#resolvereviewissue) | **POST** /reviews/issues/{reviewIssueId}/resolve | Record a reasoned resolution without changing inspector evidence
@@ -103,6 +105,7 @@ All URIs are relative to */api/v1*
 ### Models
 
 - [AcceptInvitationDto](docs/AcceptInvitationDto.md)
+- [AnchorRecordedOutcomeDto](docs/AnchorRecordedOutcomeDto.md)
 - [AnchorResponseDto](docs/AnchorResponseDto.md)
 - [ApproveInspectionDto](docs/ApproveInspectionDto.md)
 - [ApproveInspectionResponseDto](docs/ApproveInspectionResponseDto.md)

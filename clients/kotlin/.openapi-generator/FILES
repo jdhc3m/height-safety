@@ -1,6 +1,7 @@
 README.md
 build.gradle
 docs/AcceptInvitationDto.md
+docs/AnchorRecordedOutcomeDto.md
 docs/AnchorResponseDto.md
 docs/ApprovalsApi.md
 docs/ApproveInspectionDto.md
@@ -86,6 +87,7 @@ src/main/kotlin/au/com/heightsafety/api/infrastructure/URIAdapter.kt
 src/main/kotlin/au/com/heightsafety/api/infrastructure/URLAdapter.kt
 src/main/kotlin/au/com/heightsafety/api/infrastructure/UUIDAdapter.kt
 src/main/kotlin/au/com/heightsafety/api/models/AcceptInvitationDto.kt
+src/main/kotlin/au/com/heightsafety/api/models/AnchorRecordedOutcomeDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/AnchorResponseDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/ApproveInspectionDto.kt
 src/main/kotlin/au/com/heightsafety/api/models/ApproveInspectionResponseDto.kt
@@ -143,6 +145,7 @@ src/test/kotlin/au/com/heightsafety/api/apis/SiteRegisterApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/SynchronisationApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/apis/SystemApiTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/AcceptInvitationDtoTest.kt
+src/test/kotlin/au/com/heightsafety/api/models/AnchorRecordedOutcomeDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/AnchorResponseDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/ApproveInspectionDtoTest.kt
 src/test/kotlin/au/com/heightsafety/api/models/ApproveInspectionResponseDtoTest.kt

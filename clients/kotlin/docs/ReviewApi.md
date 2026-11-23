@@ -5,7 +5,9 @@ All URIs are relative to */api/v1*
 | Method | HTTP request | Description |
 | ------------- | ------------- | ------------- |
 | [**createReviewIssue**](ReviewApi.md#createReviewIssue) | **POST** reviews/issues | Record an append-only office review issue or change request |
+| [**getPreviousAnchorInspectionRevision**](ReviewApi.md#getPreviousAnchorInspectionRevision) | **GET** reviews/anchor-inspections/{anchorInspectionId}/previous-revision | Read the submitted inspection revision recorded immediately before one anchor inspection |
 | [**getSubmittedInspectionEvidence**](ReviewApi.md#getSubmittedInspectionEvidence) | **GET** reviews/inspections/{inspectionId}/evidence | Read one submitted inspection revision, its anchor evidence and photo metadata |
+| [**listAnchorRecordedOutcomes**](ReviewApi.md#listAnchorRecordedOutcomes) | **GET** reviews/anchors/{anchorId}/recorded-outcomes | List recorded outcomes for one register anchor across its submitted inspection revisions, newest first |
 | [**listReviewActions**](ReviewApi.md#listReviewActions) | **GET** reviews/issues/{reviewIssueId}/actions | List append-only actions for one review issue |
 | [**listReviewIssues**](ReviewApi.md#listReviewIssues) | **GET** reviews/inspections/{inspectionId}/issues | List review issues for one submitted inspection revision |
 | [**resolveReviewIssue**](ReviewApi.md#resolveReviewIssue) | **POST** reviews/issues/{reviewIssueId}/resolve | Record a reasoned resolution without changing inspector evidence |
@@ -54,6 +56,48 @@ Configure access-token:
  - **Accept**: application/json
 
 
+Read the submitted inspection revision recorded immediately before one anchor inspection
+
+### Example
+```kotlin
+// Import classes:
+//import au.com.heightsafety.api.*
+//import au.com.heightsafety.api.infrastructure.*
+//import au.com.heightsafety.api.models.*
+
+val apiClient = ApiClient()
+apiClient.setBearerToken("TOKEN")
+val webService = apiClient.createWebservice(ReviewApi::class.java)
+val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
+val anchorInspectionId : kotlin.String = anchorInspectionId_example // kotlin.String | 
+
+launch(Dispatchers.IO) {
+    val result : AnchorRecordedOutcomeDto = webService.getPreviousAnchorInspectionRevision(xCompanyId, anchorInspectionId)
+}
+```
+
+### Parameters
+| **xCompanyId** | **kotlin.String**|  | |
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **anchorInspectionId** | **kotlin.String**|  | |
+
+### Return type
+
+[**AnchorRecordedOutcomeDto**](AnchorRecordedOutcomeDto.md)
+
+### Authorization
+
+
+Configure access-token:
+    ApiClient().setBearerToken("TOKEN")
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+
 Read one submitted inspection revision, its anchor evidence and photo metadata
 
 ### Example
@@ -83,6 +127,48 @@ launch(Dispatchers.IO) {
 ### Return type
 
 [**SubmittedInspectionEvidenceResponseDto**](SubmittedInspectionEvidenceResponseDto.md)
+
+### Authorization
+
+
+Configure access-token:
+    ApiClient().setBearerToken("TOKEN")
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+
+List recorded outcomes for one register anchor across its submitted inspection revisions, newest first
+
+### Example
+```kotlin
+// Import classes:
+//import au.com.heightsafety.api.*
+//import au.com.heightsafety.api.infrastructure.*
+//import au.com.heightsafety.api.models.*
+
+val apiClient = ApiClient()
+apiClient.setBearerToken("TOKEN")
+val webService = apiClient.createWebservice(ReviewApi::class.java)
+val xCompanyId : kotlin.String = xCompanyId_example // kotlin.String | 
+val anchorId : kotlin.String = anchorId_example // kotlin.String | 
+
+launch(Dispatchers.IO) {
+    val result : kotlin.collections.List<AnchorRecordedOutcomeDto> = webService.listAnchorRecordedOutcomes(xCompanyId, anchorId)
+}
+```
+
+### Parameters
+| **xCompanyId** | **kotlin.String**|  | |
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **anchorId** | **kotlin.String**|  | |
+
+### Return type
+
+[**kotlin.collections.List&lt;AnchorRecordedOutcomeDto&gt;**](AnchorRecordedOutcomeDto.md)
 
 ### Authorization
 

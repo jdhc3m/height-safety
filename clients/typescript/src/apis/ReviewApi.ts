@@ -14,6 +14,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type AnchorRecordedOutcomeDto,
+    AnchorRecordedOutcomeDtoFromJSON,
+    AnchorRecordedOutcomeDtoToJSON,
+} from '../models/AnchorRecordedOutcomeDto';
+import {
     type CreateReviewIssueDto,
     CreateReviewIssueDtoFromJSON,
     CreateReviewIssueDtoToJSON,
@@ -49,9 +54,19 @@ export interface CreateReviewIssueRequest {
     createReviewIssueDto: CreateReviewIssueDto;
 }
 
+export interface GetPreviousAnchorInspectionRevisionRequest {
+    xCompanyId: string;
+    anchorInspectionId: string;
+}
+
 export interface GetSubmittedInspectionEvidenceRequest {
     xCompanyId: string;
     inspectionId: string;
+}
+
+export interface ListAnchorRecordedOutcomesRequest {
+    xCompanyId: string;
+    anchorId: string;
 }
 
 export interface ListReviewActionsRequest {
@@ -142,6 +157,70 @@ export class ReviewApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getPreviousAnchorInspectionRevision without sending the request
+     */
+    async getPreviousAnchorInspectionRevisionRequestOpts(requestParameters: GetPreviousAnchorInspectionRevisionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['xCompanyId'] == null) {
+            throw new runtime.RequiredError(
+                'xCompanyId',
+                'Required parameter "xCompanyId" was null or undefined when calling getPreviousAnchorInspectionRevision().'
+            );
+        }
+
+        if (requestParameters['anchorInspectionId'] == null) {
+            throw new runtime.RequiredError(
+                'anchorInspectionId',
+                'Required parameter "anchorInspectionId" was null or undefined when calling getPreviousAnchorInspectionRevision().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (requestParameters['xCompanyId'] != null) {
+            headerParameters['x-company-id'] = String(requestParameters['xCompanyId']);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("access-token", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/reviews/anchor-inspections/{anchorInspectionId}/previous-revision`;
+        urlPath = urlPath.replace('{anchorInspectionId}', encodeURIComponent(String(requestParameters['anchorInspectionId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Read the submitted inspection revision recorded immediately before one anchor inspection
+     */
+    async getPreviousAnchorInspectionRevisionRaw(requestParameters: GetPreviousAnchorInspectionRevisionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AnchorRecordedOutcomeDto>> {
+        const requestOptions = await this.getPreviousAnchorInspectionRevisionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AnchorRecordedOutcomeDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Read the submitted inspection revision recorded immediately before one anchor inspection
+     */
+    async getPreviousAnchorInspectionRevision(requestParameters: GetPreviousAnchorInspectionRevisionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AnchorRecordedOutcomeDto> {
+        const response = await this.getPreviousAnchorInspectionRevisionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getSubmittedInspectionEvidence without sending the request
      */
     async getSubmittedInspectionEvidenceRequestOpts(requestParameters: GetSubmittedInspectionEvidenceRequest): Promise<runtime.RequestOpts> {
@@ -202,6 +281,70 @@ export class ReviewApi extends runtime.BaseAPI {
      */
     async getSubmittedInspectionEvidence(requestParameters: GetSubmittedInspectionEvidenceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SubmittedInspectionEvidenceResponseDto> {
         const response = await this.getSubmittedInspectionEvidenceRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listAnchorRecordedOutcomes without sending the request
+     */
+    async listAnchorRecordedOutcomesRequestOpts(requestParameters: ListAnchorRecordedOutcomesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['xCompanyId'] == null) {
+            throw new runtime.RequiredError(
+                'xCompanyId',
+                'Required parameter "xCompanyId" was null or undefined when calling listAnchorRecordedOutcomes().'
+            );
+        }
+
+        if (requestParameters['anchorId'] == null) {
+            throw new runtime.RequiredError(
+                'anchorId',
+                'Required parameter "anchorId" was null or undefined when calling listAnchorRecordedOutcomes().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (requestParameters['xCompanyId'] != null) {
+            headerParameters['x-company-id'] = String(requestParameters['xCompanyId']);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("access-token", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/reviews/anchors/{anchorId}/recorded-outcomes`;
+        urlPath = urlPath.replace('{anchorId}', encodeURIComponent(String(requestParameters['anchorId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List recorded outcomes for one register anchor across its submitted inspection revisions, newest first
+     */
+    async listAnchorRecordedOutcomesRaw(requestParameters: ListAnchorRecordedOutcomesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<AnchorRecordedOutcomeDto>>> {
+        const requestOptions = await this.listAnchorRecordedOutcomesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(AnchorRecordedOutcomeDtoFromJSON));
+    }
+
+    /**
+     * List recorded outcomes for one register anchor across its submitted inspection revisions, newest first
+     */
+    async listAnchorRecordedOutcomes(requestParameters: ListAnchorRecordedOutcomesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AnchorRecordedOutcomeDto>> {
+        const response = await this.listAnchorRecordedOutcomesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
