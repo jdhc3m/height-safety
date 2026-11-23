@@ -87,14 +87,22 @@ jobs:
             exit 1
           fi
 
-      - name: Check out PR revision
+      - name: Check out design-system
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          # Always validate the merge result, never the raw head branch: on
-          # workflow_dispatch the head may be based on an older design-system.
-          ref: refs/pull/${{ steps.pr.outputs.number }}/merge
+          ref: design-system
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Merge PR head into design-system
+        env:
+          HEAD_REF: ${{ steps.pr.outputs.head_ref }}
+        run: |
+          git fetch origin "$HEAD_REF"
+          if ! git merge --no-ff --no-edit "FETCH_HEAD"; then
+            echo "PR does not merge cleanly into design-system" >&2
+            exit 1
+          fi
 
       - name: Detect Android UI changes
         id: android_changes
@@ -148,13 +156,22 @@ jobs:
     runs-on: [self-hosted, macOS]
     timeout-minutes: 60
     steps:
-      - name: Check out PR revision
+      - name: Check out design-system
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          # Merge result, same as the verify job.
-          ref: refs/pull/${{ needs.verify.outputs.pr_number }}/merge
+          ref: design-system
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Merge PR head into design-system
+        env:
+          HEAD_REF: ${{ needs.verify.outputs.head_ref }}
+        run: |
+          git fetch origin "$HEAD_REF"
+          if ! git merge --no-ff --no-edit "FETCH_HEAD"; then
+            echo "PR does not merge cleanly into design-system" >&2
+            exit 1
+          fi
 
       - name: Point ANDROID_HOME at the local SDK
         run: echo "ANDROID_HOME=${ANDROID_HOME:-$HOME/Library/Android/sdk}" >> "$GITHUB_ENV"
@@ -191,6 +208,14 @@ jobs:
           script: |
             source tools/android-env.sh
             bash tools/gradle.sh -p apps/android :app:connectedDebugAndroidTest --no-daemon
+
+      - name: Clean stale emulators before retry
+        if: always() && steps.emu1.outcome == 'failure'
+        run: |
+          pkill -f qemu-system 2>/dev/null || true
+          sleep 5
+          "$ANDROID_HOME/platform-tools/adb" kill-server 2>/dev/null || true
+          "$ANDROID_HOME/platform-tools/adb" start-server 2>/dev/null || true
 
       - name: Run Android instrumented tests (attempt 2, fresh emulator)
         id: emu2
