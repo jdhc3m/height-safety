@@ -99,7 +99,7 @@ jobs:
           HEAD_REF: ${{ steps.pr.outputs.head_ref }}
         run: |
           git fetch origin "$HEAD_REF"
-          if ! git merge --no-ff --no-edit "FETCH_HEAD"; then
+          if ! git -c user.name="design-pr-check" -c user.email="ci@heightsafety.invalid" merge --no-ff --no-edit "FETCH_HEAD"; then
             echo "PR does not merge cleanly into design-system" >&2
             exit 1
           fi
@@ -168,7 +168,7 @@ jobs:
           HEAD_REF: ${{ needs.verify.outputs.head_ref }}
         run: |
           git fetch origin "$HEAD_REF"
-          if ! git merge --no-ff --no-edit "FETCH_HEAD"; then
+          if ! git -c user.name="design-pr-check" -c user.email="ci@heightsafety.invalid" merge --no-ff --no-edit "FETCH_HEAD"; then
             echo "PR does not merge cleanly into design-system" >&2
             exit 1
           fi
