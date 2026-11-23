@@ -4,6 +4,7 @@ import au.com.heightsafety.api.infrastructure.CollectionFormats.*
 import retrofit2.http.*
 import retrofit2.Response
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -28,6 +29,21 @@ interface ReviewApi {
      */
     @POST("reviews/issues")
     suspend fun createReviewIssue(@Header("x-company-id") xCompanyId: kotlin.String, @Body createReviewIssueDto: CreateReviewIssueDto): Response<ReviewIssueResponseDto>
+
+    /**
+     * GET reviews/inspections/{inspectionId}/photos/{photoId}/file
+     * Read one private evidence photo attached to a submitted inspection revision
+     * 
+     * Responses:
+     *  - 200: The private evidence photo bytes with the recorded content type
+     *
+     * @param xCompanyId 
+     * @param inspectionId 
+     * @param photoId 
+     * @return [ResponseBody]
+     */
+    @GET("reviews/inspections/{inspectionId}/photos/{photoId}/file")
+    suspend fun getInspectionPhotoMedia(@Header("x-company-id") xCompanyId: kotlin.String, @Path("inspectionId") inspectionId: kotlin.String, @Path("photoId") photoId: kotlin.String): Response<ResponseBody>
 
     /**
      * GET reviews/inspections/{inspectionId}/evidence

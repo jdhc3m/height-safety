@@ -11,12 +11,14 @@ import {
   Param,
   Post,
   ServiceUnavailableException,
+  StreamableFile,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiHeader,
   ApiOkResponse,
   ApiOperation,
+  ApiProduces,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -171,6 +173,49 @@ export class ReviewController {
       return toSubmittedInspectionEvidenceResponse(
         await this.reviewService.getSubmittedEvidence(principal, inspectionId),
       );
+    } catch (error) {
+      return toReviewHttpException(error);
+    }
+  }
+
+  @Get('inspections/:inspectionId/photos/:photoId/file')
+  @ApiOperation({
+    operationId: 'getInspectionPhotoMedia',
+    summary:
+      'Read one private evidence photo attached to a submitted inspection revision',
+  })
+  @ApiProduces('image/*')
+  @ApiResponse({
+    status: 200,
+    description:
+      'The private evidence photo bytes with the recorded content type',
+    content: {
+      'image/*': {
+        schema: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  async getPhotoMedia(
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-company-id') companyId: string | undefined,
+    @Param('inspectionId') inspectionId: string,
+    @Param('photoId') photoId: string,
+  ): Promise<StreamableFile> {
+    try {
+      const principal = await authenticateSession(
+        this.authService,
+        authorization,
+        companyId,
+      );
+      const media = await this.reviewService.getInspectionPhotoMedia(
+        principal,
+        inspectionId,
+        photoId,
+      );
+      return new StreamableFile(Buffer.from(media.bytes), {
+        type: media.contentType,
+        disposition: `attachment; filename="${media.photoId}"`,
+      });
     } catch (error) {
       return toReviewHttpException(error);
     }

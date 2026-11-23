@@ -3292,6 +3292,59 @@
         ]
       }
     },
+    "/reviews/inspections/{inspectionId}/photos/{photoId}/file": {
+      "get": {
+        "operationId": "getInspectionPhotoMedia",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-company-id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "inspectionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "photoId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/*": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The private evidence photo bytes with the recorded content type"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Read one private evidence photo attached to a submitted inspection revision",
+        "tags": [
+          "review"
+        ]
+      }
+    },
     "/reviews/issues": {
       "post": {
         "operationId": "createReviewIssue",
