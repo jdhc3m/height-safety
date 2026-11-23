@@ -20,6 +20,8 @@ import au.com.heightsafety.domain.JobPackAccessException
 import au.com.heightsafety.domain.JobPackAccessFailure
 import au.com.heightsafety.domain.JobPackService
 import au.com.heightsafety.domain.OpenedJobPack
+import au.com.heightsafety.domain.JobPackOpenSource
+import au.com.heightsafety.domain.RecordedOutcome
 import au.com.heightsafety.domain.OfflineAccessDecisionReason
 import au.com.heightsafety.domain.OfflineAccessLockReason
 import au.com.heightsafety.domain.OfflineAccessMode
@@ -80,6 +82,12 @@ sealed interface FieldUiState {
         val account: AccountSummary,
         val jobs: List<InspectorJob>,
         val syncState: SyncState = SyncState.SYNCHRONISED,
+        /**
+         * Optional per-job progress derived from durable local pack and
+         * evidence state after the list loads. Jobs without a stored pack
+         * have no entry; the home card then shows no progress bar.
+         */
+        val progress: Map<String, JobHomeProgress> = emptyMap(),
     ) : FieldUiState
 
     data class EmptyJobs(
@@ -198,6 +206,7 @@ class FieldViewModel(
     private var lastCompanyId: String = ""
     private var lastJobs: List<InspectorJob> = emptyList()
     private var activeRequest: Job? = null
+    private var progressRequest: Job? = null
     private var lifecycleRequest: Job? = null
     private var sessionRestoreStarted = false
     private var lockedUiState: FieldUiState? = null
@@ -605,7 +614,23 @@ class FieldViewModel(
         }
     }
 
-    fun openAnchor(anchor: JobPackAnchor) {
+    /** Row overflow shortcut: opens capture with Not inspected preselected. */
+    fun openAnchorNotInspected(anchor: JobPackAnchor) =
+        openAnchor(anchor, presetOutcome = RecordedOutcome.NOT_INSPECTED)
+
+    /** Row overflow shortcut: opens capture as a replacement proposal. */
+    fun openAnchorReplacement(anchor: JobPackAnchor) =
+        openAnchor(anchor, presetProposal = ReconciliationProposal.REPLACEMENT)
+
+    /** Row overflow shortcut: opens capture as a duplicate proposal. */
+    fun openAnchorDuplicate(anchor: JobPackAnchor) =
+        openAnchor(anchor, presetProposal = ReconciliationProposal.DUPLICATE)
+
+    fun openAnchor(
+        anchor: JobPackAnchor,
+        presetOutcome: RecordedOutcome? = null,
+        presetProposal: ReconciliationProposal? = null,
+    ) {
         val current = _uiState.value as? FieldUiState.JobPackOpened ?: return
         val currentSession = session ?: run {
             _uiState.value = FieldUiState.SignedOut
@@ -636,13 +661,17 @@ class FieldViewModel(
             } ?: throw IllegalArgumentException(
                 "anchor is not in the opened job-pack snapshot",
             )
-            val draft = current.evidence.firstOrNull {
-                it.expectedAnchorId == canonicalAnchor.anchorId
-            } ?: service.newExpectedDraft(
-                session = currentSession,
-                opened = current.opened,
-                anchor = canonicalAnchor,
-                inspectionId = inspectionIdGenerator(),
+            val draft = applyCapturePreset(
+                base = current.evidence.firstOrNull {
+                    it.expectedAnchorId == canonicalAnchor.anchorId
+                } ?: service.newExpectedDraft(
+                    session = currentSession,
+                    opened = current.opened,
+                    anchor = canonicalAnchor,
+                    inspectionId = inspectionIdGenerator(),
+                ),
+                presetOutcome = presetOutcome,
+                presetProposal = presetProposal,
             )
             val validationIssues = service.validateForCompletion(
                 session = currentSession,
@@ -1181,6 +1210,60 @@ class FieldViewModel(
         } else {
             FieldUiState.JobsLoaded(account, lastJobs)
         }
+        refreshJobProgress(account, lastJobs)
+    }
+
+    /**
+     * Fills the Jobs home progress map from durable local state: stored packs
+     * whose lease still authorises this inspector plus the evidence saved for
+     * them. Failure or an expired lease leaves that job without progress
+     * instead of showing a stale or invented count.
+     */
+    private fun refreshJobProgress(account: AccountSummary, jobs: List<InspectorJob>) {
+        val store = jobPackStore ?: return
+        val evidenceService = anchorEvidenceService ?: return
+        val currentSession = session ?: return
+        progressRequest?.cancel()
+        progressRequest = scope.launch {
+            val summaries = try {
+                store.loadAll(currentSession.companyId)
+                    .filter { stored -> stored.lease.userId == currentSession.userId }
+                    .mapNotNull { stored ->
+                        val job = jobs.firstOrNull { it.jobId == stored.pack.jobId }
+                            ?: return@mapNotNull null
+                        if (stored.pack.jobPackVersion != job.jobPackVersion) {
+                            return@mapNotNull null
+                        }
+                        val evidence = try {
+                            evidenceService.loadDrafts(
+                                session = currentSession,
+                                opened = OpenedJobPack(stored, JobPackOpenSource.CACHED),
+                            )
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (_: Throwable) {
+                            return@mapNotNull null
+                        }
+                        val summary = jobChecklistSummary(stored.pack, evidence)
+                        job.jobId to JobHomeProgress(
+                            expectedAnchors = summary.expectedAnchors,
+                            accountedAnchors = summary.accountedAnchors,
+                        )
+                    }
+                    .toMap()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                emptyMap()
+            }
+            val current = _uiState.value
+            if (current is FieldUiState.JobsLoaded &&
+                current.account.userId == account.userId &&
+                current.jobs == jobs
+            ) {
+                _uiState.value = current.copy(progress = summaries)
+            }
+        }
     }
 
     fun signOut() {
@@ -1316,10 +1399,11 @@ class FieldViewModel(
                 serverAccountStatus = OfflineAccountStatus.ACTIVE,
                 actorUserId = activeSession.userId,
             )
-            _uiState.value = if (jobs.isEmpty()) {
-                FieldUiState.EmptyJobs(account)
+            if (jobs.isEmpty()) {
+                _uiState.value = FieldUiState.EmptyJobs(account)
             } else {
-                FieldUiState.JobsLoaded(account, jobs)
+                _uiState.value = FieldUiState.JobsLoaded(account, jobs)
+                refreshJobProgress(account, jobs)
             }
         } catch (error: CancellationException) {
             throw error
@@ -1380,6 +1464,39 @@ class FieldViewModel(
     private fun sessionNeedsRenewal(currentSession: FieldSession): Boolean =
         currentSession.expiresAtEpochMillis - nowEpochMillis() <=
             SESSION_RENEWAL_WINDOW_MILLIS
+
+    /**
+     * Checklist row-overflow shortcuts land on the capture screen with the
+     * relevant decision preselected. Presets only fill blank decisions: an
+     * already recorded outcome or proposal is never overwritten, and the
+     * inspector still completes and saves the record on the capture screen.
+     */
+    private fun applyCapturePreset(
+        base: AnchorInspectionDraft,
+        presetOutcome: RecordedOutcome?,
+        presetProposal: ReconciliationProposal?,
+    ): AnchorInspectionDraft {
+        var draft = base
+        if (presetOutcome != null && draft.recordedOutcome == null) {
+            draft = draft.copy(recordedOutcome = presetOutcome)
+        }
+        if (
+            presetProposal != null &&
+            draft.reconciliationProposal == null &&
+            draft.expectedAnchorId != null
+        ) {
+            draft = when (presetProposal) {
+                ReconciliationProposal.REPLACEMENT -> draft.copy(
+                    reconciliationProposal = presetProposal,
+                )
+                ReconciliationProposal.DUPLICATE -> draft.copy(
+                    reconciliationProposal = presetProposal,
+                )
+                ReconciliationProposal.NEWLY_DISCOVERED -> draft
+            }
+        }
+        return draft
+    }
 
     private fun expireSession() {
         session = null
